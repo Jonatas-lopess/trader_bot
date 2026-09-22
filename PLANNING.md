@@ -1,0 +1,328 @@
+# PLANNING.md — Robô Trader
+
+Technical contract for the Robô Trader sales site. Records the macro decisions taken
+before implementation, what was deliberately deferred, and what is still open.
+
+Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
+ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
+
+Last updated: 2026-09-22
+
+---
+
+## 1. Scope
+
+A marketing site that sells the Robô Trader (an MT5 Expert Advisor) plus a small
+authenticated customer area, in one codebase.
+
+**In scope for 0.1**
+
+- Landing page and plans page, both from the Figma wireframes
+- Checkout, payment confirmation, subscription lifecycle
+- Magic-link authentication
+- Customer area: license status, key/expiry, cancel subscription
+- Email delivery of the robot via a signed, expiring download link
+- Legal pages (structure and placeholder text)
+
+**Explicitly out of scope for 0.1**
+
+- In-app download of the binary (1.0.0)
+- Automated license issuance (1.0.0)
+- Entitlement enforcement (1.0.0)
+- Plan upgrade and downgrade (1.0.0)
+- Automated NFS-e emission (1.0.0; manual issuance in 0.1 — see §9)
+- Any locale other than pt-BR
+- Paid-traffic tracking pixels and consent management
+
+---
+
+## 2. Product decisions
+
+**Language.** pt-BR only. Content is hardcoded in typed content files, not a CMS. No i18n
+framework — retrofitting one is roughly a day's work if a second locale is ever needed.
+
+**Launch copy carries no fabricated social proof.** Every metric and testimonial in the
+current wireframes is placeholder: `+2.500 traders ativos`, `R$ 12M+ operados`, and the
+three named testimonials. These are replaced with verifiable figures or removed before
+launch. Two independent reasons:
+
+1. CDC art. 37 treats invented performance claims as *publicidade enganosa*.
+2. Payment processors judge category risk on marketing copy. Stripe's *prohibited*
+   business list includes "'get rich quick' schemes, including investment opportunities
+   or other services that promise high rewards to mislead consumers" — language like
+   "resultados consistentes" and "fechei os últimos 3 meses no positivo" maps onto it
+   directly. This applies to any processor, not only the one we chose.
+
+**Responsive design is derived, not designed.** The Figma file contains two 1440px desktop
+frames and no mobile artboards. Breakpoints and stacking rules are derived from the
+desktop frames and reviewed against real devices. The 4-step row, the testimonial row and
+the plan-card row each collapse to a single column. Brazilian consumer traffic is majority
+mobile, so this is the larger half of the audience arriving at an underspecified layout —
+tracked as a known risk, not a solved problem.
+
+---
+
+## 3. Stack
+
+| Concern | Choice | Notes |
+| --- | --- | --- |
+| Framework | Astro + `@astrojs/cloudflare` | Marketing pages prerendered |
+| Hosting | Cloudflare Workers with Static Assets | Not Pages — see ADR-0002 |
+| Database | D1 | Single store for all application state |
+| Object storage | R2 | Robot binary, served through a Worker binding |
+| Email | Resend | Plain `fetch`, no SDK |
+| Styling | Tailwind v4, `@theme` tokens | Figma file defines zero variables; tokens authored by hand |
+| Analytics | Cloudflare Web Analytics | Cookieless, no consent banner required |
+| Video | YouTube iframe | Loaded directly |
+| Tests | Vitest + Playwright | See §5 |
+| CI/CD | GitHub Actions → `wrangler deploy` | |
+
+**Astro SSR requires** the `nodejs_compat` and `global_fetch_strictly_public` compatibility
+flags.
+
+**Next.js was rejected.** Cloudflare's current default adapter (`vinext`) is beta, and
+`@opennextjs/cloudflare` caps the worker at 3 MiB compressed on the free plan — a Next.js
+bundle can exceed that, forcing a paid upgrade for bundle headroom alone.
+
+### Platform constraints to design against
+
+- **10 ms CPU per request** on the Workers free plan. Webhook signature verification and
+  token hashing use Web Crypto and stay lean.
+- **Static asset requests are free and unlimited.** Prerendered marketing pages consume no
+  request quota; only the authed area and webhooks count against 100k/day.
+- **KV is not used for auth state.** The free plan allows 1,000 writes/day to distinct keys
+  and is eventually consistent. "Invalidate this single-use token now" is exactly what
+  eventual consistency gets wrong. Magic-link tokens and sessions live in D1.
+- **D1's primary is single-region.** Marketing pages stay fully static, and session
+  validation prefers a signed cookie over a database round-trip. D1 read replication exists
+  but is beta and requires the Sessions API; not used.
+- **Workers cannot open SMTP connections.** Transactional email must be an HTTP API.
+
+---
+
+## 4. Module layout
+
+Plain code organisation. Modules are folders with a shared vocabulary, not an architectural
+framework: no aggregate roots, no repository interfaces, no cross-module contract layer.
+Modules import each other directly.
+
+```
+src/
+├── pages/          Astro routes (presentation)
+├── components/
+├── modules/
+│   ├── billing/    plans, subscriptions, payment provider, webhooks, dunning, cancellation
+│   ├── identity/   customers, magic-link tokens, sessions
+│   └── licensing/  keys, expiry, entitlements, binary storage, download tokens, dispatch
+└── shared/         ids, dates, environment bindings, D1 client
+```
+
+Tactical patterns get introduced where an invariant demands them, not upfront. The first
+genuine candidate is Licensing enforcing "N robôs ativos simultâneos" — which does not
+exist yet (§11).
+
+---
+
+## 5. Code conventions
+
+- **Functional.** Pure functions, no classes, no `this`. Inputs are never mutated.
+- **Naming.** kebab-case filenames, camelCase functions and values, PascalCase types.
+  `type` over `interface`.
+- **Identifiers in English**, except domain terms with no faithful translation:
+  `Corretora`, `Boleto`, `Pix` keep their Portuguese names.
+- **Errors.** Discriminated unions for expected failures (payment declined, token expired,
+  session invalid). `throw` is reserved for genuine bugs. No `Result` wrapper type, no
+  monadic plumbing.
+- **Tests.** Vitest covers the webhook handler, token issuance and session validation —
+  the three places where a bug costs money or grants unauthorised access. Playwright covers
+  one checkout-to-customer-area happy path. Marketing pages are verified against the Figma
+  frames, not unit-tested.
+
+---
+
+## 6. Payments — Pagar.me
+
+Chosen over Stripe. Rationale and trade-offs in ADR-0001.
+
+**Methods.** Card à vista (recurring), Boleto (recurring), Pix (one-time only).
+
+**Pix is not available for recurring billing** on either Pagar.me or a Brazilian Stripe
+account. Pagar.me subscriptions accept `credit_card`, `boleto` and `debit_card` only.
+Stripe shipped Pix Automático but its documentation states it is unavailable for accounts
+in Brazil. This is a rails limitation, not a vendor one.
+
+**Annual plans are a single charge, steered toward Pix.** Quoted rates: Pix 0.99% with
+1-day settlement, card à vista 4.19%, card 6x 13.63%, card 12x 20.95%. On an annual plan
+Pix is roughly 3.2 percentage points cheaper *and* settles a month earlier than card
+(≈D+31). The pricing page should make Pix the obvious annual choice.
+
+**No parcelamento in 0.1.** Pagar.me forbids installments on subscriptions — the API
+requires `installments` to be 1 for recurring charges. Offering "12x" would mean modelling
+the annual plan as a one-off parcelled order plus hand-rolled renewal logic. Deferred until
+customers actually ask.
+
+**Hosted Checkout in 0.1.** PCI scope drops to near zero and Pix, Boleto and card arrive in
+one surface. Cost: less control over the highest-converting screen and a visual seam
+against the Figma design. Revisit with conversion data, not before.
+
+**What Pagar.me does not provide, and we therefore build:**
+
+- A customer self-service portal. Cancellation UI is ours. This is not optional — the FAQ
+  promises "cancelar quando quiser com um clique" and it is a CDC right.
+- Multi-day dunning. Pagar.me does real-time acquirer failover; day-2/day-5/day-9 retry
+  and the emails around it are ours.
+- **Defensive webhook handling.** Pagar.me's webhook signature verification, retry policy
+  and ordering guarantees are not documented. Webhooks are treated as hints: on receipt,
+  re-fetch authoritative state from the API rather than trusting the payload.
+
+---
+
+## 7. Authentication and account lifecycle
+
+**Magic link.** No passwords: no reset flow, no credential storage, no breach surface.
+
+**The account is provisioned from payment, not before it.** Every field placed ahead of the
+payment button costs conversion.
+
+**Checkout sequence**
+
+1. A provisional record is created when the checkout session is created.
+2. The customer pays and is redirected to an intermediate page: *"Aguardando confirmação do
+   pagamento…"*. The page polls a status endpoint (~2s interval; no WebSocket or Durable
+   Object needed at this scale).
+3. On confirmation the page becomes *"Entrar na área do cliente"*.
+4. The webhook is the durable confirmation that flips the record to active.
+
+The success page resolves state server-side by session ID rather than waiting on the
+webhook. Without this, a customer can land on the customer area before the webhook arrives
+and see an error on the highest-emotion screen in the funnel.
+
+**Boleto has no instant path.** Boleto confirms in up to one business day. That branch of
+the intermediate page explains that access arrives by email once payment clears, and the
+magic link is sent on confirmation. Any flow assuming "pay → immediately see your key"
+breaks for boleto customers and must not be written that way.
+
+---
+
+## 8. Licensing and delivery
+
+**Today the robot is an MT5 Expert Advisor licensed by expiry date and issued manually.**
+There is no license server and no per-customer key.
+
+Consequences, stated rather than hidden:
+
+- **Plan entitlements are unenforceable.** The plans sell "1 / 3 / robôs ilimitados
+  simultâneos" and "1 / 3 / corretoras ilimitadas". Nothing in the system can count or cap
+  either, and a single buyer can share the binary freely. This is an accepted 0.1 trade-off.
+- **Issuance has a human in it.** The customer area shows *status* — "licença sendo
+  preparada" → "ativa até DD/MM" — and must not promise an instant key.
+
+**Delivery.** The robot is emailed as a signed, expiring download link, never as an
+attachment. Executable attachments are blocked outright by Gmail, Outlook and most
+corporate filters, including inside a `.zip`. A password-protected archive is worse — that
+pattern is what marks a sender as malware.
+
+**Link mechanics.** An opaque token is stored in D1 with a TTL and a `used_at` column. The
+Worker redeems the token and streams the file from the R2 binding. R2 presigned URLs were
+rejected: they cannot be used with custom domains (S3 endpoint only) and have no
+single-use mode, expiry only. R2 egress is free, so re-issuing links costs nothing.
+
+---
+
+## 9. Compliance
+
+**NFS-e is obligatory and will be issued manually in 0.1.**
+
+Selling software as a service from a Brazilian CNPJ carries an ISS obligation — the STF
+settled the tax nature of software licensing in 2021 (ADI 1945, ADI 5659), and LC 116/2003
+covers it. MEI is exempt from issuing to a *pessoa física* buyer but not to a PJ buyer, and
+MEI's R$81k annual ceiling is crossed at roughly 70 Starter customers.
+
+Acquirers report card volume to the Receita Federal. Revenue arriving through the payment
+provider is visible whether or not notas are issued.
+
+0.1 issues notas manually through the municipal portal; automation via a dedicated issuer
+is deferred. **ISS rules and rates are municipal — confirm specifics with the contador.**
+Nothing in this document is tax advice.
+
+**Legal pages** (Termos de uso, Política de privacidade) ship with structure and
+placeholder text carrying TODOs. Real text comes from you or a lawyer. Generated legal copy
+is a liability for a product in this category, not a shortcut.
+
+---
+
+## 10. Milestones
+
+**0.1**
+
+- Landing page and plans page, responsive
+- Hosted Checkout, webhook → provisional account → active
+- Intermediate confirmation page, including the boleto branch
+- Magic-link login
+- Customer area: license status, key/expiry, cancel
+- Email with signed download link
+- Legal pages with placeholder text
+- Manual NFS-e process documented
+
+**1.0.0**
+
+- In-app download in the customer area
+- Automated license issuance (license authority)
+- Entitlement enforcement
+- Plan upgrade and downgrade
+- Automated NFS-e emission
+- Parcelamento, if demand appears
+- Custom checkout, if conversion data justifies it
+
+---
+
+## 11. Open decisions
+
+Recorded deliberately. Not to be resolved by assumption during implementation.
+
+**License model.** The site will become the license authority that mints per-customer keys,
+possibly bound to a brokerage account number. Deferred; decided when the customer area is
+built. Note that binding to a brokerage account requires *collecting* that account number,
+which no current wireframe does.
+
+**Download-link tool.** Shape agreed (Worker + D1 token + R2 binding). Remaining details —
+link lifetime, one-time versus reusable within the window, re-issue flow, abuse controls —
+decided at build time.
+
+---
+
+## 12. Prerequisites
+
+External, blocking, none of them code. None exist yet.
+
+1. **Domain registered and on a Cloudflare zone.** Blocks download links on our own domain,
+   and blocks staging.
+2. **Pagar.me onboarding with written approval of the business category.** A
+   trading-automation product discovered after the fact is how accounts get frozen with
+   receivables inside. Disclose the product in writing during risk analysis and keep the
+   approval on record.
+3. **Resend account with domain verification (SPF/DKIM).** Magic-link deliverability depends
+   on it, and a magic link that lands in spam is a customer who cannot log in.
+4. **Contador engaged** for NFS-e.
+
+Environments: production and staging as separate Workers environments, staging behind
+Cloudflare Access. Access is for us and reviewers only — it is seat-based and must never be
+used for paying customers.
+
+---
+
+## 13. Facts not independently verified
+
+Research behind these decisions was gathered from vendor documentation. The following were
+flagged as unverified at the time of writing and should be confirmed before they are relied
+on:
+
+- Pagar.me's published fee schedule (rates in §6 came from you, not from public docs),
+  minimum payout, and payout fees
+- Pagar.me's webhook signature verification, retry policy and ordering guarantees — the
+  reason for the defensive handling in §6
+- Pagar.me's formal restricted-business policy; no public list comparable to Stripe's was
+  found, which is not the same as permission
+- Pagar.me's multi-day dunning behaviour and subscription status transitions
+- Cloudflare Email Sending pricing (documentation page returns 404)
+- Whether Cloudflare imposes a free-plan restriction on Workers custom domains

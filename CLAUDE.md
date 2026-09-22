@@ -18,3 +18,7 @@ Default five-role vocabulary, label strings equal to role names. See `docs/agent
 ### Domain docs
 
 Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### TODO index
+
+`TODO.md` at repo root indexes all `.scratch/` tickets by effort, plus untracked backlog.

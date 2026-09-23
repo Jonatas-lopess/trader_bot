@@ -1,17 +1,16 @@
 ---
-// Placeholder root page. Replaced by the landing page ticket
-// (.scratch/marketing-pages/issues/) once the Figma frames land.
+// Landing route. Wired to the site shell (ticket 03); real hero/section
+// content lands with .scratch/marketing-pages/issues/04-landing-hero.md
+// and the tickets after it.
+import BaseLayout from '../layouts/base-layout.astro';
 ---
 
-<html lang="pt-BR">
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Robô Trader</title>
-	</head>
-	<body>
-		<h1>Robô Trader</h1>
-		<p>Site em construção.</p>
-	</body>
-</html>
+<BaseLayout
+	title="Robô Trader — automação para MT5"
+	description="Automação de operações no MetaTrader 5 para o trader que já sabe operar, com disciplina e sem intervenção manual."
+>
+	<p class="content-row gutter-x py-24 text-body text-text-secondary">
+		Site em construção — a landing page chega nos próximos tickets
+		(.scratch/marketing-pages/issues/04-landing-hero.md em diante).
+	</p>
+</BaseLayout>

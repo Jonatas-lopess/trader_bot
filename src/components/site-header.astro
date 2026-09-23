@@ -1,0 +1,104 @@
+---
+// Site header — src/components/site-header.astro
+//
+// Brand lockup, primary nav (Como funciona / Planos / FAQ), the dead
+// "Login" link (src/content/dead-links.ts), a "Comprar agora" CTA, and an
+// accessible mobile disclosure (no mobile artboard in Figma — derived per
+// ticket .scratch/marketing-pages/issues/03-site-shell.md). Content comes
+// from src/content/header.ts — see docs/agents/content-files.md.
+import { Menu, X } from '@lucide/astro';
+import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
+---
+
+<header class="sticky top-0 z-50 border-b border-border-subtle bg-surface-overlay">
+	<div class="content-row gutter-x flex items-center justify-between py-4">
+		<a href="/" class="text-heading-3 font-bold text-text-primary">
+			{brand.name}
+		</a>
+
+		<nav aria-label="Navegação principal" class="hidden items-center gap-8 md:flex">
+			{
+				primaryNav.map((item) => (
+					<a
+						href={item.href}
+						class="text-body-sm text-text-secondary transition-colors hover:text-text-primary"
+					>
+						{item.label}
+					</a>
+				))
+			}
+			<span
+				class="cursor-not-allowed text-body-sm text-text-tertiary"
+				aria-disabled="true"
+				title="Indisponível nesta etapa"
+			>
+				{loginLink.label}
+			</span>
+			<a
+				href={ctaLink.href}
+				class="button-h-lg inline-flex items-center rounded-md bg-brand-primary px-6 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+			>
+				{ctaLink.label}
+			</a>
+		</nav>
+
+		<button
+			id="nav-toggle"
+			type="button"
+			class="button-h-sm inline-flex items-center justify-center rounded-md border border-border-subtle px-3 text-text-primary md:hidden"
+			aria-expanded="false"
+			aria-controls="mobile-nav"
+			aria-label="Abrir menu"
+		>
+			<Menu id="nav-toggle-icon-open" size={20} />
+			<X id="nav-toggle-icon-close" size={20} class="hidden" />
+		</button>
+	</div>
+
+	<nav
+		id="mobile-nav"
+		aria-label="Navegação móvel"
+		class="hidden flex-col gap-1 border-t border-border-subtle bg-surface-overlay px-4 pb-4 md:hidden"
+	>
+		{
+			primaryNav.map((item) => (
+				<a
+					href={item.href}
+					class="block rounded-md px-2 py-3 text-body text-text-secondary hover:bg-surface-raised hover:text-text-primary"
+				>
+					{item.label}
+				</a>
+			))
+		}
+		<span class="block px-2 py-3 text-body text-text-tertiary" aria-disabled="true">
+			{loginLink.label}
+		</span>
+		<a
+			href={ctaLink.href}
+			class="button-h-lg mt-2 flex items-center justify-center rounded-md bg-brand-primary text-body font-medium text-text-on-brand"
+		>
+			{ctaLink.label}
+		</a>
+	</nav>
+</header>
+
+<script>
+	// Accessible disclosure: aria-expanded on the trigger, aria-controls
+	// pointing at the panel it owns, operable from click and keyboard
+	// (native <button> gives Enter/Space for free).
+	const toggle = document.getElementById('nav-toggle');
+	const panel = document.getElementById('mobile-nav');
+	const iconOpen = document.getElementById('nav-toggle-icon-open');
+	const iconClose = document.getElementById('nav-toggle-icon-close');
+
+	toggle?.addEventListener('click', () => {
+		const wasExpanded = toggle.getAttribute('aria-expanded') === 'true';
+		const nowExpanded = !wasExpanded;
+
+		toggle.setAttribute('aria-expanded', String(nowExpanded));
+		toggle.setAttribute('aria-label', nowExpanded ? 'Fechar menu' : 'Abrir menu');
+		panel?.classList.toggle('hidden', !nowExpanded);
+		iconOpen?.classList.toggle('hidden', nowExpanded);
+		iconClose?.classList.toggle('hidden', !nowExpanded);
+	});
+</script>

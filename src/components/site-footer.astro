@@ -1,0 +1,64 @@
+---
+// Site footer — src/components/site-footer.astro
+//
+// Brand column, "Links Úteis" (real destinations), "Suporte & Termos"
+// (dead links, src/content/dead-links.ts), the AVISO LEGAL disclaimer, and
+// the copyright line. Content comes from src/content/footer.ts — see
+// docs/agents/content-files.md.
+import { footerBrand, usefulLinks, supportLinks, legalNotice, copyright } from '../content/footer';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="border-t border-border-subtle bg-surface-overlay">
+	<div class="content-row gutter-x grid gap-10 py-16 md:grid-cols-3">
+		<div>
+			<p class="text-heading-3 font-bold text-text-primary">{footerBrand.name}</p>
+			<p class="mt-3 text-body-sm text-text-secondary">{footerBrand.tagline}</p>
+		</div>
+
+		<div>
+			<h2 class="text-body-sm font-semibold text-text-primary">Links Úteis</h2>
+			<ul class="mt-4 flex flex-col gap-2">
+				{
+					usefulLinks.map((link) => (
+						<li>
+							<a
+								href={link.href}
+								class="text-body-sm text-text-secondary hover:text-text-primary"
+							>
+								{link.label}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+
+		<div>
+			<h2 class="text-body-sm font-semibold text-text-primary">Suporte & Termos</h2>
+			<ul class="mt-4 flex flex-col gap-2">
+				{
+					supportLinks.map((link) => (
+						<li>
+							<span
+								class="cursor-not-allowed text-body-sm text-text-tertiary"
+								aria-disabled="true"
+								title="Indisponível nesta etapa"
+							>
+								{link.label}
+							</span>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+	</div>
+
+	<div class="border-t border-border-subtle">
+		<div class="content-row gutter-x py-8">
+			<p class="max-w-3xl text-caption text-text-tertiary">{legalNotice}</p>
+			<p class="mt-4 text-caption text-text-tertiary">{copyright(year)}</p>
+		</div>
+	</div>
+</footer>

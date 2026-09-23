@@ -1,0 +1,63 @@
+---
+// Base layout — src/layouts/base-layout.astro
+//
+// Wraps every page (ticket .scratch/marketing-pages/issues/03-site-shell.md).
+// Sets lang="pt-BR", applies the design tokens from ticket 02, and renders
+// per-page title/description as <title>, meta description, Open Graph tags
+// and a Twitter card. Wraps the page in the site header and footer, and
+// loads the Cloudflare Web Analytics beacon when a token is configured.
+import '../styles/global.css';
+import SiteHeader from '../components/site-header.astro';
+import SiteFooter from '../components/site-footer.astro';
+import { cfBeaconToken } from '../shared/analytics';
+
+export type Props = {
+	title: string;
+	description: string;
+};
+
+const { title, description } = Astro.props;
+
+const siteName = 'Robô Trader';
+const fullTitle = `${title} · ${siteName}`;
+---
+
+<html lang="pt-BR">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="generator" content={Astro.generator} />
+
+		<title>{fullTitle}</title>
+		<meta name="description" content={description} />
+
+		<meta property="og:title" content={fullTitle} />
+		<meta property="og:description" content={description} />
+		<meta property="og:type" content="website" />
+		<meta property="og:locale" content="pt_BR" />
+		<meta property="og:site_name" content={siteName} />
+
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={fullTitle} />
+		<meta name="twitter:description" content={description} />
+
+		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+		{
+			cfBeaconToken && (
+				<script
+					defer
+					src="https://static.cloudflareinsights.com/beacon.min.js"
+					data-cf-beacon={JSON.stringify({ token: cfBeaconToken })}
+				/>
+			)
+		}
+	</head>
+	<body class="bg-surface-base font-sans text-text-primary">
+		<SiteHeader />
+		<main>
+			<slot />
+		</main>
+		<SiteFooter />
+	</body>
+</html>

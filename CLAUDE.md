@@ -22,3 +22,9 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
 ### TODO index
 
 `TODO.md` at repo root indexes all `.scratch/` tickets by effort, plus untracked backlog.
+
+### Content files
+
+Content lives in typed content files under `src/content/`, never inline strings in
+markup, plus the `launchBlocking` marker for copy that ships but isn't launch-approved.
+See `docs/agents/content-files.md`.

@@ -365,10 +365,14 @@ External, none of them code. Split by what they actually block.
    production depends on it, and a magic link that lands in spam is a customer who cannot log
    in. Same as Appmax: build and test against Resend's test mode/sending, verify the domain
    before flipping to production sends.
+4. **Appmax's published webhook source-IP list, once Appmax provides one.** §13 —
+   `APPMAX_WEBHOOK_IPS` (`src/modules/billing/webhook-hardening.ts`) ships unset and fails
+   closed until then; `/billing/webhook` rejects every delivery, Appmax's included, so this
+   blocks the webhook actually working in production, not just a hardening nicety.
 
 **Done:**
 
-4. **Contador engaged** for NFS-e.
+5. **Contador engaged** for NFS-e.
 
 Environments: production and staging as separate Workers environments, staging behind
 Cloudflare Access. Access is for us and reviewers only — it is seat-based and must never be
@@ -394,3 +398,6 @@ on:
   endpoint paths, `external_id` round-tripping) — no sandbox credentials were available
   during `checkout-webhooks`; `src/modules/billing/appmax-client.ts`'s header comment has
   the detail. Everything downstream of that module does not depend on these exact names.
+- Appmax's published webhook source-IP list — not findable anywhere (docs.appmax.com.br,
+  help-center.appmax.com.br, general web search), so `APPMAX_WEBHOOK_IPS` ships unset;
+  `src/modules/billing/webhook-hardening.ts` fails closed on that, not open.

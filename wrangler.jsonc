@@ -30,5 +30,15 @@
 	],
 	"observability": {
 		"enabled": true
-	}
+	},
+	// One source's requests to /billing/webhook, per ~2s Appmax's own retry
+	// cadence is assumed to look like (unverified, PLANNING.md §13) plus
+	// headroom for a legitimate burst — .scratch/checkout-webhooks/issues/06-webhook-hardening.md.
+	"ratelimits": [
+		{
+			"name": "WEBHOOK_RATE_LIMITER",
+			"namespace_id": "1",
+			"simple": { "limit": 30, "period": 10 }
+		}
+	]
 }

@@ -31,10 +31,10 @@ Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) �
 | 03 | [Status endpoint](.scratch/checkout-webhooks/issues/03-status-endpoint.md) | 01, 02 | done |
 | 04 | [Webhook core — idempotent, compare-and-swap state sync](.scratch/checkout-webhooks/issues/04-webhook-core.md) | 01, 02 | done |
 | 05 | [Intermediate confirmation page](.scratch/checkout-webhooks/issues/05-intermediate-confirmation-page.md) | 02, 03 | done |
-| 06 | [Webhook hardening — IP filter, payload validation, rate limit](.scratch/checkout-webhooks/issues/06-webhook-hardening.md) | 04 | ready-for-agent |
+| 06 | [Webhook hardening — IP filter, payload validation, rate limit](.scratch/checkout-webhooks/issues/06-webhook-hardening.md) | 04 | done |
 | 07 | [End-to-end verification — happy path, boleto branch, concurrency](.scratch/checkout-webhooks/issues/07-end-to-end-verification.md) | 04, 05, 06 | ready-for-agent |
 
-Frontier: **06** (01-05 done; wraps the core handler from 04).
+Frontier: **07** (01-06 done; closes out with the full-stack test matrix).
 
 ## Untracked
 

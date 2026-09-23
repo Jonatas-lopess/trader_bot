@@ -8,6 +8,14 @@ declare global {
 			/** Appmax OAuth2 client id (modules/billing/appmax-client.ts). No sandbox credentials exist yet — see that file's header comment. */
 			APPMAX_CLIENT_ID: string;
 			APPMAX_CLIENT_SECRET: string;
+			/**
+			 * Comma-separated Appmax webhook source IPs (modules/billing/webhook-hardening.ts).
+			 * Not a wrangler.jsonc `var` — that generates a literal TS type tied to
+			 * whatever's committed, wrong for something meant to differ per
+			 * environment. Unset/empty fails closed (rejects every IP) rather than
+			 * fail open — a go-live gate (PLANNING.md §12), not a build blocker.
+			 */
+			APPMAX_WEBHOOK_IPS?: string;
 		}
 	}
 }

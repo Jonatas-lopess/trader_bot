@@ -1,16 +1,15 @@
 ---
-// Landing route. Wired to the site shell (ticket 03); real hero/section
-// content lands with .scratch/marketing-pages/issues/04-landing-hero.md
-// and the tickets after it.
+// Landing route. Wired to the site shell (ticket 03). Hero section built
+// by .scratch/marketing-pages/issues/04-landing-hero.md; remaining
+// sections (video, how-it-works, social-proof, ...) land with the
+// tickets after it — see .scratch/marketing-pages/spec.md section map.
 import BaseLayout from '../layouts/base-layout.astro';
+import HeroSection from '../components/hero-section.astro';
 ---
 
 <BaseLayout
 	title="Robô Trader — automação para MT5"
 	description="Automação de operações no MetaTrader 5 para o trader que já sabe operar, com disciplina e sem intervenção manual."
 >
-	<p class="content-row gutter-x py-24 text-body text-text-secondary">
-		Site em construção — a landing page chega nos próximos tickets
-		(.scratch/marketing-pages/issues/04-landing-hero.md em diante).
-	</p>
+	<HeroSection />
 </BaseLayout>

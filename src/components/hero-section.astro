@@ -1,0 +1,94 @@
+---
+// Hero section — src/components/hero-section.astro
+//
+// Above-the-fold section on `/` (frame 6:18,
+// .scratch/marketing-pages/issues/04-landing-hero.md). Badge, headline,
+// supporting paragraph, two CTAs and a trust row beside `hero-right` — a
+// token-styled placeholder standing in for the missing visual asset
+// (frame node 6:36; see src/content/hero.ts). No mobile artboard exists
+// (PLANNING.md §2) — a single grid column stacks hero-right below the
+// text content at mobile widths, matching source order; `lg:` restores
+// the two-column layout.
+//
+// Content comes from src/content/hero.ts — see
+// docs/agents/content-files.md. Three items there are launch-blocking
+// (badge, headline, "Zero taxas ocultas" trust-row item):
+//
+//   grep -rn "launchBlocking(" src/content/hero.ts
+import { ShieldCheck, BadgePercent } from '@lucide/astro';
+import {
+	badge,
+	ctas,
+	headline,
+	heroVisualPlaceholder,
+	supportingParagraph,
+	trustRow,
+} from '../content/hero';
+
+const icons = {
+	'shield-check': ShieldCheck,
+	'badge-percent': BadgePercent,
+} as const;
+---
+
+<section
+	class="content-row gutter-x grid grid-cols-1 items-center gap-12 py-16 sm:py-20 lg:grid-cols-2 lg:gap-16 lg:py-28"
+>
+	<div>
+		<span
+			class="badge-h badge-px inline-flex items-center rounded-full border border-border-subtle bg-brand-primary-subtle text-caption font-medium text-brand-primary"
+		>
+			{badge.value}
+		</span>
+
+		<h1 class="mt-6 text-display font-bold text-balance text-text-primary">
+			{headline.value}
+		</h1>
+
+		<p class="mt-6 max-w-xl text-body-lg text-text-secondary">
+			{supportingParagraph}
+		</p>
+
+		<div class="mt-8 flex flex-col gap-4 sm:flex-row">
+			{
+				ctas.map((cta, index) => (
+					<a
+						href={cta.href}
+						class={
+							index === 0
+								? 'button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-8 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover'
+								: 'button-h-lg inline-flex items-center justify-center rounded-md border border-border-strong px-8 text-body font-medium text-text-primary transition-colors hover:bg-surface-raised'
+						}
+					>
+						{cta.label}
+					</a>
+				))
+			}
+		</div>
+
+		<div class="mt-10 flex flex-wrap gap-4">
+			{
+				trustRow.map((item) => {
+					const Icon = icons[item.icon];
+					const label = typeof item.label === 'string' ? item.label : item.label.value;
+					return (
+						<span class="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-raised px-4 py-2 text-body-sm text-text-secondary">
+							<Icon size={16} class="text-brand-primary" />
+							{label}
+						</span>
+					);
+				})
+			}
+		</div>
+	</div>
+
+	<div>
+		<div
+			class="mx-auto flex aspect-[3/2] w-full max-w-[600px] items-center justify-center rounded-xl border-2 border-dashed border-border-strong bg-surface-raised"
+		>
+			<p class="px-6 text-center text-body-sm text-text-tertiary">
+				{heroVisualPlaceholder.label}
+			</p>
+		</div>
+	</div>
+</section>

@@ -10,21 +10,33 @@ per customer, unverified Appmax email field); PLANNING.md §6 (webhook trust mod
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `customers` table added (email, linked 1:1 to a `subscriptions` row), under
+- [x] `customers` table added (email, linked 1:1 to a `subscriptions` row), under
       `modules/identity` per PLANNING §4.
-- [ ] The point in the webhook flow where a subscription first becomes `active`
+- [x] The point in the webhook flow where a subscription first becomes `active`
       (`checkout-webhooks` ticket 04's documented hook) is extended to also read the
       buyer's email from the same authoritative Appmax status re-fetch already being made —
       no new outbound call added — and write the `customers` row.
-- [ ] Re-applying an already-`active` webhook event (a reapplied event, per
+- [x] Re-applying an already-`active` webhook event (a reapplied event, per
       `checkout-webhooks` ticket 07's comments) does not create a duplicate `customers` row
       for the same subscription.
-- [ ] A subscription with no matching Appmax email field (confirming the unverified-field
+- [x] A subscription with no matching Appmax email field (confirming the unverified-field
       risk in spec.md) fails visibly (logged/observable) rather than silently leaving
       `customers` unpopulated with no trace.
-- [ ] Tests, against the real D1 binding with only Appmax's `fetch` mocked: a webhook event
+- [x] Tests, against the real D1 binding with only Appmax's `fetch` mocked: a webhook event
       that transitions a subscription to `active` produces a matching `customers` row; a
       reapplied `active` event does not duplicate it.
-- [ ] `npm test` and `npm run typecheck` pass.
+- [x] `npm test` and `npm run typecheck` pass.
+
+## Comments
+
+Implemented as designed. `onSubscriptionBecameActive` (webhook.ts) is now async and takes
+`env` plus the authoritative email; it resolves `subscriptions.id` with one `SELECT` by
+`appmax_order_id`/`appmax_subscription_id` (the same columns the CAS `UPDATE` just matched
+on — a read of this same request's own just-written row, not a TOCTOU race) before calling
+`provisionCustomer`. `FetchAuthoritativeStatusResult` gained an `email: string | null`
+field (unverified Appmax field name, `body.data.email`, same status as `order_id`). Missing
+email logs via `console.error` with the order/subscription id, greppable, and leaves
+`customers` unpopulated. Tests added to `src/modules/billing/webhook.test.ts` (extended
+`mockAppmax` to carry an email).

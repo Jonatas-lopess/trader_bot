@@ -126,7 +126,17 @@ export function parseWebhookPayload(raw: unknown): AppmaxWebhookEvent | null {
  * best guess (Appmax's admin UI is pt-BR) via `mapAppmaxStatus` below.
  */
 export type FetchAuthoritativeStatusResult =
-	| { ok: true; status: AppmaxSubscriptionState; paymentMethod: AppmaxPaymentMethod | null }
+	| {
+			ok: true;
+			status: AppmaxSubscriptionState;
+			paymentMethod: AppmaxPaymentMethod | null;
+			// The buyer's email — unverified field name, same status as
+			// `order_id`/`payment_method` above (this file's header comment,
+			// PLANNING.md §13). `null` when the response carries none, which
+			// customer-area/issues/01 treats as a visible failure rather than
+			// silently leaving `customers` unpopulated.
+			email: string | null;
+	  }
 	| { ok: false };
 
 export async function fetchAuthoritativeStatus(
@@ -144,11 +154,12 @@ export async function fetchAuthoritativeStatus(
 	});
 	if (!response.ok) return { ok: false };
 
-	const body = await response.json<{ data: { status: string; payment_method?: string } }>();
+	const body = await response.json<{ data: { status: string; payment_method?: string; email?: string } }>();
 	return {
 		ok: true,
 		status: mapAppmaxStatus(body.data.status),
 		paymentMethod: mapAppmaxPaymentMethod(body.data.payment_method),
+		email: body.data.email ?? null,
 	};
 }
 

@@ -19,6 +19,7 @@ import {
 	type AppmaxSubscriptionState,
 	type AppmaxWebhookEvent,
 } from './appmax-client';
+import { provisionCustomer } from '../identity/customers';
 
 type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET'>;
 
@@ -64,19 +65,44 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
 
 /**
  * The single, identifiable spot an Assinatura first lands on `active`
- * (spec.md's "Module boundary", user story 13) — the future magic-link-send
- * / customer-area-provisioning hook attaches here. Nothing consumes it yet,
- * so this is a marker, not an event bus. It fires whenever this webhook's
+ * (spec.md's "Module boundary", user story 13) — customer-area/issues/01's
+ * `customers` provisioning attaches here. It fires whenever this webhook's
  * compare-and-swap actually applies with `active` as the new status —
  * including a replay that finds the row already `active` (two distinct
  * events, e.g. a renewal, can each independently re-apply `active`; the
  * CAS's `meta.changes` only proves *this* write landed, not that the value
- * changed) — a future consumer still owns its own idempotency for whatever
- * it does with this (e.g. don't re-send a magic link if one was already
- * sent).
+ * changed) — `provisionCustomer`'s own `ON CONFLICT DO NOTHING` is what
+ * makes that safe to call again (own idempotency, per this function's
+ * original doc comment).
+ *
+ * Resolves `subscriptions.id` (our own PK, needed by `provisionCustomer`)
+ * with one `SELECT` by `appmax_order_id`/`appmax_subscription_id` — the
+ * same columns the CAS `UPDATE` above just matched on. This is a read of
+ * the row this same request just wrote, not a TOCTOU race: the state
+ * transition itself was already decided atomically by the CAS `UPDATE`;
+ * this lookup only resolves an id for a write that's already committed to
+ * happening.
  */
-function onSubscriptionBecameActive(subscriptionId: string): void {
-	void subscriptionId;
+async function onSubscriptionBecameActive(
+	env: WebhookEnv,
+	ref: { orderId: string | null; subscriptionId: string | null },
+	email: string | null
+): Promise<void> {
+	if (email === null) {
+		console.error(
+			`onSubscriptionBecameActive: no email field on Appmax's authoritative response for order_id=${ref.orderId ?? 'null'} subscription_id=${ref.subscriptionId ?? 'null'} — customers row not created`
+		);
+		return;
+	}
+
+	const row = await env.DB.prepare(
+		'SELECT id FROM subscriptions WHERE (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+	)
+		.bind(ref.orderId, ref.subscriptionId)
+		.first<{ id: string }>();
+	if (row === null) return;
+
+	await provisionCustomer(env, { subscriptionId: row.id, email });
 }
 
 export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{ status: number }> {
@@ -128,7 +154,11 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 		.run();
 
 	if (authoritative.status === 'active' && result.meta.changes > 0) {
-		onSubscriptionBecameActive(event.subscriptionId ?? event.orderId ?? '');
+		await onSubscriptionBecameActive(
+			env,
+			{ orderId: event.orderId, subscriptionId: event.subscriptionId },
+			authoritative.email
+		);
 	}
 
 	return { status: 200 };

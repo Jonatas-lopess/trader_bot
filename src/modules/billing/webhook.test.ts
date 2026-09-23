@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { handleWebhook } from './webhook';
 
-function mockAppmax(status: { status: string; paymentMethod?: string }) {
+function mockAppmax(status: { status: string; paymentMethod?: string; email?: string }) {
 	return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
 		const url = typeof input === 'string' ? input : input.toString();
 		if (url.includes('/oauth2/token')) {
@@ -10,12 +10,20 @@ function mockAppmax(status: { status: string; paymentMethod?: string }) {
 		}
 		if (url.includes('/orders/') || url.includes('/subscriptions/')) {
 			return new Response(
-				JSON.stringify({ data: { status: status.status, payment_method: status.paymentMethod } }),
+				JSON.stringify({
+					data: { status: status.status, payment_method: status.paymentMethod, email: status.email },
+				}),
 				{ status: 200 }
 			);
 		}
 		throw new Error(`unexpected fetch: ${url}`);
 	});
+}
+
+async function customerFor(subscriptionRowId: string): Promise<{ email: string } | null> {
+	return env.DB.prepare('SELECT email FROM customers WHERE subscription_id = ?')
+		.bind(subscriptionRowId)
+		.first<{ email: string }>();
 }
 
 async function seed(row: { id: string; appmax_order_id?: string; appmax_subscription_id?: string; status: string }) {
@@ -110,5 +118,41 @@ describe('handleWebhook', () => {
 	it('responds 200 and does not throw for an unparseable body', async () => {
 		const result = await handleWebhook(env, 'not json');
 		expect(result).toEqual({ status: 200 });
+	});
+
+	it('provisions a customers row from the authoritative re-fetch when a subscription first becomes active', async () => {
+		await seed({ id: 'sub-provision', appmax_order_id: 'ord_provision', status: 'pending' });
+		mockAppmax({ status: 'aprovado', email: 'cliente@example.com' });
+
+		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_provision' }));
+
+		expect(await customerFor('sub-provision')).toEqual({ email: 'cliente@example.com' });
+	});
+
+	it('does not duplicate the customers row when an already-active event is reapplied', async () => {
+		await seed({ id: 'sub-reapply', appmax_order_id: 'ord_reapply', status: 'active' });
+		mockAppmax({ status: 'aprovado', email: 'cliente@example.com' });
+
+		// Two distinct events (e.g. a renewal) can each independently
+		// re-apply `active` — checkout-webhooks ticket 07's "reapplied event"
+		// case — each with its own idempotency key, so both reach the hook.
+		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_reapply' }));
+		await handleWebhook(env, JSON.stringify({ event: 'subscription.renewed', order_id: 'ord_reapply' }));
+
+		const { results } = await env.DB.prepare('SELECT * FROM customers WHERE subscription_id = ?')
+			.bind('sub-reapply')
+			.all();
+		expect(results).toHaveLength(1);
+	});
+
+	it('logs visibly and leaves customers unpopulated when Appmax reports no email field', async () => {
+		await seed({ id: 'sub-no-email', appmax_order_id: 'ord_no_email', status: 'pending' });
+		mockAppmax({ status: 'aprovado' });
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_no_email' }));
+
+		expect(await customerFor('sub-no-email')).toBeNull();
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('ord_no_email'));
 	});
 });

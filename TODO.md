@@ -42,13 +42,13 @@ Spec: [.scratch/customer-area/spec.md](.scratch/customer-area/spec.md) — statu
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Customer identity — schema + provisioning from payment confirmation](.scratch/customer-area/issues/01-customer-identity-provisioning.md) | — | ready-for-agent |
+| 01 | [Customer identity — schema + provisioning from payment confirmation](.scratch/customer-area/issues/01-customer-identity-provisioning.md) | — | done |
 | 02 | [Magic-link login](.scratch/customer-area/issues/02-magic-link-login.md) | 01 | ready-for-agent |
 | 03 | [Customer area — license status](.scratch/customer-area/issues/03-license-status-page.md) | 02, 01 | ready-for-agent |
 | 04 | [Cancel subscription](.scratch/customer-area/issues/04-cancel-subscription.md) | 03, 01 | ready-for-agent |
 | 05 | [End-to-end verification — login-to-cancel happy path](.scratch/customer-area/issues/05-end-to-end-verification.md) | 02, 03, 04 | ready-for-agent |
 
-Frontier: **01** (no blockers).
+Frontier: **02** (01 done).
 
 ## Untracked
 

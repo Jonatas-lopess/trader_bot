@@ -1,0 +1,96 @@
+---
+// Intermediate confirmation page — src/pages/checkout/confirmacao.astro
+//
+// .scratch/checkout-webhooks/issues/05-intermediate-confirmation-page.md;
+// PLANNING.md §7 "Checkout sequence". Never trusts the redirect alone:
+// resolves state server-side by `ref` on first paint (calling
+// getSubscriptionStatus directly rather than round-tripping through
+// /billing/status for this one render), then a client script polls
+// /billing/status every ~2s so a slow or dropped webhook doesn't leave a
+// stale message (user story 5).
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../../layouts/base-layout.astro';
+import { getSubscriptionStatus, type SubscriptionState } from '../../modules/billing/status';
+import {
+	activeCtaLabel,
+	confirmationHeading,
+	confirmationMessages,
+	missingReferenceMessage,
+} from '../../content/checkout-confirmation';
+
+export const prerender = false;
+
+const reference = Astro.url.searchParams.get('ref');
+const initial = await getSubscriptionStatus(env, reference);
+const initialState: SubscriptionState | null = initial.ok ? initial.state : null;
+---
+
+<BaseLayout
+	title="Confirmando seu pagamento"
+	description="Acompanhe a confirmação do pagamento da sua Assinatura do Robô Trader."
+>
+	<section class="content-row gutter-x flex flex-col items-center gap-6 py-20 text-center">
+		<h1 class="text-heading-1 font-bold text-text-primary">{confirmationHeading}</h1>
+
+		{
+			initialState === null ? (
+				<p class="text-body-lg text-text-secondary">{missingReferenceMessage}</p>
+			) : (
+				<div id="confirmation-root" data-ref={reference} data-state={initialState}>
+					<p id="confirmation-message" class="text-body-lg text-text-secondary">
+						{confirmationMessages[initialState]}
+					</p>
+					{/* Login destination out of scope (checkout-confirmation.ts) — inert
+					   like src/content/dead-links.ts's `login`, never <a href="#">. */}
+					<span
+						id="confirmation-cta"
+						class="button-h-lg mt-4 hidden items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand data-[visible]:inline-flex"
+					>
+						{activeCtaLabel}
+					</span>
+				</div>
+			)
+		}
+	</section>
+</BaseLayout>
+
+<script>
+	const root = document.getElementById('confirmation-root');
+	if (root) {
+		const reference = root.dataset.ref;
+		const messageEl = document.getElementById('confirmation-message');
+		const ctaEl = document.getElementById('confirmation-cta');
+
+		// PLANNING.md §7: ~2s interval, no WebSocket, no Durable Object.
+		const POLL_INTERVAL_MS = 2000;
+
+		const messages: Record<string, string> = JSON.parse(
+			document.getElementById('confirmation-messages-data')?.textContent ?? '{}'
+		);
+
+		const applyState = (state: string) => {
+			root.setAttribute('data-state', state);
+			if (messageEl && messages[state]) messageEl.textContent = messages[state];
+			if (ctaEl) {
+				if (state === 'active') ctaEl.setAttribute('data-visible', '');
+				else ctaEl.removeAttribute('data-visible');
+			}
+		};
+
+		const poll = async () => {
+			if (root.getAttribute('data-state') === 'active') return; // confirmed, stop polling
+			try {
+				const response = await fetch(`/billing/status?ref=${encodeURIComponent(reference ?? '')}`);
+				if (!response.ok) return;
+				const body: { status: string } = await response.json();
+				applyState(body.status);
+			} catch {
+				// Transient network error — next poll tries again.
+			}
+		};
+
+		setInterval(poll, POLL_INTERVAL_MS);
+	}
+</script>
+
+<script id="confirmation-messages-data" type="application/json" set:html={JSON.stringify(confirmationMessages)} />

@@ -10,7 +10,7 @@ User Stories 3-5.
 **Blocked by:** 02 (needs a real checkout redirect to land from), 03 (needs the status
 endpoint to poll).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Page resolves state server-side by the checkout attempt's reference/session id
       rather than trusting the redirect's own claim of success (§7).
@@ -25,3 +25,15 @@ endpoint to poll).
 - [ ] Manual/local verification: drive the page against a seeded D1 row in each of the
       three states and confirm the copy switches correctly as the polled status changes.
 - [ ] `npm run typecheck` passes.
+
+## Comments
+
+Manual verification done against `wrangler dev` + local D1: seeded one row per state
+(`pending`, `pending`+`boleto`, `active`) with `wrangler d1 execute DB --local`, then curled
+`/checkout/confirmacao?ref=<id>` for each — server-rendered copy matched
+`confirmationMessages` for all three, and the missing/unknown-ref case rendered
+`missingReferenceMessage`. Confirmed the poll target itself reflects a live status flip
+(updated a seeded row from `pending` to `active` mid-session, `/billing/status` picked it up
+immediately) — the client script's own polling loop is plain `fetch` + `setInterval` against
+that same endpoint, code-reviewed rather than driven through an actual browser (no display
+in this environment).

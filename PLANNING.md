@@ -223,7 +223,8 @@ attachment. Executable attachments are blocked outright by Gmail, Outlook and mo
 corporate filters, including inside a `.zip`. A password-protected archive is worse — that
 pattern is what marks a sender as malware.
 
-**Link mechanics.** An opaque token is stored in D1 with a TTL and a `used_at` column. The
+**Link mechanics.** An opaque token is stored in D1 with a 24–48h TTL and a `used_at`
+column (`DECISIONS_temp.md` §4). The
 Worker redeems the token and streams the file from the R2 binding. R2 presigned URLs were
 rejected: they cannot be used with custom domains (S3 endpoint only) and have no
 single-use mode, expiry only. R2 egress is free, so re-issuing links costs nothing.
@@ -286,8 +287,9 @@ possibly bound to a brokerage account number. Deferred; decided when the custome
 built. Note that binding to a brokerage account requires *collecting* that account number,
 which no current wireframe does.
 
-**Download-link tool.** Shape agreed (Worker + D1 token + R2 binding). Remaining details —
-link lifetime, one-time versus reusable within the window, re-issue flow, abuse controls —
+**Download-link tool.** Shape agreed (Worker + D1 token + R2 binding). Link lifetime
+decided: 24–48h TTL, never a permanent/public link (`DECISIONS_temp.md` §4). Remaining
+details — one-time versus reusable within the window, re-issue flow, abuse controls —
 decided at build time.
 
 ---

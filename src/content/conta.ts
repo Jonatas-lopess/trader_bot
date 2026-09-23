@@ -4,12 +4,25 @@
  * Real product copy, ships as drawn (docs/agents/content-files.md).
  */
 
+import type { SubscriptionState } from '../modules/identity/customers';
+
 export const pageTitle = 'Sua conta';
 export const pageDescription = 'Acompanhe o status da sua Licença e gerencie sua Assinatura.';
 
 export const heading = 'Sua conta';
 export const planLabel = 'Plano';
 export const licenseLabel = 'Licença';
+export const assinaturaLabel = 'Assinatura';
+
+// Ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md): the
+// page needs to reflect the Assinatura's own status too, not only the
+// Licença's — most visibly after a successful cancel.
+export const assinaturaStatusTexts: Record<SubscriptionState, string> = {
+	pending: 'Pendente',
+	active: 'Ativa',
+	past_due: 'Pagamento atrasado',
+	canceled: 'Cancelada',
+};
 
 export const licensePreparingText = 'Sendo preparada';
 
@@ -24,7 +37,11 @@ export function licenseActiveText(expiresAt: string): string {
 
 export const logoutLabel = 'Sair';
 
-// Wired up by ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md)
-// — the form shell ships now since it costs nothing, but the confirm step
-// and the cancel action itself are that ticket's scope, not this one's.
 export const cancelLabel = 'Cancelar assinatura';
+
+// One click plus one confirmation (User Story 10) — a native `confirm()`
+// dialog is the friction step, no custom modal built for this (spec.md's
+// stance against speculative generality).
+export const cancelConfirmMessage =
+	'Tem certeza que deseja cancelar sua Assinatura? Sua Licença continua ativa até a data ' +
+	'de expiração já definida, mas a cobrança recorrente para automaticamente.';

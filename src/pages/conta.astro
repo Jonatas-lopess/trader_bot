@@ -1,14 +1,18 @@
 ---
 // /conta — the protected customer-area page.
 //
-// .scratch/customer-area/issues/03-license-status-page.md. Unauthenticated
-// visits redirect to /login (User Story 13); the actual session-check guard
-// is ticket 02's `requireSession` (cookie-only, no D1 hit), used here via
-// resolveAccountView.
+// .scratch/customer-area/issues/03-license-status-page.md (Plano/Licença
+// display) and 04-cancel-subscription.md (Assinatura status + cancel
+// action). Unauthenticated visits redirect to /login (User Story 13); the
+// actual session-check guard is ticket 02's `requireSession` (cookie-only,
+// no D1 hit), used here via resolveAccountView.
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/base-layout.astro';
 import { resolveAccountView } from '../modules/licensing/account-page';
 import {
+	assinaturaLabel,
+	assinaturaStatusTexts,
+	cancelConfirmMessage,
 	cancelLabel,
 	heading,
 	licenseActiveText,
@@ -27,6 +31,7 @@ if (!view.ok) return Astro.redirect('/login');
 
 const licenseText =
 	view.license.status === 'active' ? licenseActiveText(view.license.expiresAt) : licensePreparingText;
+const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -42,19 +47,24 @@ const licenseText =
 				<dt class="text-body-sm text-text-secondary">{licenseLabel}</dt>
 				<dd class="text-body-lg text-text-primary">{licenseText}</dd>
 			</div>
+			<div>
+				<dt class="text-body-sm text-text-secondary">{assinaturaLabel}</dt>
+				<dd class="text-body-lg text-text-primary">{assinaturaStatusText}</dd>
+			</div>
 		</dl>
 
-		<!-- Ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md)
-		     wires the confirm step and the cancel action itself onto this
-		     shell; this ticket only renders it. -->
-		<form method="POST" action="/conta/cancelar" class="mt-4">
-			<button
-				type="submit"
-				class="button-h-lg inline-flex items-center justify-center rounded-md border border-border-subtle px-6 text-body font-medium text-text-primary"
-			>
-				{cancelLabel}
-			</button>
-		</form>
+		{
+			view.subscriptionStatus !== 'canceled' && (
+				<form method="POST" action="/conta/cancelar" id="cancel-form" class="mt-4">
+					<button
+						type="submit"
+						class="button-h-lg inline-flex items-center justify-center rounded-md border border-border-subtle px-6 text-body font-medium text-text-primary"
+					>
+						{cancelLabel}
+					</button>
+				</form>
+			)
+		}
 
 		<form method="POST" action="/logout">
 			<button type="submit" class="text-body-sm text-text-secondary underline">
@@ -63,3 +73,12 @@ const licenseText =
 		</form>
 	</section>
 </BaseLayout>
+
+<script define:vars={{ cancelConfirmMessage }}>
+	// One click plus one confirmation (User Story 10) — a native confirm()
+	// dialog is the friction step before the cancel action fires.
+	const cancelForm = document.getElementById('cancel-form');
+	cancelForm?.addEventListener('submit', (event) => {
+		if (!window.confirm(cancelConfirmMessage)) event.preventDefault();
+	});
+</script>

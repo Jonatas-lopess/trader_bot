@@ -8,14 +8,24 @@
  */
 
 import { plans } from '../../content/plans';
-import { getCustomerAccount } from '../identity/customers';
+import { getCustomerAccount, type SubscriptionState } from '../identity/customers';
 import { requireSession } from '../identity/session';
 import { getLicenseStatus, type LicenseStatus } from './license-status';
 
 type AccountPageEnv = Pick<Cloudflare.Env, 'DB' | 'SESSION_SECRET'>;
 
 export type AccountView =
-	| { ok: true; planName: string; license: LicenseStatus }
+	| {
+			ok: true;
+			planName: string;
+			license: LicenseStatus;
+			// Added by ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md):
+			// the page needs the Assinatura's own status to reflect a cancel and
+			// to hide the cancel action once already canceled. `appmax_subscription_id`
+			// isn't needed here — /conta/cancelar resolves it itself via
+			// `getCustomerAccount` at cancel time, not from this render.
+			subscriptionStatus: SubscriptionState;
+	  }
 	| { ok: false };
 
 export async function resolveAccountView(env: AccountPageEnv, request: Request): Promise<AccountView> {
@@ -28,5 +38,10 @@ export async function resolveAccountView(env: AccountPageEnv, request: Request):
 	const plan = plans.find((candidate) => candidate.id === account.planId);
 	const license = await getLicenseStatus(env, account.subscriptionId);
 
-	return { ok: true, planName: plan?.name ?? account.planId, license };
+	return {
+		ok: true,
+		planName: plan?.name ?? account.planId,
+		license,
+		subscriptionStatus: account.status,
+	};
 }

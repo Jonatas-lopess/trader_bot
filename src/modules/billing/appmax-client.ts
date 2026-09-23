@@ -163,6 +163,29 @@ export async function fetchAuthoritativeStatus(
 	};
 }
 
+/**
+ * spec.md's Further Notes: "Appmax's cancel-subscription API's exact
+ * request/response shape ... unverified against a live sandbox call" — same
+ * status as this file's other unverified endpoints. Best-guess REST shape
+ * (POST to a `/cancel` sub-resource, no body needed since the path already
+ * scopes it), not exercised against a real sandbox.
+ */
+export async function cancelSubscription(
+	env: AppmaxCredentials,
+	appmaxSubscriptionId: string
+): Promise<{ ok: true } | { ok: false }> {
+	const token = await getAccessToken(env);
+	if (token === null) return { ok: false };
+
+	const response = await fetch(`${APPMAX_API_BASE_URL}/subscriptions/${appmaxSubscriptionId}/cancel`, {
+		method: 'POST',
+		headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+	});
+	if (!response.ok) return { ok: false };
+
+	return { ok: true };
+}
+
 function mapAppmaxStatus(raw: string): AppmaxSubscriptionState {
 	const normalized = raw.toLowerCase();
 	if (['aprovado', 'pago', 'approved', 'paid', 'active'].includes(normalized)) return 'active';

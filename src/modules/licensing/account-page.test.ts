@@ -28,7 +28,12 @@ describe('resolveAccountView', () => {
 
 		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
 
-		expect(result).toEqual({ ok: true, planName: 'Pro', license: { status: 'preparing', expiresAt: null } });
+		expect(result).toEqual({
+			ok: true,
+			planName: 'Pro',
+			license: { status: 'preparing', expiresAt: null },
+			subscriptionStatus: 'active',
+		});
 	});
 
 	it('resolves the "active" license once expires_at is set', async () => {
@@ -44,6 +49,7 @@ describe('resolveAccountView', () => {
 			ok: true,
 			planName: 'Starter',
 			license: { status: 'active', expiresAt: '2027-06-20T00:00:00.000Z' },
+			subscriptionStatus: 'active',
 		});
 	});
 

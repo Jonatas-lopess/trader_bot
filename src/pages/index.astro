@@ -2,13 +2,17 @@
 // Landing route. Wired to the site shell (ticket 03). Hero section built
 // by .scratch/marketing-pages/issues/04-landing-hero.md; video-section and
 // how-it-works built by
-// .scratch/marketing-pages/issues/05-landing-video-and-steps.md; remaining
-// sections (social-proof, ...) land with the tickets after it — see
-// .scratch/marketing-pages/spec.md section map.
+// .scratch/marketing-pages/issues/05-landing-video-and-steps.md;
+// plan-teaser and FAQ built by
+// .scratch/marketing-pages/issues/08-landing-plan-teaser-and-faq.md — the
+// last two sections in the spec's section map
+// (.scratch/marketing-pages/spec.md).
 import BaseLayout from '../layouts/base-layout.astro';
 import HeroSection from '../components/hero-section.astro';
 import VideoSection from '../components/video-section.astro';
 import HowItWorks from '../components/how-it-works.astro';
+import PlanTeaser from '../components/plan-teaser.astro';
+import FaqSection from '../components/faq-section.astro';
 ---
 
 <BaseLayout
@@ -18,4 +22,6 @@ import HowItWorks from '../components/how-it-works.astro';
 	<HeroSection />
 	<VideoSection />
 	<HowItWorks />
+	<PlanTeaser />
+	<FaqSection />
 </BaseLayout>

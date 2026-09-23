@@ -1,0 +1,67 @@
+---
+// Quick-comparison / plan-teaser section — src/components/plan-teaser.astro
+//
+// Landing page band below how-it-works (frame 6:121,
+// .scratch/marketing-pages/issues/08-landing-plan-teaser-and-faq.md).
+// Badge, heading, three condensed plan cards (price + one headline
+// entitlement each), and a "Ver planos completos" button to /planos.
+//
+// Content — including prices and the derived headline entitlement — comes
+// from src/content/plan-teaser.ts, which itself reads from
+// src/content/plans.ts rather than duplicating those facts. See
+// docs/agents/content-files.md.
+import { badge, heading, teaserCards, ctaLabel, ctaHref } from '../content/plan-teaser';
+---
+
+<section class="content-row gutter-x py-16 sm:py-20 lg:py-28">
+	<div class="mx-auto max-w-2xl text-center">
+		<span
+			class="badge-h badge-px inline-flex items-center rounded-full border border-border-subtle bg-brand-primary-subtle text-caption font-medium text-brand-primary"
+		>
+			{badge}
+		</span>
+
+		<h2 class="mt-6 text-heading-1 font-bold text-balance text-text-primary">
+			{heading}
+		</h2>
+	</div>
+
+	<div class="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+		{
+			teaserCards.map((card) => (
+				<div
+					class:list={[
+						'flex flex-col rounded-lg border p-8',
+						card.popular
+							? 'border-brand-primary bg-surface-raised shadow-glow-brand'
+							: 'border-border-subtle bg-surface-raised',
+					]}
+				>
+					{card.popular && (
+						<span class="mb-4 inline-flex w-fit items-center rounded-full bg-brand-primary px-4 py-1 text-caption font-semibold text-text-on-brand">
+							Mais Popular
+						</span>
+					)}
+
+					<h3 class="text-heading-3 font-bold text-text-primary">{card.name}</h3>
+
+					<div class="mt-4 flex items-baseline gap-1">
+						<span class="text-heading-2 font-bold text-text-primary">R$ {card.price.monthly}</span>
+						<span class="text-body-sm text-text-secondary">/mês</span>
+					</div>
+
+					<p class="mt-4 text-body-sm text-text-secondary">{card.headlineEntitlement}</p>
+				</div>
+			))
+		}
+	</div>
+
+	<div class="mt-12 flex justify-center">
+		<a
+			href={ctaHref}
+			class="button-h-lg inline-flex items-center justify-center rounded-md border border-border-subtle bg-surface-raised px-6 text-body font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+		>
+			{ctaLabel}
+		</a>
+	</div>
+</section>

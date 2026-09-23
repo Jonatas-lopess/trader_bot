@@ -37,10 +37,8 @@ describe('billing D1 schema', () => {
 	});
 
 	it('round-trips a processed_webhooks row and enforces idempotency on the composite id', async () => {
-		await env.DB.prepare(
-			'INSERT INTO processed_webhooks (id, payload) VALUES (?, ?)'
-		)
-			.bind('order.paid:ord_1', '{"event":"order.paid"}')
+		await env.DB.prepare('INSERT INTO processed_webhooks (id) VALUES (?)')
+			.bind('order.paid:ord_1')
 			.run();
 
 		const row = await env.DB.prepare('SELECT * FROM processed_webhooks WHERE id = ?')
@@ -51,9 +49,29 @@ describe('billing D1 schema', () => {
 		// The PRIMARY KEY violation this triggers *is* the "already processed"
 		// signal ticket 04's webhook handler relies on — no prior SELECT.
 		await expect(
-			env.DB.prepare('INSERT INTO processed_webhooks (id, payload) VALUES (?, ?)')
-				.bind('order.paid:ord_1', '{"event":"order.paid"}')
+			env.DB.prepare('INSERT INTO processed_webhooks (id) VALUES (?)')
+				.bind('order.paid:ord_1')
 				.run()
 		).rejects.toThrow();
+	});
+
+	// migrations/0002_webhook_deliveries.sql: the raw-payload log ticket 04's
+	// webhook handler writes unconditionally, before the idempotency check —
+	// separate from processed_webhooks above, so a duplicate delivery's
+	// payload is never silently dropped (spec.md user story 7).
+	it('round-trips a webhook_deliveries row, independent of idempotency', async () => {
+		await env.DB.prepare('INSERT INTO webhook_deliveries (idempotency_key, payload) VALUES (?, ?)')
+			.bind('order.paid:ord_1', '{"event":"order.paid"}')
+			.run();
+		await env.DB.prepare('INSERT INTO webhook_deliveries (idempotency_key, payload) VALUES (?, ?)')
+			.bind('order.paid:ord_1', '{"event":"order.paid"}')
+			.run();
+
+		const { results } = await env.DB.prepare(
+			'SELECT * FROM webhook_deliveries WHERE idempotency_key = ?'
+		)
+			.bind('order.paid:ord_1')
+			.all();
+		expect(results).toHaveLength(2);
 	});
 });

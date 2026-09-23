@@ -34,6 +34,9 @@ const APPMAX_API_BASE_URL = 'https://api.sandboxappmax.com.br';
 
 type AppmaxCredentials = Pick<Cloudflare.Env, 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET'>;
 
+export type AppmaxSubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
+export type AppmaxPaymentMethod = 'card' | 'boleto' | 'pix';
+
 type CreateHostedCheckoutSessionParams = {
 	reference: string;
 	planId: string;
@@ -85,4 +88,94 @@ export async function createHostedCheckoutSession(
 
 	const body = await response.json<{ data: { url: string; order_id?: string } }>();
 	return { ok: true, checkoutUrl: body.data.url, appmaxOrderId: body.data.order_id ?? null };
+}
+
+/**
+ * Webhook payload shape: `event`, `order_id`, `subscription_id`. Unlike the
+ * rest of this file, these three field names carry higher confidence — they
+ * appear verbatim in spec.md's Implementation Decisions ("Idempotency key:
+ * `order_id + event` ... `subscription_id + order_id + event` (Appmax's own
+ * recommendation)"), which spec.md says was transcribed from "Appmax's
+ * documented best practice pasted into this effort's originating
+ * conversation" — i.e. someone read the real docs for this one detail. The
+ * rest of the payload's shape is still unverified.
+ */
+export type AppmaxWebhookEvent = {
+	event: string;
+	orderId: string | null;
+	subscriptionId: string | null;
+};
+
+/** Returns `null` for a payload that isn't a recognisable Appmax webhook — ticket 06's payload-shape validation is the hardening layer; this is just enough to not crash on garbage. */
+export function parseWebhookPayload(raw: unknown): AppmaxWebhookEvent | null {
+	if (typeof raw !== 'object' || raw === null) return null;
+	const body = raw as Record<string, unknown>;
+	if (typeof body.event !== 'string' || body.event === '') return null;
+	const orderId = typeof body.order_id === 'string' ? body.order_id : null;
+	const subscriptionId = typeof body.subscription_id === 'string' ? body.subscription_id : null;
+	if (orderId === null && subscriptionId === null) return null;
+	return { event: body.event, orderId, subscriptionId };
+}
+
+/**
+ * spec.md's Webhook trust model: "every event triggers one Appmax API call
+ * to fetch that record's current authoritative status before any state
+ * transition is applied" — the payload's own status field is never used.
+ * Endpoint paths and the response envelope are the same unverified-contract
+ * caveat as this file's header; status/payment-method string values are a
+ * best guess (Appmax's admin UI is pt-BR) via `mapAppmaxStatus` below.
+ */
+export type FetchAuthoritativeStatusResult =
+	| { ok: true; status: AppmaxSubscriptionState; paymentMethod: AppmaxPaymentMethod | null }
+	| { ok: false };
+
+export async function fetchAuthoritativeStatus(
+	env: AppmaxCredentials,
+	ref: { orderId: string | null; subscriptionId: string | null }
+): Promise<FetchAuthoritativeStatusResult> {
+	const token = await getAccessToken(env);
+	if (token === null) return { ok: false };
+
+	const path = ref.subscriptionId !== null
+		? `/subscriptions/${ref.subscriptionId}`
+		: `/orders/${ref.orderId}`;
+	const response = await fetch(`${APPMAX_API_BASE_URL}${path}`, {
+		headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+	});
+	if (!response.ok) return { ok: false };
+
+	const body = await response.json<{ data: { status: string; payment_method?: string } }>();
+	return {
+		ok: true,
+		status: mapAppmaxStatus(body.data.status),
+		paymentMethod: mapAppmaxPaymentMethod(body.data.payment_method),
+	};
+}
+
+function mapAppmaxStatus(raw: string): AppmaxSubscriptionState {
+	const normalized = raw.toLowerCase();
+	if (['aprovado', 'pago', 'approved', 'paid', 'active'].includes(normalized)) return 'active';
+	if (['cancelado', 'estornado', 'recusado', 'canceled', 'refused'].includes(normalized)) {
+		return 'canceled';
+	}
+	if (['atrasado', 'past_due', 'overdue'].includes(normalized)) return 'past_due';
+	// Unrecognised value: fall back to `pending` rather than guess at
+	// something more consequential — a compare-and-swap on `pending` never
+	// downgrades an already-more-current row (0002's rigidity ranking).
+	return 'pending';
+}
+
+function mapAppmaxPaymentMethod(raw: string | undefined): AppmaxPaymentMethod | null {
+	switch (raw?.toLowerCase()) {
+		case 'boleto':
+			return 'boleto';
+		case 'pix':
+			return 'pix';
+		case 'cartao':
+		case 'credit_card':
+		case 'card':
+			return 'card';
+		default:
+			return null;
+	}
 }

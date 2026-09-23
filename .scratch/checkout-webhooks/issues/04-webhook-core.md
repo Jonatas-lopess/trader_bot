@@ -12,7 +12,7 @@ implementation"; ADR-0003. User Stories 6-10, 13.
 provisional-record reference scheme from checkout-session creation to have something to
 update).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `/billing/webhook` responds `200` without waiting on anything beyond what
       correctness requires; no queue/background job introduced (spec.md: Workers' CPU-time
@@ -41,3 +41,19 @@ update).
       idempotent replay of the same event, out-of-order delivery (less-current event after
       a more-current one), and an unknown subscription/order reference being ignored.
 - [ ] `npm test` and `npm run typecheck` pass.
+
+## Comments
+
+Ticket 01's `processed_webhooks` table conflated the idempotency guard with the raw-payload
+log into one INSERT; that would silently drop a duplicate delivery's payload on the
+uniqueness violation, contradicting user story 7 ("every webhook delivery's raw payload
+stored"). Split via `migrations/0002_webhook_deliveries.sql` — `processed_webhooks` is now
+id-only (matches spec.md's own `INSERT INTO processed_webhooks (id) VALUES (?)` example
+literally), and a new unconditional `webhook_deliveries` table logs every delivery
+regardless of idempotency outcome. `src/modules/billing/schema.test.ts` (ticket 01)
+updated to match.
+
+Status-rigidity ranking (pending < active < past_due < canceled) only needs to satisfy this
+ticket's own scope — the canceled-must-not-be-undone case from user story 8. It does not
+attempt to model recovering a `past_due` subscription back to `active`; that's multi-day
+dunning, explicitly separate future work per PLANNING.md §6. Revisit the ranking then.

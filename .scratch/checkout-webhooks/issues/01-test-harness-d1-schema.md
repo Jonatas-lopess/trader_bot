@@ -11,7 +11,7 @@ real D1 binding via `@cloudflare/vitest-pool-workers`") and Implementation Decis
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `@cloudflare/vitest-pool-workers` added as a dependency; `vitest.config.ts` switched
       to the Workers pool (today's config is plain Vitest — see its own comment on why).

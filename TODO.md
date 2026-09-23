@@ -26,7 +26,7 @@ Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) �
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Test harness + D1 schema for billing](.scratch/checkout-webhooks/issues/01-test-harness-d1-schema.md) | — | ready-for-agent |
+| 01 | [Test harness + D1 schema for billing](.scratch/checkout-webhooks/issues/01-test-harness-d1-schema.md) | — | done |
 | 02 | [Checkout session creation](.scratch/checkout-webhooks/issues/02-checkout-session-creation.md) | 01 | ready-for-agent |
 | 03 | [Status endpoint](.scratch/checkout-webhooks/issues/03-status-endpoint.md) | 01, 02 | ready-for-agent |
 | 04 | [Webhook core — idempotent, compare-and-swap state sync](.scratch/checkout-webhooks/issues/04-webhook-core.md) | 01, 02 | ready-for-agent |
@@ -34,7 +34,7 @@ Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) �
 | 06 | [Webhook hardening — IP filter, payload validation, rate limit](.scratch/checkout-webhooks/issues/06-webhook-hardening.md) | 04 | ready-for-agent |
 | 07 | [End-to-end verification — happy path, boleto branch, concurrency](.scratch/checkout-webhooks/issues/07-end-to-end-verification.md) | 04, 05, 06 | ready-for-agent |
 
-Frontier: **01** (no blockers, can start immediately).
+Frontier: **02** (01 done; 02 needs the D1 binding and Workers test runtime it added).
 
 ## Untracked
 

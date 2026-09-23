@@ -35,26 +35,18 @@ export const badge: LaunchBlocking<string> = launchBlocking(
 		'.scratch/marketing-pages/issues/04-landing-hero.md item 2.',
 );
 
-// Headline — the highest-priority copy decision in this ticket. Ships as
-// drawn in frame 6:18, wrapped and flagged. Rewriting it is the user's
-// call, not the implementer's.
-export const headline: LaunchBlocking<string> = launchBlocking(
-	'Automação inteligente. Resultados consistentes no mercado financeiro.',
-	'"Resultados consistentes" is a performance claim under CDC art. 37 (publicidade ' +
-		"enganosa) and sits in the exact register PLANNING.md §2 names as payment-processor " +
-		"category risk — Stripe's prohibited-business list covers services promising high " +
-		'rewards, and this applies to any processor, not only the one chosen. Pagar.me ' +
-		'onboarding approval of the business category is still an open prerequisite ' +
-		'(PLANNING.md §12) — a trading-automation product discovered after the fact is how ' +
-		'accounts get frozen with receivables inside. Do not rewrite without a product ' +
-		'decision — PLANNING.md §2, §12; .scratch/marketing-pages/issues/04-landing-hero.md ' +
-		'item 1.',
-);
+// Headline — resolved by product decision, DECISIONS_temp.md §7. Replaces
+// the "Resultados consistentes" wording flagged in
+// .scratch/marketing-pages/issues/04-landing-hero.md item 1 (CDC art. 37 +
+// payment-processor category risk, PLANNING.md §2, §12). No longer
+// launch-blocking.
+export const headline = 'Automação inteligente para operar o mercado financeiro com disciplina.';
 
+// DECISIONS_temp.md §7.
 export const supportingParagraph =
-	'O Robô opera 24 horas por dia nos mercados que você escolher, executando cada ordem ' +
-	'com disciplina matemática inabalável — sem hesitação, sem cansaço e sem se desviar dos ' +
-	'parâmetros de risco que você configurou.';
+	'Nosso robô opera 24 horas por dia seguindo regras fixas, sem se deixar levar por ' +
+	'impulso ou cansaço. Você define os parâmetros de risco e acompanha tudo de onde ' +
+	'estiver, sem precisar ficar grudado na tela.';
 
 export const ctas: HeroCta[] = [
 	{ label: 'Começar Agora', href: '/planos' },

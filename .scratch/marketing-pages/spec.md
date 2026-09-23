@@ -30,7 +30,6 @@ Tickets in `issues/`, numbered in dependency order.
 Each is flagged in the ticket that surfaces it, behind a launch-blocking marker in the content files.
 None is the implementer's call.
 
-- Hero headline "Resultados consistentes" — CDC art. 37 and payment-processor category risk (PLANNING.md §2); Pagar.me onboarding is still an open prerequisite (§12). Ticket 04.
 - Fabricated proof: `+2.500`, `R$ 12M+`, three named testimonials. Ticket 06.
 - Plan rows selling crypto markets, multi-year backtesting, a 24/7 account manager, an included VPS and custom API integration — none in any milestone (§10). Ticket 07.
 - Annual pricing absent: the toggle advertises 20% off, cards show the monthly price in both states, no Pix steer (§6). Ticket 07.

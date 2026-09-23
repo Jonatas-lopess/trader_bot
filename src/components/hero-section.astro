@@ -11,8 +11,9 @@
 // the two-column layout.
 //
 // Content comes from src/content/hero.ts — see
-// docs/agents/content-files.md. Three items there are launch-blocking
-// (badge, headline, "Zero taxas ocultas" trust-row item):
+// docs/agents/content-files.md. Two items there are launch-blocking
+// (badge, "Zero taxas ocultas" trust-row item); headline resolved per
+// DECISIONS_temp.md §7:
 //
 //   grep -rn "launchBlocking(" src/content/hero.ts
 import { ShieldCheck, BadgePercent } from '@lucide/astro';
@@ -43,7 +44,7 @@ const icons = {
 		</span>
 
 		<h1 class="mt-6 text-display font-bold text-balance text-text-primary">
-			{headline.value}
+			{headline}
 		</h1>
 
 		<p class="mt-6 max-w-xl text-body-lg text-text-secondary">

@@ -24,7 +24,7 @@ Checkout is Hosted Checkout (§6) and is not built here. Each CTA targets a chec
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Plans route renders through the site shell and matches frame `6:217` at 1440px, Pro card taller with its "Mais Popular" ribbon
 - [ ] Card row collapses to a single column at mobile widths, Pro ordered sensibly in the stack

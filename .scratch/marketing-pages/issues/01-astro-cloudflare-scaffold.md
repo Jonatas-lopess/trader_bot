@@ -10,7 +10,7 @@ Code conventions from PLANNING.md §5 apply from the first file: functional, no 
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Astro project builds with `@astrojs/cloudflare`, marketing routes prerendered
 - [ ] `wrangler.jsonc` configures Static Assets and both compatibility flags

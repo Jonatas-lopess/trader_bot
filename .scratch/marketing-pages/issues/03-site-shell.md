@@ -16,7 +16,7 @@ Content is hardcoded in typed content files, not a CMS and not inline strings in
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Base Astro layout applying the tokens from 02
 - [ ] Header and footer match the frames at 1440px and collapse cleanly at mobile widths

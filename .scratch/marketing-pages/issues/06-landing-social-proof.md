@@ -17,7 +17,7 @@ So this ticket delivers the layout and an explicit, greppable inventory of what 
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** deferred — needs real metrics/testimonials before an agent can pick this up; see spec.md launch-blocking inventory
 
 - [ ] Metrics pair and testimonial row match frame `6:83` at 1440px
 - [ ] Both rows collapse to a single column at mobile widths

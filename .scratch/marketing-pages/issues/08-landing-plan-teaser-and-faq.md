@@ -17,7 +17,7 @@ Answers touching payment must match §6: card à vista and boleto can carry an A
 
 **Blocked by:** 03, 07
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Both sections match their frames at 1440px and collapse cleanly at mobile widths
 - [ ] Teaser cards read prices and entitlements from the plan content file created in 07 — no second copy

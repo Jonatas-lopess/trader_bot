@@ -14,7 +14,7 @@ The preview page is what makes this ticket verifiable on its own. It lives outsi
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Tailwind v4 installed, tokens declared in an `@theme` block
 - [ ] Color, type scale, spacing, radius and shadow tokens cover everything both frames use

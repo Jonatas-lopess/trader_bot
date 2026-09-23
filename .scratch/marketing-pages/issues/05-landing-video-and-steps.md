@@ -18,7 +18,7 @@ Vocabulary follows CONTEXT.md: **Robô**, **Cliente**, **Corretora**, **Plano**,
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Both sections match their frames at 1440px, in frame order (video above steps)
 - [ ] Video container is responsive 16:9 with a deliberate empty state; iframe URL comes from the content file

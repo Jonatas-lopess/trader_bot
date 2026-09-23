@@ -18,7 +18,7 @@ The file has no mobile artboard. Stacking and type scaling at narrow widths are 
 
 **Blocked by:** 03
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `/` route renders through the site shell
 - [ ] Hero matches frame `6:18` at 1440px

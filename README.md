@@ -37,4 +37,19 @@ checkout-to-customer-area happy path).
 
 ## Status
 
-Pre-implementation. No code yet — see ticket 01 in `TODO.md` for the scaffold.
+Landing page and plans page implemented (tickets 01–05, 07–08 in `TODO.md`) — Astro +
+Cloudflare Workers scaffold, Tailwind v4 design tokens, site shell, hero, video/how-it-works,
+plans page, plan teaser and FAQ. Ticket 06 (social proof) is deferred: the frame's metrics
+and testimonials are fabricated placeholders (PLANNING.md §2) with no real figures to ship
+yet.
+
+Several copy items ship wrapped in a `launchBlocking()` marker — drawn from the Figma
+frames but not approved to go live (fabricated claims, unverified compatibility, pricing
+claims contingent on decisions not yet made). Find them with:
+
+```
+grep -rn "launchBlocking(" src/content/
+```
+
+See `docs/agents/content-files.md` for the convention. Not yet built: checkout, auth,
+customer area, legal pages, deploy (blocked on PLANNING.md §12 prerequisites).

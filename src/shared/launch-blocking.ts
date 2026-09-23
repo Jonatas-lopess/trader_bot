@@ -11,6 +11,11 @@
  * instead of exporting it bare. Components render `.value` and otherwise
  * leave the wrapper alone — it flags the source, it does not gate render.
  *
+ * When a field is typed `T | LaunchBlocking<T>` (some rows blocked, some
+ * not — e.g. a feature-row label), use `unwrapLaunchBlocking` at the render
+ * site instead of re-deriving the `typeof x === 'string' ? x : x.value`
+ * ternary per component.
+ *
  * Every blocked item is discoverable with one command, so keep the call
  * name and shape exact:
  *
@@ -28,3 +33,10 @@ export const launchBlocking = <T>(value: T, reason: string): LaunchBlocking<T> =
 	blocked: true,
 	reason,
 });
+
+const isLaunchBlocking = <T>(value: T | LaunchBlocking<T>): value is LaunchBlocking<T> =>
+	typeof value === 'object' && value !== null && 'blocked' in value;
+
+/** Unwraps a `T | LaunchBlocking<T>` field to its plain value, wrapped or not. */
+export const unwrapLaunchBlocking = <T>(value: T | LaunchBlocking<T>): T =>
+	isLaunchBlocking(value) ? value.value : value;

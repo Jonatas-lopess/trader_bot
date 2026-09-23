@@ -11,6 +11,7 @@
 // src/content/plans.ts rather than duplicating those facts. See
 // docs/agents/content-files.md.
 import { badge, heading, teaserCards, ctaLabel, ctaHref } from '../content/plan-teaser';
+import { monthlyPriceSuffix, popularBadgeLabel } from '../content/plans';
 ---
 
 <section class="content-row gutter-x py-16 sm:py-20 lg:py-28">
@@ -39,7 +40,7 @@ import { badge, heading, teaserCards, ctaLabel, ctaHref } from '../content/plan-
 				>
 					{card.popular && (
 						<span class="mb-4 inline-flex w-fit items-center rounded-full bg-brand-primary px-4 py-1 text-caption font-semibold text-text-on-brand">
-							Mais Popular
+							{popularBadgeLabel}
 						</span>
 					)}
 
@@ -47,7 +48,7 @@ import { badge, heading, teaserCards, ctaLabel, ctaHref } from '../content/plan-
 
 					<div class="mt-4 flex items-baseline gap-1">
 						<span class="text-heading-2 font-bold text-text-primary">R$ {card.price.monthly}</span>
-						<span class="text-body-sm text-text-secondary">/mês</span>
+						<span class="text-body-sm text-text-secondary">{monthlyPriceSuffix}</span>
 					</div>
 
 					<p class="mt-4 text-body-sm text-text-secondary">{card.headlineEntitlement}</p>

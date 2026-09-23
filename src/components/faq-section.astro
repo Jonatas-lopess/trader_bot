@@ -16,6 +16,7 @@
 // otherwise leave the wrapper alone.
 import { ChevronDown } from '@lucide/astro';
 import { heading, faqItems } from '../content/faq';
+import { unwrapLaunchBlocking } from '../shared/launch-blocking';
 ---
 
 <section id="faq" class="content-row gutter-x py-16 sm:py-20 lg:py-28">
@@ -28,7 +29,7 @@ import { heading, faqItems } from '../content/faq';
 	<div class="mx-auto mt-12 flex max-w-3xl flex-col gap-4">
 		{
 			faqItems.map((item) => {
-				const answer = typeof item.answer === 'string' ? item.answer : item.answer.value;
+				const answer = unwrapLaunchBlocking(item.answer);
 				return (
 					<details class="group rounded-lg border border-border-subtle bg-surface-raised px-6 py-4">
 						<summary class="flex cursor-pointer list-none items-center justify-between gap-4 text-body font-semibold text-text-primary marker:content-none">

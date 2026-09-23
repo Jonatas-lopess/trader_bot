@@ -5,7 +5,15 @@
 // (dead links, src/content/dead-links.ts), the AVISO LEGAL disclaimer, and
 // the copyright line. Content comes from src/content/footer.ts — see
 // docs/agents/content-files.md.
-import { footerBrand, usefulLinks, supportLinks, legalNotice, copyright } from '../content/footer';
+import {
+	footerBrand,
+	usefulLinks,
+	usefulLinksHeading,
+	supportLinks,
+	supportLinksHeading,
+	legalNotice,
+	copyright,
+} from '../content/footer';
 
 const year = new Date().getFullYear();
 ---
@@ -18,7 +26,7 @@ const year = new Date().getFullYear();
 		</div>
 
 		<div>
-			<h2 class="text-body-sm font-semibold text-text-primary">Links Úteis</h2>
+			<h2 class="text-body-sm font-semibold text-text-primary">{usefulLinksHeading}</h2>
 			<ul class="mt-4 flex flex-col gap-2">
 				{
 					usefulLinks.map((link) => (
@@ -36,7 +44,7 @@ const year = new Date().getFullYear();
 		</div>
 
 		<div>
-			<h2 class="text-body-sm font-semibold text-text-primary">Suporte & Termos</h2>
+			<h2 class="text-body-sm font-semibold text-text-primary">{supportLinksHeading}</h2>
 			<ul class="mt-4 flex flex-col gap-2">
 				{
 					supportLinks.map((link) => (

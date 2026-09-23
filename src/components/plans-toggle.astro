@@ -3,13 +3,14 @@
 //
 // Anual/Mensal switch (frame 6:235, .scratch/marketing-pages/issues/07-plans-page.md)
 // plus the "Economize 20%" badge. The toggle is real interactivity: it
-// flips `aria-pressed` on the two buttons, sets `data-billing` on the
-// `#billing-root` wrapper (src/pages/planos.astro), and shows/hides the
-// per-card "no annual price yet" note. It does NOT switch to a different
-// price set — no annual figure exists in src/content/plans.ts (see
-// PlanPrice.annual, currently null on all three plans), so there is
-// nothing honest to switch to. The badge itself is launch-blocked — see
-// annualSavingsBadge in src/content/plans.ts.
+// flips `aria-pressed` on the two buttons and sets `data-billing` on the
+// `#billing-root` wrapper (src/pages/planos.astro) — src/styles/global.css
+// reads that attribute to show/hide each card's "no annual price yet" note
+// (`data-billing-note`), so the script itself stays a one-line attribute
+// flip. It does NOT switch to a different price set — no annual figure
+// exists in src/content/plans.ts (see PlanPrice.annual, currently null on
+// all three plans), so there is nothing honest to switch to. The badge
+// itself is launch-blocked — see annualSavingsBadge in src/content/plans.ts.
 import { annualSavingsBadge, billingToggleLabels, defaultBillingCycle } from '../content/plans';
 import type { BillingCycle } from '../content/plans';
 
@@ -46,18 +47,15 @@ const cycles: BillingCycle[] = ['annual', 'monthly'];
 <script>
 	const buttons = document.querySelectorAll('[data-billing-option]');
 	const root = document.getElementById('billing-root');
-	const notes = document.querySelectorAll('[data-billing-note]');
 
 	const applyCycle = (cycle: string) => {
 		buttons.forEach((button) => {
 			const isActive = button.getAttribute('data-billing-option') === cycle;
 			button.setAttribute('aria-pressed', String(isActive));
 		});
+		// src/styles/global.css hides each card's "no annual price yet"
+		// note while Mensal is selected via #billing-root[data-billing].
 		root?.setAttribute('data-billing', cycle);
-		// The "no annual price yet" note only applies while Anual is
-		// selected — in Mensal mode the monthly figure shown is simply
-		// correct, nothing to disclose.
-		notes.forEach((note) => note.classList.toggle('hidden', cycle !== 'annual'));
 	};
 
 	buttons.forEach((button) => {

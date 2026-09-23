@@ -23,6 +23,12 @@ import { launchBlocking, type LaunchBlocking } from '../shared/launch-blocking';
 
 export const pageHeading = 'Escolha o plano ideal para você';
 
+// UI chrome shared by plan-card.astro and plan-teaser.astro — typed content,
+// not inline strings in markup, per docs/agents/content-files.md.
+export const popularBadgeLabel = 'Mais Popular';
+export const monthlyPriceSuffix = '/mês';
+export const featuresHeading = 'Métricas e Recursos';
+
 // ---------------------------------------------------------------------
 // Billing toggle
 // ---------------------------------------------------------------------
@@ -156,6 +162,11 @@ const premiumSetupsRow: LaunchBlocking<string> = launchBlocking(
 		'scope, or delete. .scratch/marketing-pages/issues/07-plans-page.md.',
 );
 
+// checkoutHref targets a checkout route that isn't built yet. Unlike the
+// dead links in src/content/dead-links.ts (no destination anywhere in this
+// scope, rendered inert), this is a real destination for a later ticket —
+// ticket 07 explicitly allows "a checkout route that may be a stub". Not a
+// dead link; leave the CTA as a normal <a>.
 export const plans: Plan[] = [
 	{
 		id: 'starter',

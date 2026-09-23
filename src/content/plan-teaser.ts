@@ -18,14 +18,32 @@
  * mechanically instead of hardcoding a row index or new text: it walks
  * each plan's `features` and skips any row that is (a) launch-blocked
  * (fabricated/unbacked — see `plans.ts`), (b) not included on that plan, or
- * (c) identical across all three plans (the shared "this is an MT5 EA,
- * delivered by download link" rows aren't a differentiator). The first row
- * left standing is the plan's actual point of difference — which lands on
- * the "N Robôs ativos simultâneos" row for all three plans, matching the
- * ticket's own example.
+ * (c) present with the same label text on all three plans (the shared
+ * "this is an MT5 EA, delivered by download link" rows aren't a
+ * differentiator). Matching is by label text, not array position, so
+ * reordering or adding a plan-specific row in `plans.ts` can't silently
+ * misalign the comparison. The first row left standing is the plan's
+ * actual point of difference — which lands on the "N Robôs ativos
+ * simultâneos" row for all three plans, matching the ticket's own example.
  */
 
 import { plans, type Plan, type PlanId, type PlanPrice } from './plans';
+
+// Label text present, verbatim, in every plan's feature list — computed
+// once by content equality, not by row index, so a later reorder or a
+// plan-specific insertion in `plans.ts` doesn't misalign the comparison.
+const sharedFeatureLabels: ReadonlySet<string> = (() => {
+	const [first, ...rest] = plans;
+	const candidateLabels = first.features
+		.map((row) => row.label)
+		.filter((label): label is string => typeof label === 'string');
+
+	return new Set(
+		candidateLabels.filter((label) =>
+			rest.every((plan) => plan.features.some((row) => row.label === label)),
+		),
+	);
+})();
 
 export const badge = 'Planos Simplificados';
 
@@ -43,20 +61,14 @@ export type TeaserCard = {
 	headlineEntitlement: string;
 };
 
-const isSharedAcrossAllPlans = (index: number, label: string): boolean =>
-	plans.every((other) => {
-		const row = other.features[index];
-		return row !== undefined && typeof row.label === 'string' && row.label === label;
-	});
-
 const deriveHeadlineEntitlement = (plan: Plan): string => {
-	const row = plan.features.find((candidate, index) => {
+	const row = plan.features.find((candidate) => {
 		if (!candidate.included || typeof candidate.label !== 'string') {
 			// Excludes launch-blocked rows (LaunchBlocking wrapper, not a
 			// plain string) and anything not actually included on this plan.
 			return false;
 		}
-		return !isSharedAcrossAllPlans(index, candidate.label);
+		return !sharedFeatureLabels.has(candidate.label);
 	});
 
 	if (!row || typeof row.label !== 'string') {

@@ -24,6 +24,7 @@ import {
 	supportingParagraph,
 	trustRow,
 } from '../content/hero';
+import { unwrapLaunchBlocking } from '../shared/launch-blocking';
 
 const icons = {
 	'shield-check': ShieldCheck,
@@ -70,7 +71,7 @@ const icons = {
 			{
 				trustRow.map((item) => {
 					const Icon = icons[item.icon];
-					const label = typeof item.label === 'string' ? item.label : item.label.value;
+					const label = unwrapLaunchBlocking(item.label);
 					return (
 						<span class="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-surface-raised px-4 py-2 text-body-sm text-text-secondary">
 							<Icon size={16} class="text-brand-primary" />

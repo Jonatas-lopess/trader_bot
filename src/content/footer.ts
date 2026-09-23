@@ -24,6 +24,9 @@ export const footerBrand = {
 	tagline: 'Automação para o trader que já sabe operar.',
 } as const;
 
+export const usefulLinksHeading = 'Links Úteis';
+export const supportLinksHeading = 'Suporte & Termos';
+
 // These three DO have destinations in this scope — link them.
 export const usefulLinks: FooterLink[] = [
 	{ label: 'Como funciona', href: '/#como-funciona' },

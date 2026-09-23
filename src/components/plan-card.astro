@@ -13,7 +13,14 @@
 //
 // Content comes from src/content/plans.ts — see docs/agents/content-files.md.
 import { CheckCheck, CircleX } from '@lucide/astro';
-import { noAnnualPriceNote, type Plan } from '../content/plans';
+import {
+	featuresHeading,
+	monthlyPriceSuffix,
+	noAnnualPriceNote,
+	popularBadgeLabel,
+	type Plan,
+} from '../content/plans';
+import { unwrapLaunchBlocking } from '../shared/launch-blocking';
 
 type Props = {
 	plan: Plan;
@@ -33,7 +40,7 @@ const { plan } = Astro.props;
 	{
 		plan.popular && (
 			<span class="mb-4 inline-flex w-fit items-center rounded-full bg-brand-primary px-4 py-1 text-caption font-semibold text-text-on-brand">
-				Mais Popular
+				{popularBadgeLabel}
 			</span>
 		)
 	}
@@ -42,7 +49,7 @@ const { plan } = Astro.props;
 
 	<div class="mt-4 flex items-baseline gap-1">
 		<span class="text-heading-2 font-bold text-text-primary">R$ {plan.price.monthly}</span>
-		<span class="text-body-sm text-text-secondary">/mês</span>
+		<span class="text-body-sm text-text-secondary">{monthlyPriceSuffix}</span>
 	</div>
 
 	{
@@ -60,12 +67,12 @@ const { plan } = Astro.props;
 		{plan.ctaLabel}
 	</a>
 
-	<h3 class="mt-8 text-body-sm font-semibold text-text-secondary">Métricas e Recursos</h3>
+	<h3 class="mt-8 text-body-sm font-semibold text-text-secondary">{featuresHeading}</h3>
 
 	<ul class="mt-4 flex flex-col gap-3">
 		{
 			plan.features.map((row) => {
-				const label = typeof row.label === 'string' ? row.label : row.label.value;
+				const label = unwrapLaunchBlocking(row.label);
 				return (
 					<li class:list={['flex items-start gap-3', !row.included && 'opacity-60']}>
 						{row.included ? (

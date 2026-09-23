@@ -168,3 +168,12 @@
 @utility card-w-wide {
 	width: var(--card-w-wide);
 }
+
+/* Billing-cycle toggle (src/components/plans-toggle.astro, consumed on
+ * src/pages/planos.astro). The toggle script only ever flips
+ * `#billing-root`'s `data-billing` attribute — this rule is what actually
+ * reads it, hiding each card's "no annual price yet" note
+ * (`data-billing-note`) once Mensal is selected. */
+#billing-root[data-billing='monthly'] [data-billing-note] {
+	display: none;
+}

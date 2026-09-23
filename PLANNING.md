@@ -306,21 +306,30 @@ decided at build time.
 
 ## 12. Prerequisites
 
-External, blocking, none of them code. None exist yet.
+External, none of them code. Split by what they actually block.
 
-1. **Domain registered and on a Cloudflare zone.** Blocks download links on our own domain,
-   and blocks staging.
+**Blocks going live (production), not the build:**
+
+1. **Domain registered and on a Cloudflare zone.** Test phase deploys to the `*.workers.dev`
+   subdomain on the personal Cloudflare account — no custom domain needed yet. Needed before
+   download links and staging move off `workers.dev`.
 2. **Appmax onboarding with written approval of the business category.** A
    trading-automation product discovered after the fact is how accounts get frozen with
    receivables inside. Disclose the product in writing during risk analysis and keep the
-   approval on record.
-3. **Resend account with domain verification (SPF/DKIM).** Magic-link deliverability depends
-   on it, and a magic link that lands in spam is a customer who cannot log in.
+   approval on record. Integration work itself proceeds against Appmax's sandbox/test mode;
+   onboarding is a CI/CD-time (go-live) gate, not a code blocker.
+3. **Resend account with domain verification (SPF/DKIM).** Magic-link deliverability in
+   production depends on it, and a magic link that lands in spam is a customer who cannot log
+   in. Same as Appmax: build and test against Resend's test mode/sending, verify the domain
+   before flipping to production sends.
+
+**Done:**
+
 4. **Contador engaged** for NFS-e.
 
 Environments: production and staging as separate Workers environments, staging behind
 Cloudflare Access. Access is for us and reviewers only — it is seat-based and must never be
-used for paying customers.
+used for paying customers. During test phase, staging also lives on `workers.dev`.
 
 ---
 

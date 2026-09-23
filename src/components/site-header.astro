@@ -1,8 +1,9 @@
 ---
 // Site header — src/components/site-header.astro
 //
-// Brand lockup, primary nav (Como funciona / Planos / FAQ), the dead
-// "Login" link (src/content/dead-links.ts), a "Comprar agora" CTA, and an
+// Brand lockup, primary nav (Como funciona / Planos / FAQ), the "Login"
+// link (src/content/header.ts, /login since ticket 02), a "Comprar agora"
+// CTA, and an
 // accessible mobile disclosure (no mobile artboard in Figma — derived per
 // ticket .scratch/marketing-pages/issues/03-site-shell.md). Content comes
 // from src/content/header.ts — see docs/agents/content-files.md.
@@ -27,13 +28,12 @@ import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
 					</a>
 				))
 			}
-			<span
-				class="cursor-not-allowed text-body-sm text-text-tertiary"
-				aria-disabled="true"
-				title="Indisponível nesta etapa"
+			<a
+				href={loginLink.href}
+				class="text-body-sm text-text-secondary transition-colors hover:text-text-primary"
 			>
 				{loginLink.label}
-			</span>
+			</a>
 			<a
 				href={ctaLink.href}
 				class="button-h-lg inline-flex items-center rounded-md bg-brand-primary px-6 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
@@ -70,13 +70,12 @@ import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
 				</a>
 			))
 		}
-		<span
-			class="block cursor-not-allowed px-2 py-3 text-body text-text-tertiary"
-			aria-disabled="true"
-			title="Indisponível nesta etapa"
+		<a
+			href={loginLink.href}
+			class="block rounded-md px-2 py-3 text-body text-text-secondary hover:bg-surface-raised hover:text-text-primary"
 		>
 			{loginLink.label}
-		</span>
+		</a>
 		<a
 			href={ctaLink.href}
 			class="button-h-lg mt-2 flex items-center justify-center rounded-md bg-brand-primary text-body font-medium text-text-on-brand"

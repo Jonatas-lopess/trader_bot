@@ -23,7 +23,14 @@ export default defineConfig({
 			return {
 				wrangler: { configPath: './wrangler.jsonc' },
 				miniflare: {
-					bindings: { TEST_MIGRATIONS: migrations },
+					bindings: {
+						TEST_MIGRATIONS: migrations,
+						// SESSION_SECRET is a real secret (wrangler secret put /
+						// .dev.vars), never committed — modules/identity/session.ts's
+						// Web Crypto HMAC import throws on an empty key, so tests need
+						// *some* fixed value here. Not a production credential.
+						SESSION_SECRET: 'test-session-secret-do-not-use-in-production',
+					},
 				},
 			};
 		}),

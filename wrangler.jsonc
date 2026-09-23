@@ -39,6 +39,17 @@
 			"name": "WEBHOOK_RATE_LIMITER",
 			"namespace_id": "1",
 			"simple": { "limit": 30, "period": 10 }
+		},
+		// Basic per-email/per-IP throttle on /login/request (spec.md's
+		// Implementation Decisions — "no captcha or heavier abuse tooling, no
+		// evidence of abuse yet"). One binding, two key prefixes
+		// (`email:...`, `ip:...`) partitioned independently by the Rate
+		// Limiting API itself — same "no hand-rolled D1/KV counter" stance as
+		// WEBHOOK_RATE_LIMITER (ADR-0002).
+		{
+			"name": "LOGIN_RATE_LIMITER",
+			"namespace_id": "2",
+			"simple": { "limit": 5, "period": 60 }
 		}
 	]
 }

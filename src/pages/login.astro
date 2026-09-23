@@ -1,0 +1,43 @@
+---
+// /login — src/pages/login.astro
+//
+// .scratch/customer-area/issues/02-magic-link-login.md. Posts to
+// /login/request, which always redirects back here with ?sent=1
+// regardless of match (User Story 3) — this page just reflects that state
+// plus ?error=1 for a rejected magic-link redemption.
+import BaseLayout from '../layouts/base-layout.astro';
+import { emailLabel, errorMessage, heading, pageDescription, pageTitle, sentMessage, submitLabel, subheading } from '../content/login';
+
+export const prerender = false;
+
+const sent = Astro.url.searchParams.has('sent');
+const error = Astro.url.searchParams.has('error');
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+	<section class="content-row gutter-x flex flex-col items-center gap-6 py-20 text-center">
+		<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+		<p class="text-body-lg text-text-secondary">{subheading}</p>
+
+		{sent && <p class="text-body text-text-secondary" role="status">{sentMessage}</p>}
+		{error && <p class="text-body text-brand-primary" role="alert">{errorMessage}</p>}
+
+		<form method="POST" action="/login/request" class="flex w-full max-w-sm flex-col gap-4">
+			<label class="flex flex-col gap-2 text-left">
+				<span class="text-body-sm text-text-secondary">{emailLabel}</span>
+				<input
+					type="email"
+					name="email"
+					required
+					class="rounded-md border border-border-subtle px-4 py-2 text-body text-text-primary"
+				/>
+			</label>
+			<button
+				type="submit"
+				class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+			>
+				{submitLabel}
+			</button>
+		</form>
+	</section>
+</BaseLayout>

@@ -8,8 +8,6 @@
  * `src/components/site-header.astro`.
  */
 
-import { deadLinks } from './dead-links';
-
 export type NavLink = {
 	label: string;
 	href: string;
@@ -33,9 +31,11 @@ export const primaryNav: NavLink[] = [
 	{ label: 'FAQ', href: '/#faq' },
 ];
 
-export const loginLink: DeadNavLink = {
-	label: deadLinks.login,
-	dead: true,
+// A real destination since .scratch/customer-area/issues/02-magic-link-login.md
+// — no longer one of src/content/dead-links.ts's inert entries.
+export const loginLink: NavLink = {
+	label: 'Login',
+	href: '/login',
 };
 
 export const ctaLink: NavLink = {

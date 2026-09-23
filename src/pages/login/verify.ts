@@ -15,7 +15,11 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 
 	cookies.set(SESSION_COOKIE_NAME, result.cookieValue, {
 		httpOnly: true,
-		secure: true,
+		// `wrangler dev`/local testing serves plain HTTP; a Secure cookie is
+		// silently dropped there, breaking login end to end for anyone testing
+		// locally (code review finding). Only require it once the request
+		// actually arrived over HTTPS.
+		secure: url.protocol === 'https:',
 		sameSite: 'lax',
 		path: '/',
 		expires: new Date(result.expiresAt),

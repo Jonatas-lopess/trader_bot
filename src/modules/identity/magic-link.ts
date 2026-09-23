@@ -41,10 +41,15 @@ export async function requestMagicLink(
 	env: RequestEnv,
 	params: { email: string; ip: string; origin: string }
 ): Promise<void> {
-	if (!(await isWithinThrottle(env, params.email, params.ip))) return;
+	// Normalized the same way `provisionCustomer` normalizes what it stores
+	// (customers.ts) — otherwise a customer typing their email in different
+	// casing/whitespace than Appmax reported it could never find their row
+	// (code review finding).
+	const email = params.email.trim().toLowerCase();
+	if (!(await isWithinThrottle(env, email, params.ip))) return;
 
 	const customer = await env.DB.prepare('SELECT id FROM customers WHERE email = ?')
-		.bind(params.email)
+		.bind(email)
 		.first<{ id: string }>();
 	if (customer === null) return;
 
@@ -55,7 +60,7 @@ export async function requestMagicLink(
 		.run();
 
 	const magicLinkUrl = new URL(`/login/verify?token=${token}`, params.origin).toString();
-	await sendMagicLinkEmail(env, { to: params.email, magicLinkUrl });
+	await sendMagicLinkEmail(env, { to: email, magicLinkUrl });
 }
 
 export type RedeemMagicLinkResult =

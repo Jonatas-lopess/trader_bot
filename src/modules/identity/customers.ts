@@ -21,7 +21,12 @@ export async function provisionCustomer(
 	await env.DB.prepare(
 		'INSERT INTO customers (id, subscription_id, email) VALUES (?, ?, ?) ON CONFLICT(subscription_id) DO NOTHING'
 	)
-		.bind(crypto.randomUUID(), params.subscriptionId, params.email)
+		// Normalized the same way `requestMagicLink`'s lookup normalizes its
+		// input (magic-link.ts) — an email stored verbatim from Appmax's
+		// authoritative response (mixed case, stray whitespace) would
+		// otherwise never match a login attempt typed in the customer's own
+		// casing (code review finding, src/modules/identity/magic-link.ts:46).
+		.bind(crypto.randomUUID(), params.subscriptionId, params.email.trim().toLowerCase())
 		.run();
 }
 

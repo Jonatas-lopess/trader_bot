@@ -345,6 +345,12 @@ decided: 24–48h TTL, never a permanent/public link (`DECISIONS_temp.md` §4). 
 details — one-time versus reusable within the window, re-issue flow, abuse controls —
 decided at build time.
 
+**Scheduled (end-of-period) cancellation.** 0.1 cancels immediately on request — the
+Assinatura's status flips to `canceled` right away, and the Licença keeps running to its
+own already-set expiry regardless (independent lifecycles, CONTEXT.md). Letting a Cliente
+instead schedule cancellation for the end of the current paid period is deferred; revisit
+if customers ask for it, not before.
+
 ---
 
 ## 12. Prerequisites

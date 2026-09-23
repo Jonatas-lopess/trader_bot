@@ -6,6 +6,10 @@
  * performance claim; see docs/agents/content-files.md).
  */
 
+export const pageTitle = 'Confirmando seu pagamento';
+export const pageDescription =
+	'Acompanhe a confirmação do pagamento da sua Assinatura do Robô Trader.';
+
 export const confirmationHeading = 'Confirmando seu pagamento';
 
 // Keyed by SubscriptionState (src/modules/billing/status.ts) — kept as a

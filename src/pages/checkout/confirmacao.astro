@@ -16,6 +16,8 @@ import {
 	confirmationHeading,
 	confirmationMessages,
 	missingReferenceMessage,
+	pageDescription,
+	pageTitle,
 } from '../../content/checkout-confirmation';
 
 export const prerender = false;
@@ -25,10 +27,7 @@ const initial = await getSubscriptionStatus(env, reference);
 const initialState: SubscriptionState | null = initial.ok ? initial.state : null;
 ---
 
-<BaseLayout
-	title="Confirmando seu pagamento"
-	description="Acompanhe a confirmação do pagamento da sua Assinatura do Robô Trader."
->
+<BaseLayout title={pageTitle} description={pageDescription}>
 	<section class="content-row gutter-x flex flex-col items-center gap-6 py-20 text-center">
 		<h1 class="text-heading-1 font-bold text-text-primary">{confirmationHeading}</h1>
 

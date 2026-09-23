@@ -397,7 +397,17 @@ on:
 - Appmax's hosted-checkout/payment-link request and response field names (auth flow,
   endpoint paths, `external_id` round-tripping) — no sandbox credentials were available
   during `checkout-webhooks`; `src/modules/billing/appmax-client.ts`'s header comment has
-  the detail. Everything downstream of that module does not depend on these exact names.
+  the detail. **Correction, found in code review:** this was originally written as
+  "everything downstream of that module does not depend on these exact names," which
+  overstates the isolation for one specific path — `webhook.ts`'s compare-and-swap `WHERE
+  (appmax_order_id = ? OR appmax_subscription_id = ?)` is the only way the webhook finds a
+  row, and `appmax_order_id` is populated straight from the unverified `data.order_id`
+  response field. If Appmax's real field differs, that column stays `NULL` and the webhook
+  can never match the row — the Assinatura would stay `pending` forever. Ticket 02's own
+  Comments scope the "reference round-trips" guarantee correctly (to the confirmation-page
+  `return_url` redirect only); this file's blanket claim did not. Verify `data.order_id`
+  against a real sandbox call before go-live — this is a functional dependency, not just a
+  cosmetic one.
 - Appmax's published webhook source-IP list — not findable anywhere (docs.appmax.com.br,
   help-center.appmax.com.br, general web search), so `APPMAX_WEBHOOK_IPS` ships unset;
   `src/modules/billing/webhook-hardening.ts` fails closed on that, not open.

@@ -9,7 +9,7 @@ Governing docs: spec.md's "Status endpoint" (Implementation Decisions), User Sto
 **Blocked by:** 01, 02 (needs the `plans` table and the reference scheme ticket 02
 settles for identifying a checkout attempt).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Endpoint accepts the checkout attempt's reference and returns one of: `pending`,
       `active`, or a Boleto-specific "awaiting up to one business day" state — distinct

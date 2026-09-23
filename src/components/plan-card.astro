@@ -1,0 +1,89 @@
+---
+// Plan-comparison card — src/components/plan-card.astro
+//
+// One card per plan on `/planos` (frame 6:243,
+// .scratch/marketing-pages/issues/07-plans-page.md). The Pro card is
+// taller with a "Mais Popular" ribbon (card-w-wide/card-p-lg tokens vs.
+// card-w-narrow/card-p-sm for Starter/Enterprise — src/styles/global.css).
+//
+// Inclusion/exclusion rows are distinguishable without relying on colour
+// alone: check-check vs. circle-x is a shape difference on top of the
+// green/red tint, and excluded rows also get reduced opacity plus
+// strikethrough text.
+//
+// Content comes from src/content/plans.ts — see docs/agents/content-files.md.
+import { CheckCheck, CircleX } from '@lucide/astro';
+import { noAnnualPriceNote, type Plan } from '../content/plans';
+
+type Props = {
+	plan: Plan;
+};
+
+const { plan } = Astro.props;
+---
+
+<div
+	class:list={[
+		'mx-auto flex w-full max-w-md flex-col rounded-lg border lg:mx-0 lg:max-w-none',
+		plan.popular
+			? 'order-first border-brand-primary bg-surface-raised shadow-glow-brand card-p-lg lg:order-none lg:-mt-6 lg:mb-6 lg:card-w-wide'
+			: 'border-border-subtle bg-surface-raised card-p-sm lg:card-w-narrow',
+	]}
+>
+	{
+		plan.popular && (
+			<span class="mb-4 inline-flex w-fit items-center rounded-full bg-brand-primary px-4 py-1 text-caption font-semibold text-text-on-brand">
+				Mais Popular
+			</span>
+		)
+	}
+
+	<h2 class="text-heading-3 font-bold text-text-primary">{plan.name}</h2>
+
+	<div class="mt-4 flex items-baseline gap-1">
+		<span class="text-heading-2 font-bold text-text-primary">R$ {plan.price.monthly}</span>
+		<span class="text-body-sm text-text-secondary">/mês</span>
+	</div>
+
+	{
+		plan.price.annual === null && (
+			<p class="mt-2 text-caption text-text-tertiary" data-billing-note>
+				{noAnnualPriceNote}
+			</p>
+		)
+	}
+
+	<a
+		href={plan.checkoutHref}
+		class="button-h-lg mt-6 inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+	>
+		{plan.ctaLabel}
+	</a>
+
+	<h3 class="mt-8 text-body-sm font-semibold text-text-secondary">Métricas e Recursos</h3>
+
+	<ul class="mt-4 flex flex-col gap-3">
+		{
+			plan.features.map((row) => {
+				const label = typeof row.label === 'string' ? row.label : row.label.value;
+				return (
+					<li class:list={['flex items-start gap-3', !row.included && 'opacity-60']}>
+						{row.included ? (
+							<CheckCheck size={18} class="mt-0.5 shrink-0 text-success" />
+						) : (
+							<CircleX size={18} class="mt-0.5 shrink-0 text-danger" />
+						)}
+						<span
+							class:list={[
+								'text-body-sm',
+								row.included ? 'text-text-secondary' : 'text-text-tertiary line-through',
+							]}
+						>
+							{label}
+						</span>
+					</li>
+				);
+			})
+		}
+	</ul>
+</div>

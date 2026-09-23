@@ -1,0 +1,42 @@
+---
+// Plans route — src/pages/planos.astro
+//
+// `catalogo-planos` (frame 6:217, .scratch/marketing-pages/issues/07-plans-page.md).
+// Title band, Anual/Mensal toggle, three plan-comparison cards, and the
+// regulatory note, wrapped in the site shell (ticket 03). Content comes
+// from src/content/plans.ts — see docs/agents/content-files.md.
+//
+// #billing-root carries the `data-billing` state that
+// src/components/plans-toggle.astro's script flips; it wraps the toggle
+// and the cards so each card's "no annual price yet" note
+// (data-billing-note) can respond to it.
+import BaseLayout from '../layouts/base-layout.astro';
+import PlansToggle from '../components/plans-toggle.astro';
+import PlanCard from '../components/plan-card.astro';
+import { defaultBillingCycle, pageHeading, plans, regulatoryNote } from '../content/plans';
+---
+
+<BaseLayout
+	title="Planos e preços"
+	description="Compare os planos Starter, Pro e Enterprise do Robô Trader e escolha o ideal para você."
+>
+	<div id="billing-root" data-billing={defaultBillingCycle}>
+		<section class="content-row gutter-x py-16 text-center sm:py-20">
+			<h1 class="text-heading-1 font-bold text-text-primary">{pageHeading}</h1>
+
+			<div class="mt-8 flex justify-center">
+				<PlansToggle />
+			</div>
+		</section>
+
+		<section
+			class="content-row gutter-x flex flex-col items-center gap-8 pb-20 lg:flex-row lg:items-end lg:justify-center lg:gap-6"
+		>
+			{plans.map((plan) => <PlanCard plan={plan} />)}
+		</section>
+	</div>
+
+	<section class="content-row gutter-x pb-20">
+		<p class="mx-auto max-w-3xl text-center text-caption text-text-tertiary">{regulatoryNote}</p>
+	</section>
+</BaseLayout>

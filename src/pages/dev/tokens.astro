@@ -1,0 +1,271 @@
+---
+// Internal design-token preview — .scratch/marketing-pages/issues/02-design-tokens.md
+//
+// Renders every token declared in src/styles/global.css so a human can
+// eyeball it against the Figma frames. Lives under /dev/, is not linked
+// from any public nav (none exists yet — ticket 03 builds the shell) and
+// carries a noindex tag as a second guard. When a sitemap integration is
+// added, exclude the /dev/ prefix from it explicitly.
+import '../../styles/global.css';
+// Ticket 02 names icons after the Figma layers (`x-circle`, `download-cloud`).
+// Lucide renamed these components upstream; `CircleX`/`CloudDownload` are the
+// current, non-deprecated exports — `XCircle`/`DownloadCloud` still exist
+// but only as deprecated aliases. Import the current names, keep the
+// ticket's kebab-case label for the on-page name.
+import {
+	BrainCog,
+	Shield,
+	CheckCheck,
+	CircleX,
+	CreditCard,
+	CloudDownload,
+	Database,
+	ChartSpline,
+	Play,
+	Bot,
+	ToggleRight,
+	ShieldAlert,
+} from '@lucide/astro';
+
+type Swatch = {
+	name: string;
+	bgClass: string;
+	role: string;
+};
+
+const surfaceTokens: Swatch[] = [
+	{ name: 'surface-base', bgClass: 'bg-surface-base', role: 'Page background' },
+	{ name: 'surface-raised', bgClass: 'bg-surface-raised', role: 'Cards, panels' },
+	{ name: 'surface-overlay', bgClass: 'bg-surface-overlay', role: 'Header/footer bars, sticky nav' },
+	{ name: 'surface-sunken', bgClass: 'bg-surface-sunken', role: 'Inset wells, toggle track' },
+];
+
+const borderTokens: Swatch[] = [
+	{ name: 'border-subtle', bgClass: 'bg-border-subtle', role: 'Hairlines, card outlines' },
+	{ name: 'border-strong', bgClass: 'bg-border-strong', role: 'Emphasized dividers' },
+];
+
+const textTokens: Swatch[] = [
+	{ name: 'text-primary', bgClass: 'bg-text-primary', role: 'Headings, body copy' },
+	{ name: 'text-secondary', bgClass: 'bg-text-secondary', role: 'Supporting paragraphs, meta' },
+	{ name: 'text-tertiary', bgClass: 'bg-text-tertiary', role: 'Placeholders, fine print' },
+	{ name: 'text-on-brand', bgClass: 'bg-text-on-brand', role: 'Text/icons on filled brand surfaces' },
+];
+
+const brandTokens: Swatch[] = [
+	{ name: 'brand-primary', bgClass: 'bg-brand-primary', role: 'Primary CTA, links, focus' },
+	{ name: 'brand-primary-hover', bgClass: 'bg-brand-primary-hover', role: 'Hover/active state' },
+	{ name: 'brand-primary-subtle', bgClass: 'bg-brand-primary-subtle', role: 'Tinted chip/badge background' },
+	{ name: 'accent', bgClass: 'bg-accent', role: 'Secondary accent — gradients, AI-framed icons' },
+];
+
+const semanticTokens: Swatch[] = [
+	{ name: 'success', bgClass: 'bg-success', role: 'check-check / inclusion rows' },
+	{ name: 'success-subtle', bgClass: 'bg-success-subtle', role: 'Success row background' },
+	{ name: 'danger', bgClass: 'bg-danger', role: 'x-circle / exclusion rows' },
+	{ name: 'danger-subtle', bgClass: 'bg-danger-subtle', role: 'Danger row background' },
+];
+
+type TypeSample = {
+	name: string;
+	class: string;
+};
+
+const typeScale: TypeSample[] = [
+	{ name: 'text-display', class: 'text-display' },
+	{ name: 'text-heading-1', class: 'text-heading-1' },
+	{ name: 'text-heading-2', class: 'text-heading-2' },
+	{ name: 'text-heading-3', class: 'text-heading-3' },
+	{ name: 'text-body-lg', class: 'text-body-lg' },
+	{ name: 'text-body', class: 'text-body' },
+	{ name: 'text-body-sm', class: 'text-body-sm' },
+	{ name: 'text-caption', class: 'text-caption' },
+];
+
+const radiusScale: TypeSample[] = [
+	{ name: 'radius-sm', class: 'rounded-sm' },
+	{ name: 'radius-md', class: 'rounded-md' },
+	{ name: 'radius-lg', class: 'rounded-lg' },
+	{ name: 'radius-xl', class: 'rounded-xl' },
+];
+
+const shadowScale: TypeSample[] = [
+	{ name: 'shadow-raised', class: 'shadow-raised' },
+	{ name: 'shadow-card', class: 'shadow-card' },
+	{ name: 'shadow-glow-brand', class: 'shadow-glow-brand' },
+	{ name: 'shadow-focus-ring', class: 'shadow-focus-ring' },
+];
+
+const iconEntries = [
+	{ name: 'brain-cog', Icon: BrainCog },
+	{ name: 'shield', Icon: Shield },
+	{ name: 'check-check', Icon: CheckCheck },
+	{ name: 'x-circle', Icon: CircleX },
+	{ name: 'credit-card', Icon: CreditCard },
+	{ name: 'download-cloud', Icon: CloudDownload },
+	{ name: 'database', Icon: Database },
+	{ name: 'chart-spline', Icon: ChartSpline },
+	{ name: 'play', Icon: Play },
+	{ name: 'bot', Icon: Bot },
+	{ name: 'toggle-right', Icon: ToggleRight },
+	{ name: 'shield-alert', Icon: ShieldAlert },
+];
+---
+
+<html lang="pt-BR">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<meta name="robots" content="noindex, nofollow" />
+		<meta name="generator" content={Astro.generator} />
+		<title>Design tokens — dev preview</title>
+	</head>
+	<body class="bg-surface-base text-text-primary font-sans">
+		<main class="gutter-x py-16">
+			<div class="content-row">
+				<header class="mb-16">
+					<p class="text-caption text-text-tertiary uppercase tracking-wide">
+						/dev/tokens — internal only, not linked from public nav
+					</p>
+					<h1 class="text-heading-1 font-bold mt-2">Robô Trader — design tokens</h1>
+					<p class="text-body text-text-secondary mt-2">
+						Every token declared in <code>src/styles/global.css</code>, rendered for comparison
+						against the Figma frames (landing <code>6:5</code>, plans <code>6:217</code>).
+					</p>
+				</header>
+
+				<!-- Color -->
+				<section class="mb-16">
+					<h2 class="text-heading-2 font-semibold mb-6">Color</h2>
+
+					{
+						[
+							{ title: 'Surfaces', tokens: surfaceTokens },
+							{ title: 'Borders', tokens: borderTokens },
+							{ title: 'Text', tokens: textTokens },
+							{ title: 'Brand', tokens: brandTokens },
+							{ title: 'Semantic', tokens: semanticTokens },
+						].map((group) => (
+							<div class="mb-10">
+								<h3 class="text-heading-3 font-medium mb-4">{group.title}</h3>
+								<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+									{group.tokens.map((token) => (
+										<div class="rounded-lg border border-border-subtle overflow-hidden">
+											<div class={`h-20 ${token.bgClass} border-b border-border-subtle`} />
+											<div class="p-3 bg-surface-raised">
+												<p class="text-body-sm font-medium">{token.name}</p>
+												<p class="text-caption text-text-tertiary mt-1">{token.role}</p>
+											</div>
+										</div>
+									))}
+								</div>
+							</div>
+						))
+					}
+				</section>
+
+				<!-- Type scale -->
+				<section class="mb-16">
+					<h2 class="text-heading-2 font-semibold mb-6">Type scale</h2>
+					<div class="flex flex-col gap-6">
+						{
+							typeScale.map((sample) => (
+								<div class="border-b border-border-subtle pb-6">
+									<p class={`${sample.class} text-text-primary`}>Automação inteligente</p>
+									<p class="text-caption text-text-tertiary mt-2">{sample.name}</p>
+								</div>
+							))
+						}
+					</div>
+				</section>
+
+				<!-- Spacing / layout primitives -->
+				<section class="mb-16">
+					<h2 class="text-heading-2 font-semibold mb-6">Layout primitives</h2>
+					<div class="flex flex-col gap-8">
+						<div>
+							<div class="content-row bg-surface-raised border border-dashed border-border-strong h-12 flex items-center justify-center">
+								<span class="text-body-sm text-text-secondary">content-row (max-width: var(--layout-content-row))</span>
+							</div>
+						</div>
+						<div class="bg-surface-raised">
+							<div class="gutter-x border border-dashed border-border-strong h-12 flex items-center justify-center">
+								<span class="text-body-sm text-text-secondary">gutter-x (padding-inline: var(--layout-gutter))</span>
+							</div>
+						</div>
+						<div class="flex flex-wrap items-end gap-6">
+							<div class="badge-h badge-px rounded-full bg-brand-primary-subtle border border-border-subtle flex items-center">
+								<span class="text-caption text-brand-primary">badge-h + badge-px</span>
+							</div>
+							<div class="button-h-sm px-6 rounded-md bg-brand-primary-subtle border border-border-subtle flex items-center">
+								<span class="text-body-sm">button-h-sm</span>
+							</div>
+							<div class="button-h-lg px-6 rounded-md bg-brand-primary text-text-on-brand flex items-center">
+								<span class="text-body-sm">button-h-lg</span>
+							</div>
+						</div>
+						<div class="flex flex-wrap items-start gap-6">
+							<div class="card-w-narrow card-p-sm rounded-lg bg-surface-raised border border-border-subtle">
+								<p class="text-body-sm">card-w-narrow + card-p-sm</p>
+								<p class="text-caption text-text-tertiary mt-1">302px / 32px</p>
+							</div>
+							<div class="card-w-wide card-p-lg rounded-lg bg-surface-raised border border-border-subtle">
+								<p class="text-body-sm">card-w-wide + card-p-lg</p>
+								<p class="text-caption text-text-tertiary mt-1">410.67px / 40px</p>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<!-- Radius -->
+				<section class="mb-16">
+					<h2 class="text-heading-2 font-semibold mb-6">Radius</h2>
+					<div class="flex flex-wrap gap-6">
+						{
+							radiusScale.map((sample) => (
+								<div class="flex flex-col items-center gap-2">
+									<div class={`size-20 bg-brand-primary-subtle border border-border-strong ${sample.class}`} />
+									<p class="text-caption text-text-tertiary">{sample.name}</p>
+								</div>
+							))
+						}
+					</div>
+				</section>
+
+				<!-- Shadow -->
+				<section class="mb-16">
+					<h2 class="text-heading-2 font-semibold mb-6">Shadow</h2>
+					<div class="flex flex-wrap gap-10">
+						{
+							shadowScale.map((sample) => (
+								<div class="flex flex-col items-center gap-3">
+									<div class={`size-20 rounded-lg bg-surface-raised ${sample.class}`} />
+									<p class="text-caption text-text-tertiary">{sample.name}</p>
+								</div>
+							))
+						}
+					</div>
+				</section>
+
+				<!-- Icons -->
+				<section>
+					<h2 class="text-heading-2 font-semibold mb-2">Icons</h2>
+					<p class="text-body-sm text-text-secondary mb-6">
+						Integration: <code>@lucide/astro</code> — see PLANNING.md §3. Each icon renders as a
+						tree-shaken inline SVG Astro component; only icons actually imported ship in the bundle.
+					</p>
+					<div class="grid grid-cols-3 gap-6 sm:grid-cols-4 lg:grid-cols-6">
+						{
+							iconEntries.map(({ name, Icon }) => (
+								<div class="flex flex-col items-center gap-2 rounded-lg border border-border-subtle p-4 bg-surface-raised">
+									<Icon color="var(--color-brand-primary)" size={28} />
+									<p class="text-caption text-text-tertiary">{name}</p>
+								</div>
+							))
+						}
+					</div>
+				</section>
+			</div>
+		</main>
+	</body>
+</html>

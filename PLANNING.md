@@ -72,6 +72,7 @@ tracked as a known risk, not a solved problem.
 | Object storage | R2 | Robot binary, served through a Worker binding |
 | Email | Resend | Plain `fetch`, no SDK |
 | Styling | Tailwind v4, `@theme` tokens | Figma file defines zero variables; tokens authored by hand |
+| Icons | `@lucide/astro` | Per-icon Astro components, tree-shaken to only what's imported. `lucide-astro` (no scope) is deprecated upstream in favour of this package — do not add it |
 | Analytics | Cloudflare Web Analytics | Cookieless, no consent banner required |
 | Video | YouTube iframe | Loaded directly |
 | Tests | Vitest + Playwright | See §5 |

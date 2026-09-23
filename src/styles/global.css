@@ -1,0 +1,170 @@
+/*
+ * Design tokens — Robô Trader
+ *
+ * Single source of truth for the site's visual vocabulary (PLANNING.md §3,
+ * ticket .scratch/marketing-pages/issues/02-design-tokens.md). Tailwind v4
+ * is CSS-first: this file *is* the configuration, there is no
+ * tailwind.config.js.
+ *
+ * The Figma file defines zero variables (`get_variable_defs` returns `{}`),
+ * so every token below is authored by hand against the concrete
+ * measurements stated in the ticket, built out into a coherent scale. Do
+ * not add raw hex values or one-off pixel sizes anywhere else in the
+ * codebase — extend the scale here instead and consume it through a
+ * Tailwind utility (`bg-brand-primary`, `text-heading-2`, `card-w-wide`,
+ * …) or the `@utility` classes declared below.
+ *
+ * Tokens are named after role, not value: `--color-brand-primary`, never
+ * `--color-blue-600`.
+ */
+
+@import 'tailwindcss';
+
+@theme {
+	/* ---------------------------------------------------------------
+	 * Color — dark, confident fintech palette. Navy surfaces, an
+	 * electric-blue brand color, a violet accent for "inteligente"/AI
+	 * framing (brain-cog, chart-spline), and success/danger semantics
+	 * for the plans page's check-check / x-circle rows.
+	 * --------------------------------------------------------------- */
+
+	/* Surfaces, darkest to lightest elevation */
+	--color-surface-base: #0a0e16; /* page background */
+	--color-surface-raised: #121826; /* cards, panels */
+	--color-surface-overlay: #1a2233; /* header/footer bars, sticky nav */
+	--color-surface-sunken: #060910; /* inset wells, toggle track */
+
+	/* Borders */
+	--color-border-subtle: #212b3d;
+	--color-border-strong: #303d57;
+
+	/* Text */
+	--color-text-primary: #f4f6fa; /* headings, body copy */
+	--color-text-secondary: #99a3b8; /* supporting paragraphs, meta */
+	--color-text-tertiary: #5e697f; /* placeholders, disabled, fine print */
+	--color-text-on-brand: #ffffff; /* text/icons on filled brand surfaces */
+
+	/* Brand */
+	--color-brand-primary: #3d7cff; /* primary CTA, links, focus */
+	--color-brand-primary-hover: #2f63d6; /* hover/active state */
+	--color-brand-primary-subtle: #16233d; /* tinted chip/badge backgrounds */
+	--color-accent: #8b5cf6; /* secondary accent — gradients, AI-framed icons */
+
+	/* Semantic — plans page inclusion/exclusion rows */
+	--color-success: #22c55e; /* check-check */
+	--color-success-subtle: #123321;
+	--color-danger: #ef4444; /* x-circle */
+	--color-danger-subtle: #2e1416;
+
+	/* ---------------------------------------------------------------
+	 * Typography
+	 * --------------------------------------------------------------- */
+
+	--font-sans:
+		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+		Arial, sans-serif;
+
+	--text-display: 3.5rem; /* hero headline */
+	--text-display--line-height: 1.1;
+	--text-heading-1: 2.75rem; /* page/section titles */
+	--text-heading-1--line-height: 1.15;
+	--text-heading-2: 2rem; /* sub-section titles, card prices */
+	--text-heading-2--line-height: 1.2;
+	--text-heading-3: 1.5rem; /* card titles, feature headings */
+	--text-heading-3--line-height: 1.3;
+	--text-body-lg: 1.125rem; /* lead paragraphs */
+	--text-body-lg--line-height: 1.6;
+	--text-body: 1rem; /* default paragraph */
+	--text-body--line-height: 1.6;
+	--text-body-sm: 0.875rem; /* secondary text, feature list rows */
+	--text-body-sm--line-height: 1.5;
+	--text-caption: 0.75rem; /* badge labels, copyright, fine print */
+	--text-caption--line-height: 1.4;
+
+	/* ---------------------------------------------------------------
+	 * Radius
+	 * --------------------------------------------------------------- */
+
+	--radius-sm: 0.5rem; /* 8px — inputs, small chips */
+	--radius-md: 0.75rem; /* 12px — buttons */
+	--radius-lg: 1rem; /* 16px — cards */
+	--radius-xl: 1.5rem; /* 24px — large panels, hero visual placeholder */
+
+	/* ---------------------------------------------------------------
+	 * Shadow — dark-surface elevation, expressed as black-alpha layers
+	 * plus a brand-tinted glow/focus ring derived from --color-brand-primary
+	 * via relative color syntax, so both stay in sync with one edit.
+	 * --------------------------------------------------------------- */
+
+	--shadow-raised: 0 4px 12px -2px rgb(0 0 0 / 0.45);
+	--shadow-card:
+		0 8px 24px -4px rgb(0 0 0 / 0.5), 0 2px 8px -2px rgb(0 0 0 / 0.35);
+	--shadow-glow-brand: 0 0 32px -8px rgb(from var(--color-brand-primary) r g b / 0.55);
+	--shadow-focus-ring: 0 0 0 3px rgb(from var(--color-brand-primary) r g b / 0.5);
+
+	/* ---------------------------------------------------------------
+	 * Layout primitives — the recurring measurements from both Figma
+	 * frames. Exposed as @utility classes below so later tickets reach
+	 * for `content-row`, `gutter-x`, `card-w-wide`, etc. instead of
+	 * repeating pixel values per section.
+	 * --------------------------------------------------------------- */
+
+	--layout-gutter: 80px; /* page gutter, both frames */
+	--layout-content-row: 1280px; /* max-width content row */
+
+	--badge-h: 28px; /* section-badge pill height */
+	--badge-px: 14px; /* section-badge pill horizontal inset */
+
+	--button-h-sm: 44px; /* secondary/compact button height */
+	--button-h-lg: 48px; /* primary button height */
+
+	--card-p-sm: 32px; /* Starter/Enterprise card padding */
+	--card-p-lg: 40px; /* Pro (taller/"Mais Popular") card padding */
+
+	--card-w-narrow: 302px; /* 4-col card width on the 1280px row */
+	--card-w-wide: 410.67px; /* 3-col-with-one-wider card width */
+}
+
+/* Layout-primitive utilities — one definition per measurement, consumed
+ * by class name so no section hardcodes these pixel values again. */
+@utility gutter-x {
+	padding-inline: var(--layout-gutter);
+}
+
+@utility content-row {
+	width: 100%;
+	max-width: var(--layout-content-row);
+	margin-inline: auto;
+}
+
+@utility badge-h {
+	height: var(--badge-h);
+}
+
+@utility badge-px {
+	padding-inline: var(--badge-px);
+}
+
+@utility button-h-sm {
+	height: var(--button-h-sm);
+}
+
+@utility button-h-lg {
+	height: var(--button-h-lg);
+}
+
+@utility card-p-sm {
+	padding: var(--card-p-sm);
+}
+
+@utility card-p-lg {
+	padding: var(--card-p-lg);
+}
+
+@utility card-w-narrow {
+	width: var(--card-w-narrow);
+}
+
+@utility card-w-wide {
+	width: var(--card-w-wide);
+}

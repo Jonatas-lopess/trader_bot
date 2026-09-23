@@ -390,3 +390,7 @@ on:
 - Appmax's multi-day dunning behaviour and subscription status transitions
 - Cloudflare Email Sending pricing (documentation page returns 404)
 - Whether Cloudflare imposes a free-plan restriction on Workers custom domains
+- Appmax's hosted-checkout/payment-link request and response field names (auth flow,
+  endpoint paths, `external_id` round-tripping) — no sandbox credentials were available
+  during `checkout-webhooks`; `src/modules/billing/appmax-client.ts`'s header comment has
+  the detail. Everything downstream of that module does not depend on these exact names.

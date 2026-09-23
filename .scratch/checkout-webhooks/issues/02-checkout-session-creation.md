@@ -9,7 +9,7 @@ Implementation Decisions), User Stories 1-2, PLANNING.md §6/§7.
 
 **Blocked by:** 01 (needs the D1 binding, `plans` table, and Workers test runtime).
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `/checkout?plan=<id>` resolves `plan` against the existing `PlanId` union
       (`starter | pro | enterprise`) in `src/content/plans.ts`; an unknown/missing `plan`
@@ -27,3 +27,15 @@ Implementation Decisions), User Stories 1-2, PLANNING.md §6/§7.
 - [ ] Only the outbound `fetch` to Appmax's API is mocked in tests; the D1 write runs
       against the real binding from ticket 01, per spec.md's Testing Decisions.
 - [ ] `npm test` and `npm run typecheck` pass.
+
+## Comments
+
+No Appmax sandbox credentials were available during implementation (checked with the
+business owner — see PLANNING.md §13's new bullet). The "exact request/response contract"
+checkbox above is resolved as: correlation is owned by us, not Appmax — we mint our own
+`reference` before calling Appmax and pass it via `return_url`, so the post-payment
+redirect always carries it regardless of what Appmax's response shape turns out to be.
+The rest of the contract (auth flow, endpoint paths, field names) is the
+best-documented approximation from Appmax's public docs, isolated behind
+`src/modules/billing/appmax-client.ts`'s single seam and clearly marked unverified there.
+Verify against a real sandbox call before go-live.

@@ -6,7 +6,7 @@ before implementation, what was deliberately deferred, and what is still open.
 Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
 ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
 
-Last updated: 2026-09-22
+Last updated: 2026-09-23
 
 ---
 
@@ -141,40 +141,50 @@ exist yet (§11).
 
 ---
 
-## 6. Payments — Pagar.me
+## 6. Payments — Appmax
 
-Chosen over Stripe. Rationale and trade-offs in ADR-0001.
+Chosen over Stripe and Pagar.me. Rationale and trade-offs in ADR-0003 (supersedes
+ADR-0001).
 
 **Methods.** Card à vista (recurring), Boleto (recurring), Pix (one-time only).
 
-**Pix is not available for recurring billing** on either Pagar.me or a Brazilian Stripe
-account. Pagar.me subscriptions accept `credit_card`, `boleto` and `debit_card` only.
-Stripe shipped Pix Automático but its documentation states it is unavailable for accounts
-in Brazil. This is a rails limitation, not a vendor one.
+**Pix is not available for recurring billing** on Appmax, Pagar.me or a Brazilian Stripe
+account. Appmax does not appear among providers with a shipped merchant-side Pix
+Automático API. Stripe shipped Pix Automático but its documentation states it is
+unavailable for accounts in Brazil. This is a rails limitation, not a vendor one.
 
-**Annual plans are a single charge, steered toward Pix.** Quoted rates: Pix 0.99% with
-1-day settlement, card à vista 4.19%, card 6x 13.63%, card 12x 20.95%. On an annual plan
-Pix is roughly 3.2 percentage points cheaper *and* settles a month earlier than card
-(≈D+31). The pricing page should make Pix the obvious annual choice.
+**Annual plans are a single charge, steered toward Pix.** Appmax's published rates: card à
+vista 3.49% + R$0.99 flat (4.99% below R$100k monthly revenue), Pix 0.99%, boleto a flat
+R$3.49 (not a percentage). Settlement is D+30 by default; D+1 advance costs an extra 1.49%.
+Pix is markedly cheaper per transaction and, unlike card, is not sitting on a 30-day
+settlement — the pricing page should make Pix the obvious annual choice. These figures
+replace the Pagar.me quotes previously here and still need re-verification against the live
+Appmax contract before launch (§13).
 
-**No parcelamento in 0.1.** Pagar.me forbids installments on subscriptions — the API
-requires `installments` to be 1 for recurring charges. Offering "12x" would mean modelling
-the annual plan as a one-off parcelled order plus hand-rolled renewal logic. Deferred until
-customers actually ask.
+**No parcelamento in 0.1, by choice rather than gateway limit.** Unlike Pagar.me, Appmax
+does support installments on recurring charges (up to 21x, at 1.89% per installment on top
+of the base rate). Offering "12x" would still mean deciding how a parcelled annual charge
+interacts with subscription renewal — that product decision is undone, so parcelamento
+stays deferred to 1.0.0 (§10) until customers actually ask, not because the API forbids it.
 
 **Hosted Checkout in 0.1.** PCI scope drops to near zero and Pix, Boleto and card arrive in
 one surface. Cost: less control over the highest-converting screen and a visual seam
 against the Figma design. Revisit with conversion data, not before.
 
-**What Pagar.me does not provide, and we therefore build:**
+**What Appmax does not provide, and we therefore build:**
 
 - A customer self-service portal. Cancellation UI is ours. This is not optional — the FAQ
-  promises "cancelar quando quiser com um clique" and it is a CDC right.
-- Multi-day dunning. Pagar.me does real-time acquirer failover; day-2/day-5/day-9 retry
-  and the emails around it are ours.
-- **Defensive webhook handling.** Pagar.me's webhook signature verification, retry policy
-  and ordering guarantees are not documented. Webhooks are treated as hints: on receipt,
-  re-fetch authoritative state from the API rather than trusting the payload.
+  promises "cancelar quando quiser com um clique" and it is a CDC right. No evidence Appmax
+  ships one either.
+- Multi-day dunning. Retry cadence and the emails around it are ours; Appmax's own retry
+  behaviour on failed recurring charges is unverified (§13).
+- **Defensive webhook handling.** Appmax documents which subscription events fire
+  (creation, cancellation, recurring charge) but not signature verification, retry policy
+  or ordering guarantees. Webhooks are treated as hints: on receipt, re-fetch authoritative
+  state from the API rather than trusting the payload.
+- **Chargeback handling.** Appmax mediates chargebacks directly (unlike Pagar.me, which
+  routes disputes through the acquirer) but charges 15% of the recovered amount on a
+  successful active-collection recovery.
 
 ---
 
@@ -300,7 +310,7 @@ External, blocking, none of them code. None exist yet.
 
 1. **Domain registered and on a Cloudflare zone.** Blocks download links on our own domain,
    and blocks staging.
-2. **Pagar.me onboarding with written approval of the business category.** A
+2. **Appmax onboarding with written approval of the business category.** A
    trading-automation product discovered after the fact is how accounts get frozen with
    receivables inside. Disclose the product in writing during risk analysis and keep the
    approval on record.
@@ -320,12 +330,11 @@ Research behind these decisions was gathered from vendor documentation. The foll
 flagged as unverified at the time of writing and should be confirmed before they are relied
 on:
 
-- Pagar.me's published fee schedule (rates in §6 came from you, not from public docs),
-  minimum payout, and payout fees
-- Pagar.me's webhook signature verification, retry policy and ordering guarantees — the
+- Appmax's fee schedule in §6 against the live contract at signup time — published rates
+  change, and volume tiers may move the effective rate
+- Appmax's minimum payout and payout fees
+- Appmax's webhook signature verification, retry policy and ordering guarantees — the
   reason for the defensive handling in §6
-- Pagar.me's formal restricted-business policy; no public list comparable to Stripe's was
-  found, which is not the same as permission
-- Pagar.me's multi-day dunning behaviour and subscription status transitions
+- Appmax's multi-day dunning behaviour and subscription status transitions
 - Cloudflare Email Sending pricing (documentation page returns 404)
 - Whether Cloudflare imposes a free-plan restriction on Workers custom domains

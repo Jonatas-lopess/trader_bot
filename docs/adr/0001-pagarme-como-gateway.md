@@ -1,5 +1,11 @@
 # Pagar.me as the payment gateway
 
+> **Superseded by [ADR-0003](0003-appmax-como-gateway.md).** Appmax was not in the
+> considered-options list below when this was written; once evaluated it covered every
+> reason Stripe was rejected here (native Elo/Hipercard/Amex, no comparable "get rich
+> quick"/investment clause) and additionally supports parcelamento on recurring charges,
+> which Pagar.me forbids (Consequences, below). Kept for history.
+
 We sell a BRL subscription to Brazilian customers and chose Pagar.me over Stripe, despite
 Stripe's substantially better developer experience, because Stripe's Brazilian card
 acceptance is limited to Visa and Mastercard credit plus international debit — no Elo,

@@ -60,7 +60,7 @@ Rules:
 
 - A content file wraps any not-yet-approved string/array in `launchBlocking(...)` instead
   of exporting it bare — e.g.
-  `launchBlocking('Resultados consistentes', 'CDC art. 37 — performance claim; Pagar.me onboarding pending (PLANNING.md §2, §12)')`.
+  `launchBlocking('Resultados consistentes', 'CDC art. 37 — performance claim; Appmax onboarding pending (PLANNING.md §2, §12)')`.
 - Components render `.value` and otherwise leave the wrapper alone. `launchBlocking` flags
   the source of the copy, it does not gate whether it renders — the frame ships as drawn,
   flagged for the pre-launch pass.

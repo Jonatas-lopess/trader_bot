@@ -27,7 +27,7 @@
  *    documentation/tutorial deliverable absent from every milestone in
  *    PLANNING.md §10.
  *  - "Posso cancelar a qualquer momento?" — direct rewrite. PLANNING.md §6
- *    records Pagar.me ships no self-service portal, so any cancellation UI
+ *    records Appmax ships no self-service portal, so any cancellation UI
  *    is this project's own build, and §1 keeps the customer area (where
  *    cancellation lives) in 0.1 scope, not yet built — described modestly
  *    here rather than promising a specific interaction. Plan upgrade/
@@ -94,7 +94,7 @@ export const faqItems: FaqItem[] = [
 		question: 'Posso cancelar a qualquer momento?',
 		// Direct rewrite, not launchBlocking — factual-accuracy correction
 		// (same register as ticket 05's step-4 fix in
-		// src/content/how-it-works.ts). PLANNING.md §6: Pagar.me has no
+		// src/content/how-it-works.ts). PLANNING.md §6: Appmax has no
 		// self-service portal, so cancellation UI is this project's own
 		// build, and §1 keeps the customer area in 0.1 scope. Described
 		// modestly rather than promising a specific interaction ("um
@@ -109,7 +109,7 @@ export const faqItems: FaqItem[] = [
 		question: 'Quais formas de pagamento vocês aceitam?',
 		// Matches PLANNING.md §6 exactly: card à vista and boleto can carry
 		// a recurring Assinatura, Pix is one-time only (no recurring Pix on
-		// Pagar.me or a Brazilian Stripe account), and 0.1 ships no
+		// Appmax or a Brazilian Stripe account), and 0.1 ships no
 		// installment option. No launchBlocking — this states only what §6
 		// already commits to.
 		answer:

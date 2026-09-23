@@ -10,7 +10,7 @@ The business sells the right to run the robot against a customer's own brokerage
 ## What it does (0.1 scope)
 
 - Landing and plans pages (pt-BR only)
-- Hosted checkout with card, Boleto and Pix (Pagar.me)
+- Hosted checkout with card, Boleto and Pix (Appmax)
 - Magic-link authentication (no passwords)
 - Customer area: license status, key/expiry, cancel subscription
 - Robot delivery via a signed, expiring download link (email)

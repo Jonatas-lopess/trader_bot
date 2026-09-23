@@ -16,6 +16,6 @@ Work with no effort directory yet. Not tickets; nothing here is ready to pick up
 All blocking, none of them code (PLANNING.md §12).
 
 1. Domain registered and on a Cloudflare zone
-2. Pagar.me onboarding with written approval of the business category
+2. Appmax onboarding with written approval of the business category
 3. Resend account with domain verification (SPF/DKIM)
 4. Contador engaged for NFS-e

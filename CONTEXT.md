@@ -70,3 +70,13 @@ automatically, because the chosen reading is what has to be counted.
 Sold as a separate entitlement axis from Robô ativo. Whether the two are genuinely
 independent, or whether one Robô ativo implies exactly one Corretora vinculada, is
 undecided.
+
+**Chave vs. Corretora API credential**:
+Chave (above) is the credential that lets an installed Robô run. The landing page's "como
+funciona" frame (`6:48`) separately describes connecting the Cliente's Corretora account via
+its own API credential, and originally named that credential "chave" too — the same word for
+two different secrets on the page that explains the product. Not resolved here: whether the
+Corretora credential gets its own term or "Chave" gets scoped/qualified. See
+`.scratch/marketing-pages/issues/05-landing-video-and-steps.md` and
+`src/content/how-it-works.ts`, which sidesteps the literal collision in shipped copy without
+deciding it.

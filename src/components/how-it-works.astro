@@ -1,0 +1,48 @@
+---
+// How-it-works section — src/components/how-it-works.astro
+//
+// Explanatory band below video-section (frame 6:48,
+// .scratch/marketing-pages/issues/05-landing-video-and-steps.md). Badge,
+// heading, and a 4-step card row. No mobile artboard exists (PLANNING.md
+// §2) — the row is a single column at mobile widths and a 4-column grid
+// from `md:` up, matching the derivation rule used for the plan-card row
+// and the testimonial row.
+//
+// `id="como-funciona"` matches the header's "Como funciona" nav anchor
+// (src/content/header.ts → primaryNav, `/#como-funciona`).
+//
+// Content comes from src/content/how-it-works.ts — see
+// docs/agents/content-files.md. That file also records, as an open
+// question (not resolved here), the Chave / Corretora-API-credential
+// vocabulary collision surfaced by step 03 — see the comments there and
+// CONTEXT.md → "Open terms".
+import { badge, heading, steps } from '../content/how-it-works';
+---
+
+<section id="como-funciona" class="content-row gutter-x py-16 sm:py-20 lg:py-28">
+	<div class="mx-auto max-w-2xl text-center">
+		<span
+			class="badge-h badge-px inline-flex items-center rounded-full border border-border-subtle bg-brand-primary-subtle text-caption font-medium text-brand-primary"
+		>
+			{badge}
+		</span>
+
+		<h2 class="mt-6 text-heading-1 font-bold text-balance text-text-primary">
+			{heading}
+		</h2>
+	</div>
+
+	<div class="mt-12 grid grid-cols-1 gap-6 md:grid-cols-4">
+		{
+			steps.map((step) => (
+				<div class="rounded-lg border border-border-subtle bg-surface-raised p-8">
+					<span class="badge-h inline-flex items-center justify-center rounded-full bg-brand-primary-subtle px-3 text-body-sm font-semibold text-brand-primary">
+						{step.number}
+					</span>
+					<h3 class="mt-4 text-heading-3 font-bold text-text-primary">{step.title}</h3>
+					<p class="mt-2 text-body-sm text-text-secondary">{step.description}</p>
+				</div>
+			))
+		}
+	</div>
+</section>

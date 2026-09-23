@@ -1,0 +1,71 @@
+---
+// Video section — src/components/video-section.astro
+//
+// Explanatory band below the hero (frame 6:38,
+// .scratch/marketing-pages/issues/05-landing-video-and-steps.md). Badge,
+// heading, supporting paragraph, and a responsive 16:9 video container
+// capped around 960x540.
+//
+// No video exists yet and no YouTube URL has been provided
+// (src/content/video-section.ts `videoUrl`). While that value is empty
+// this renders a deliberate poster/play empty state — not a broken
+// iframe. Once a real URL is supplied there, it renders a directly
+// loaded YouTube iframe (PLANNING.md §3 — no facade library).
+//
+// Content comes from src/content/video-section.ts — see
+// docs/agents/content-files.md. One item there is launch-blocking (the
+// "2 minutos" claim):
+//
+//   grep -rn "launchBlocking(" src/content/video-section.ts
+import { Play } from '@lucide/astro';
+import { badge, heading, supportingParagraph, videoUrl } from '../content/video-section';
+---
+
+<section class="content-row gutter-x py-16 sm:py-20 lg:py-28">
+	<div class="mx-auto max-w-2xl text-center">
+		<span
+			class="badge-h badge-px inline-flex items-center rounded-full border border-border-subtle bg-brand-primary-subtle text-caption font-medium text-brand-primary"
+		>
+			{badge}
+		</span>
+
+		<h2 class="mt-6 text-heading-1 font-bold text-balance text-text-primary">
+			{heading}
+		</h2>
+
+		<p class="mt-6 text-body-lg text-text-secondary">
+			{supportingParagraph.value}
+		</p>
+	</div>
+
+	<div class="mx-auto mt-12 w-full max-w-[960px]">
+		<div
+			class="relative aspect-video w-full overflow-hidden rounded-xl border border-border-subtle bg-surface-raised shadow-card"
+		>
+			{
+				videoUrl ? (
+					<iframe
+						class="absolute inset-0 h-full w-full"
+						src={videoUrl}
+						title={heading}
+						loading="lazy"
+						allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+						allowfullscreen
+					/>
+				) : (
+					<div class="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-gradient-to-br from-surface-raised to-surface-sunken">
+						<span
+							class="flex h-16 w-16 items-center justify-center rounded-full bg-brand-primary text-text-on-brand shadow-glow-brand"
+							aria-hidden="true"
+						>
+							<Play size={26} class="ml-1" fill="currentColor" />
+						</span>
+						<p class="px-6 text-center text-body-sm text-text-tertiary">
+							Vídeo em produção — em breve por aqui
+						</p>
+					</div>
+				)
+			}
+		</div>
+	</div>
+</section>

@@ -20,6 +20,12 @@ Spec: [.scratch/marketing-pages/spec.md](.scratch/marketing-pages/spec.md)
 
 Frontier: **06** (deferred — social proof needs real metrics/testimonials before it can be picked up; see the ticket's launch-blocking inventory).
 
+## checkout-webhooks
+
+Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) — status `ready-for-agent`.
+
+No tickets carved yet.
+
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work and the external prerequisites.

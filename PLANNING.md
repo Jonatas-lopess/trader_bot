@@ -180,11 +180,54 @@ against the Figma design. Revisit with conversion data, not before.
   behaviour on failed recurring charges is unverified (§13).
 - **Defensive webhook handling.** Appmax documents which subscription events fire
   (creation, cancellation, recurring charge) but not signature verification, retry policy
-  or ordering guarantees. Webhooks are treated as hints: on receipt, re-fetch authoritative
-  state from the API rather than trusting the payload.
+  or ordering guarantees. See "Checkout and webhook implementation" below for the concrete
+  handling.
 - **Chargeback handling.** Appmax mediates chargebacks directly (unlike Pagar.me, which
   routes disputes through the acquirer) but charges 15% of the recovered amount on a
   successful active-collection recovery.
+
+### Checkout and webhook implementation
+
+**No payment-provider interface.** Appmax is the committed gateway (ADR-0003, supersedes
+ADR-0001) with no swap planned. An `IPaymentProvider` abstraction would be built for a
+second implementation that doesn't exist — speculative generality §5 already rules out.
+`modules/billing` calls the Appmax hosted-checkout API directly.
+
+**Webhook trust model, per Appmax's own documented best practices** (no HMAC signature is
+provided):
+
+- Respond `200` before processing. Appmax's timeout is 5s; synchronous processing is fine
+  for 0.1 because Workers' 10ms CPU budget excludes I/O wait — a D1 round trip does not
+  burn CPU quota. No queue/background job needed unless webhook volume or Appmax's retry
+  behaviour later proves this wrong.
+- Idempotency key: `order_id + event` for one-time events, `subscription_id + order_id +
+  event` for subscription events (Appmax's own recommendation).
+- Store the raw payload (full JSON) before processing, for debug and manual replay.
+- Don't trust event order. Delays and retries can reorder delivery — decisions are made
+  against current stored state, not the payload's implied sequence.
+- No HMAC to verify origin. The payload only identifies which order/subscription to
+  check — every event triggers one Appmax API call to fetch that record's current
+  authoritative status before any state transition is applied (ADR-0003); the payload's
+  own status field is never trusted. Source-IP filtering (Appmax's published webhook IPs)
+  and payload-shape validation against the expected schema sit on top as defense-in-depth,
+  not a substitute for the API confirm.
+
+**D1 concurrency: no `FOR UPDATE` equivalent, so no split read-then-write.** A D1 database
+is single-threaded — one query at a time, backed by one Durable Object — but that only
+serializes individual statements. A `SELECT` then a later `UPDATE` from the same request
+can still have another request's statements interleave between them, the same TOCTOU
+window Postgres's `FOR UPDATE` closed in the projeto_ebd reference. D1's answer: put the
+check inside the write, so each step is one atomic statement instead of two.
+
+1. **Idempotency as one statement.** `INSERT INTO processed_webhooks (id) VALUES (?)`
+   where `id` is the composite key above and `PRIMARY KEY`. A `UNIQUE` constraint
+   violation *is* the "already processed" signal — no `SELECT` first.
+2. **Status transition as one compare-and-swap `UPDATE`.** No `SELECT` beforehand either:
+   `UPDATE plans SET status = ? WHERE subscription_id = ? AND <CASE-based rigidity of
+   current status> <= <rigidity of new status>`, rigidity expressed inline via `CASE` in
+   the `WHERE` clause. Read `meta.changes` on the result to know whether it applied. This
+   also drops the projeto_ebd RPC's separate race-tie re-resolution step — there's nothing
+   left to race.
 
 ---
 

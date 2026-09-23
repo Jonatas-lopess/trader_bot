@@ -4,7 +4,6 @@ Work with no effort directory yet. Not tickets; nothing here is ready to pick up
 
 ## Remaining 0.1 (PLANNING.md §10)
 
-- Hosted Checkout, webhook, provisional account, the intermediate confirmation page and its boleto branch
 - Magic-link login
 - Customer area: Licença status, expiry, cancel
 - Email with the signed download link
@@ -21,4 +20,6 @@ already engaged.
 2. Appmax onboarding with written approval of the business category — go-live only, build
    against sandbox
 3. Resend account with domain verification (SPF/DKIM) — go-live only, build against test mode
-4. Contador engaged for NFS-e — done
+4. Appmax's published webhook source-IP list — go-live only; `/billing/webhook` fails closed
+   without it (PLANNING.md §12/§13)
+5. Contador engaged for NFS-e — done

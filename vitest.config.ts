@@ -11,6 +11,11 @@ export default defineConfig({
 	test: {
 		include: ['src/**/*.{test,spec}.ts'],
 		setupFiles: ['./test/apply-migrations.ts'],
+		// The default 5s is occasionally too tight for a test that touches
+		// WEBHOOK_RATE_LIMITER (a Durable-Object-backed binding) alongside a
+		// D1 write and a mocked fetch — its cold start has been observed to
+		// add several seconds on its own (.scratch/checkout-webhooks/issues/06-webhook-hardening.md).
+		testTimeout: 15000,
 	},
 	plugins: [
 		cloudflareTest(async () => {

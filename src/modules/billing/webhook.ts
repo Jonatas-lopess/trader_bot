@@ -67,13 +67,13 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
  * (spec.md's "Module boundary", user story 13) — the future magic-link-send
  * / customer-area-provisioning hook attaches here. Nothing consumes it yet,
  * so this is a marker, not an event bus. It fires whenever this webhook's
- * compare-and-swap lands a row on `active` from a different prior status
- * (the UPDATE's `status != ?` guard means a replay that's already `active`
- * never reaches here) — a future consumer still owns its own idempotency
- * for whatever it does with this (e.g. don't re-send a magic link if one
- * was already sent), since this hook can still fire more than once for the
- * same Assinatura across its lifetime (e.g. past_due → active recovery,
- * once that's built).
+ * compare-and-swap actually applies with `active` as the new status —
+ * including a replay that finds the row already `active` (two distinct
+ * events, e.g. a renewal, can each independently re-apply `active`; the
+ * CAS's `meta.changes` only proves *this* write landed, not that the value
+ * changed) — a future consumer still owns its own idempotency for whatever
+ * it does with this (e.g. don't re-send a magic link if one was already
+ * sent).
  */
 function onSubscriptionBecameActive(subscriptionId: string): void {
 	void subscriptionId;
@@ -104,11 +104,16 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	});
 	if (!authoritative.ok) return { status: 200 };
 
+	// No `status != ?` guard: an authoritative re-fetch that reports the
+	// *same* status as the row already has (e.g. Appmax confirms a Boleto
+	// is still `pending`, now with a known payment_method it didn't have
+	// before) must still be allowed to apply — the rigidity check alone
+	// (`<=`, not `<`) already makes this safe, and payment_method needs to
+	// land independent of whether status itself changed.
 	const result = await env.DB.prepare(
 		`UPDATE subscriptions
 		 SET status = ?, payment_method = COALESCE(?, payment_method), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		 WHERE (appmax_order_id = ? OR appmax_subscription_id = ?)
-		   AND status != ?
 		   AND CASE status
 		         WHEN 'pending' THEN 0 WHEN 'active' THEN 1 WHEN 'past_due' THEN 2 WHEN 'canceled' THEN 3
 		       END <= ?`
@@ -118,7 +123,6 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 			authoritative.paymentMethod,
 			event.orderId,
 			event.subscriptionId,
-			authoritative.status,
 			STATUS_RIGIDITY[authoritative.status]
 		)
 		.run();

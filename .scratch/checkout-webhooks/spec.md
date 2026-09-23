@@ -1,6 +1,6 @@
 # checkout-webhooks
 
-Status: ready-for-agent
+Status: done
 
 Hosted checkout, the webhook endpoint that keeps an Assinatura's state in sync with
 Appmax, the provisional record created at checkout time, and the intermediate

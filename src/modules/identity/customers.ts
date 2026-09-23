@@ -24,3 +24,24 @@ export async function provisionCustomer(
 		.bind(crypto.randomUUID(), params.subscriptionId, params.email)
 		.run();
 }
+
+/**
+ * The Assinatura + Plano a logged-in Cliente owns — .scratch/customer-area/issues/03-license-status-page.md.
+ * Single subscription per customer in 0.1 (spec.md's Implementation
+ * Decisions), so one JOIN is enough; no attempt to handle a second
+ * Assinatura under the same Cliente.
+ */
+export async function getCustomerAccount(
+	env: CustomersEnv,
+	customerId: string
+): Promise<{ subscriptionId: string; planId: string } | null> {
+	const row = await env.DB.prepare(
+		`SELECT s.id AS subscription_id, s.plan_id AS plan_id
+		 FROM customers c JOIN subscriptions s ON s.id = c.subscription_id
+		 WHERE c.id = ?`
+	)
+		.bind(customerId)
+		.first<{ subscription_id: string; plan_id: string }>();
+	if (row === null) return null;
+	return { subscriptionId: row.subscription_id, planId: row.plan_id };
+}

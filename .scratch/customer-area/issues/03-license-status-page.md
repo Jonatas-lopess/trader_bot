@@ -10,18 +10,35 @@ text, module boundary); PLANNING.md §8 (licensing and delivery — no per-custo
 **Blocked by:** 02 (needs a session to gate the route), 01 (needs the `customers` ↔
 `subscriptions` link to know which Plano to show).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A minimal `licenses` table (status, nullable `expires_at`), linked to a subscription,
+- [x] A minimal `licenses` table (status, nullable `expires_at`), linked to a subscription,
       under `modules/licensing` per PLANNING §4. Rows are created/updated manually for 0.1
       (§8 — issuance has a human in it); this ticket only reads them.
-- [ ] The customer-area route requires a valid session (ticket 02's guard); an
+- [x] The customer-area route requires a valid session (ticket 02's guard); an
       unauthenticated visit redirects to `/login` (User Story 13).
-- [ ] The page shows the Cliente's Plano name and Licença status: "sendo preparada" when
+- [x] The page shows the Cliente's Plano name and Licença status: "sendo preparada" when
       `expires_at` is unset, "ativa até DD/MM" once it is set (User Story 8, 9). No key
       field — §8 has no per-customer key in 0.1.
-- [ ] A logout control is present and uses ticket 02's logout action.
-- [ ] Tests, against the real D1 binding: an authenticated request with no `licenses` row
+- [x] A logout control is present and uses ticket 02's logout action.
+- [x] Tests, against the real D1 binding: an authenticated request with no `licenses` row
       yet shows "sendo preparada"; one with `expires_at` set shows the formatted date; an
       unauthenticated request redirects to `/login`.
-- [ ] `npm test` and `npm run typecheck` pass.
+- [x] `npm test` and `npm run typecheck` pass.
+
+## Comments
+
+`licenses.subscription_id` is the primary key (no surrogate `id`) — one Licença per
+Assinatura in 0.1, so a natural key is enough (`migrations/0005_licenses.sql`).
+
+Route logic lives in `src/modules/licensing/account-page.ts` (`resolveAccountView`), not in
+`conta.astro`'s frontmatter — mirrors this repo's existing "thin Astro adapter around a
+plain module function" convention (`checkout.ts`, `status.ts`), and is what made the
+unauthenticated-redirect and both Licença-state cases testable at the module level
+(`account-page.test.ts`) without inventing new Astro-page test infrastructure. The
+"unauthenticated redirects to `/login`" acceptance criterion is verified two ways: directly
+via `resolveAccountView`'s `{ ok: false }` branch here, and end-to-end by ticket 05's
+Playwright-equivalent pass.
+
+The cancel button on `/conta` is a form shell only (`action="/conta/cancelar"`, no handler
+yet) — ticket 04 owns the confirm step and the actual cancel logic.

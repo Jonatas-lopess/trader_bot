@@ -151,6 +151,15 @@ by tests.
 not hardcoded to that exact value at the type level" stance as the 24h tolerance window —
 default and the one covered by tests.
 
+**All time comparisons on the Robô side use broker/trade-server time (`TimeCurrent()`), not
+the local machine clock (`TimeLocal()`).** Both the `validade` check and the tolerance-window
+countdown since last successful check-in must use `TimeCurrent()` — the local machine's clock
+is fully attacker-controlled (a Cliente running the robô on their own VPS can set it to
+anything), while broker server time comes from the trading connection itself and isn't
+something the terminal's own configuration can fake without breaking the connection. Using
+`TimeLocal()` anywhere in this check would let a customer indefinitely stall the fail-closed
+countdown by pausing their system clock — grilled and settled before ticket 04/05 start.
+
 **Instance id is generated and persisted by the Robô, not issued by the server.** The server
 never needs to hand one out; it only needs the id to be stable per install and unique enough
 not to collide across a Cliente's own multiple installs (a random value generated once,

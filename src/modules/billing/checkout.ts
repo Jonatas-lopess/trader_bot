@@ -6,7 +6,7 @@
  */
 
 import { plans, type PlanId } from '../../content/plans';
-import { createHostedCheckoutSession } from './appmax-client';
+import { selectProvider } from './factory';
 
 export type CheckoutSessionResult =
 	| { ok: true; redirectUrl: string }
@@ -19,7 +19,10 @@ function isPlanId(value: string | null): value is PlanId {
 	return value !== null && planIds.has(value as PlanId);
 }
 
-type CheckoutEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET'>;
+type CheckoutEnv = Pick<
+	Cloudflare.Env,
+	'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'STRIPE_SECRET_KEY' | 'PAYMENT_PROVIDER'
+>;
 
 export async function createCheckoutSession(
 	env: CheckoutEnv,
@@ -34,7 +37,8 @@ export async function createCheckoutSession(
 	const reference = crypto.randomUUID();
 	const returnUrl = new URL(`/checkout/confirmacao?ref=${reference}`, params.origin).toString();
 
-	const session = await createHostedCheckoutSession(env, {
+	const provider = selectProvider(env);
+	const session = await provider.createCheckoutSession(env, {
 		reference,
 		planId: plan.id,
 		amountCents: Math.round(plan.price.monthly * 100),
@@ -52,10 +56,14 @@ export async function createCheckoutSession(
 	// webhook (ticket 04) finds this row later by appmax_order_id/
 	// appmax_subscription_id, or by `reference` itself if Appmax's
 	// `external_id` turns out to round-trip (appmax-client.ts's header).
+	// `provider` records which gateway's ids those two columns hold
+	// (docs/adr/0005-stripe-test-driver.md) — defaults to `appmax` in the
+	// schema, written explicitly here so a Stripe test session is never
+	// mistaken for one.
 	await env.DB.prepare(
-		'INSERT INTO subscriptions (id, plan_id, status, appmax_order_id) VALUES (?, ?, ?, ?)'
+		'INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id) VALUES (?, ?, ?, ?, ?)'
 	)
-		.bind(reference, plan.id, 'pending', session.appmaxOrderId)
+		.bind(reference, plan.id, 'pending', provider.id, session.providerOrderId)
 		.run();
 
 	return { ok: true, redirectUrl: session.checkoutUrl };

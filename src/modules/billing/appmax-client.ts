@@ -29,6 +29,8 @@
  * out to be real.
  */
 
+import type { PaymentProvider } from './payment-provider';
+
 const APPMAX_AUTH_URL = 'https://auth.sandboxappmax.com.br/oauth2/token';
 const APPMAX_API_BASE_URL = 'https://api.sandboxappmax.com.br';
 
@@ -198,6 +200,29 @@ function mapAppmaxStatus(raw: string): AppmaxSubscriptionState {
 	// downgrades an already-more-current row (0002's rigidity ranking).
 	return 'pending';
 }
+
+/**
+ * Adapter onto the shared `PaymentProvider` seam (docs/adr/0005) —
+ * `factory.ts` selects this by default. Every function above is unchanged;
+ * this only reshapes their results to the generic contract (`appmaxOrderId`
+ * → `providerOrderId`, `appmax_auth_failed`/`appmax_unavailable` →
+ * `provider_auth_failed`/`provider_unavailable`).
+ */
+export const appmaxProvider: PaymentProvider = {
+	id: 'appmax',
+	async createCheckoutSession(env, params) {
+		const result = await createHostedCheckoutSession(env, params);
+		if (!result.ok) {
+			return {
+				ok: false,
+				reason: result.reason === 'appmax_auth_failed' ? 'provider_auth_failed' : 'provider_unavailable',
+			};
+		}
+		return { ok: true, checkoutUrl: result.checkoutUrl, providerOrderId: result.appmaxOrderId };
+	},
+	fetchAuthoritativeStatus,
+	cancelSubscription,
+};
 
 function mapAppmaxPaymentMethod(raw: string | undefined): AppmaxPaymentMethod | null {
 	switch (raw?.toLowerCase()) {

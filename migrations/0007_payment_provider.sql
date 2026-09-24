@@ -1,0 +1,16 @@
+-- Backs the payment-provider seam (docs/adr/0005-stripe-test-driver.md):
+-- `subscriptions.provider` says which gateway a row belongs to. Appmax
+-- stays the default for every existing and future row unless a checkout
+-- session was explicitly created against Stripe (factory.ts, env
+-- PAYMENT_PROVIDER=stripe) — a stopgap for testing while Appmax onboarding
+-- is blocked, not a production switch (PLANNING.md §6, ADR-0003 still
+-- stands as the committed gateway).
+--
+-- `appmax_order_id`/`appmax_subscription_id` keep their 0001 names rather
+-- than being renamed to something generic: they're indexed, referenced by
+-- every existing checkout-webhooks test, and Appmax remains the only
+-- provider those columns matter for in production. A Stripe row populates
+-- the same two columns with its own checkout-session/subscription ids —
+-- `provider` is what disambiguates which gateway's ids they hold, not the
+-- column name.
+ALTER TABLE subscriptions ADD COLUMN provider TEXT NOT NULL DEFAULT 'appmax' CHECK (provider IN ('appmax', 'stripe'));

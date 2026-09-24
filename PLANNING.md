@@ -6,7 +6,7 @@ before implementation, what was deliberately deferred, and what is still open.
 Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
 ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
 
-Last updated: 2026-09-23
+Last updated: 2026-09-24
 
 ---
 
@@ -188,10 +188,20 @@ against the Figma design. Revisit with conversion data, not before.
 
 ### Checkout and webhook implementation
 
-**No payment-provider interface.** Appmax is the committed gateway (ADR-0003, supersedes
-ADR-0001) with no swap planned. An `IPaymentProvider` abstraction would be built for a
-second implementation that doesn't exist — speculative generality §5 already rules out.
-`modules/billing` calls the Appmax hosted-checkout API directly.
+**Appmax is the committed gateway** (ADR-0003, supersedes ADR-0001), with no swap planned
+for production.
+
+**A narrow, test-only `PaymentProvider` seam exists** (ADR-0005), reopening what this
+section previously ruled out ("no payment-provider interface... an abstraction would be
+built for a second implementation that doesn't exist — speculative generality §5 already
+rules out"). That second implementation now exists for a concrete reason: Appmax's own
+account creation is currently blocked, so a Stripe test-mode driver stands in for local
+checkout-flow testing until it isn't. `modules/billing/factory.ts` selects the driver off
+`PAYMENT_PROVIDER`, defaulting to Appmax for anything but an explicit `"stripe"`; never set
+to `stripe` in a deployed environment. The seam covers only checkout-session creation,
+authoritative-status refetch and cancellation — webhook ingestion is deliberately excluded
+and stays one module per gateway (see ADR-0005 for why). Revisit ADR-0005 once Appmax
+onboarding succeeds; the intent is Appmax-only, not two gateways indefinitely.
 
 **Webhook trust model, per Appmax's own documented best practices** (no HMAC signature is
 provided):
@@ -364,7 +374,10 @@ External, none of them code. Split by what they actually block.
    trading-automation product discovered after the fact is how accounts get frozen with
    receivables inside. Disclose the product in writing during risk analysis and keep the
    approval on record. Integration work itself proceeds against Appmax's sandbox/test mode;
-   onboarding is a CI/CD-time (go-live) gate, not a code blocker.
+   onboarding is a CI/CD-time (go-live) gate, not a code blocker. **Currently blocked**:
+   Appmax account creation itself has not gone through yet, ahead of even the sandbox step —
+   ADR-0005's Stripe test driver exists to keep checkout-flow testing unblocked in the
+   meantime, not to change this prerequisite.
 3. **Resend account with domain verification (SPF/DKIM).** Magic-link deliverability in
    production depends on it, and a magic link that lands in spam is a customer who cannot log
    in. Same as Appmax: build and test against Resend's test mode/sending, verify the domain

@@ -25,6 +25,8 @@ describe('billing D1 schema', () => {
 			payment_method: null,
 			appmax_order_id: null,
 			appmax_subscription_id: null,
+			// migrations/0007_payment_provider.sql (docs/adr/0005-stripe-test-driver.md).
+			provider: 'appmax',
 		});
 	});
 

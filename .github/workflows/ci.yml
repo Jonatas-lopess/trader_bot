@@ -80,4 +80,11 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+          # PAYMENT_PROVIDER is injected here, not in wrangler.jsonc: baking it
+          # into the checked-in config also feeds the test/build job above,
+          # which mocks only Appmax and expects factory.ts's fail-closed
+          # default (.scratch/checkout-webhooks/issues/09-revert-payment-provider-before-golive.md).
+          # This workers.dev test route is the only deploy target that should
+          # opt into the Stripe test driver (ADR-0005) — a go-live deploy to
+          # the real production domain must not carry this flag.
+          command: deploy --var PAYMENT_PROVIDER:stripe

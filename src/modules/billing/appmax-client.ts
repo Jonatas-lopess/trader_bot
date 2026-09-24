@@ -29,14 +29,14 @@
  * out to be real.
  */
 
-import type { IPaymentProvider } from './payment-provider';
+import type { IPaymentProvider, SubscriptionState } from './payment-provider';
 
 const APPMAX_AUTH_URL = 'https://auth.sandboxappmax.com.br/oauth2/token';
 const APPMAX_API_BASE_URL = 'https://api.sandboxappmax.com.br';
 
 type AppmaxCredentials = Pick<Cloudflare.Env, 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET'>;
 
-export type AppmaxSubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
+export type AppmaxSubscriptionState = SubscriptionState;
 export type AppmaxPaymentMethod = 'card' | 'boleto' | 'pix';
 
 type CreateHostedCheckoutSessionParams = {

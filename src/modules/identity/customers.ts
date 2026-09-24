@@ -6,7 +6,7 @@
  * subscription first lands on `active`. Nothing else writes `customers`.
  */
 
-import type { ProviderId } from '../billing/payment-provider';
+import type { ProviderId, SubscriptionState } from '../billing/payment-provider';
 
 type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
 
@@ -66,7 +66,7 @@ export async function getCustomerEmail(env: CustomersEnv, customerId: string): P
 	return row?.email ?? null;
 }
 
-export type SubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
+export type { SubscriptionState };
 
 /**
  * The Assinatura + Plano a logged-in Cliente owns — .scratch/customer-area/issues/03-license-status-page.md.

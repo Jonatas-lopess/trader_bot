@@ -50,6 +50,18 @@ Spec: [.scratch/customer-area/spec.md](.scratch/customer-area/spec.md) — statu
 
 All 5 tickets done.
 
+## robot-delivery
+
+No spec.md — small enough to skip straight to tickets.
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Download-token D1 schema + R2 binding scaffold](.scratch/robot-delivery/issues/01-download-token-schema-r2-scaffold.md) | — | ready-for-agent |
+| 02 | [Mint, dispatch, and redeem the download link](.scratch/robot-delivery/issues/02-mint-dispatch-redeem.md) | 01 | ready-for-agent |
+| 03 | [End-to-end verification — mint to download](.scratch/robot-delivery/issues/03-end-to-end-verification.md) | 02 | ready-for-agent |
+
+Frontier: **01**.
+
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work and the external prerequisites.

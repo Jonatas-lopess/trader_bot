@@ -38,11 +38,17 @@ jobs:
     needs: build
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
+    environment: dev
     # workers.dev only — PLANNING.md §12's custom-domain prerequisite still
     # gates production, so this is the test-phase route, not a go-live
     # deploy. Requires database_id/bucket_name in wrangler.jsonc to be swapped
     # from their placeholders (`wrangler d1 create` / `wrangler r2 bucket
     # create` against the target account) before this job can succeed.
+    #
+    # `environment: dev` is required for GitHub Actions to expose secrets
+    # stored on the "dev" Environment (Settings → Environments) to this job —
+    # a job with no `environment:` key only sees repository-level secrets,
+    # never Environment-scoped ones, regardless of what's configured there.
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -65,6 +65,20 @@ No spec.md — small enough to skip straight to tickets.
 
 All 3 tickets done.
 
+## license-server
+
+Spec: [.scratch/license-server/spec.md](.scratch/license-server/spec.md) — status `needs-triage`.
+See ADR-0004 (per-license HMAC-SHA256, not RSA/Ed25519 — MQL5 has no native asymmetric
+primitive).
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Per-license secret/payload schema + verify endpoint](.scratch/license-server/issues/01-schema-and-verify-endpoint.md) | — | needs-triage |
+| 02 | [Provision per-license secret/payload and deliver alongside the binary](.scratch/license-server/issues/02-provisioning-and-delivery.md) | 01 | needs-triage |
+| 03 | [MQL5 check-in client — verify, fail-closed with tolerance](.scratch/license-server/issues/03-mql5-checkin-client.md) | 01 | needs-triage |
+
+Frontier: **01** — spec and ADR-0004 are Proposed, not yet Accepted; triage before starting.
+
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work and the external prerequisites.

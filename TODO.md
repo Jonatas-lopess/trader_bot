@@ -78,6 +78,8 @@ primitive).
 | 03 | [Provision per-license secret/payload and deliver alongside the binary](.scratch/license-server/issues/03-provisioning-and-delivery.md) | 01, 02 | needs-triage |
 | 04 | [MQL5 check-in client — verify, fail-closed with tolerance](.scratch/license-server/issues/04-mql5-checkin-client.md) | 02 | needs-triage |
 | 05 | [Enforce N robôs ativos simultâneos via check-in instance tracking](.scratch/license-server/issues/05-robo-count-entitlement.md) | 01, 02 | needs-triage |
+| 06 | [Collect Corretora account number at checkout and bind it per license](.scratch/license-server/issues/06-corretora-account-checkout.md) | — | needs-triage |
+| 07 | [Verify the live-connected Corretora account against the bound one at check-in](.scratch/license-server/issues/07-corretora-live-verification.md) | 02, 04, 06 | needs-triage |
 
 Frontier: **01** — the payload-content decision blocks everything else in this effort; resolve it first.
 

@@ -26,9 +26,14 @@ human-in-the-loop scripting pattern to mirror.
       itself is not executable and isn't subject to that constraint).
 - [ ] The secret is never logged and never stored anywhere in cleartext outside the D1 row
       it's provisioned into and the one-time delivery artifact.
-- [ ] Tests: provisioning script is idempotent-safe to re-run (re-provisioning rotates the
-      secret deliberately, documented as the revoke-and-reissue path — a compromised license
-      is revoked by rotating its secret, not by deleting the row), and the delivery route
-      serves a config file whose contents round-trip against what ticket 02's verify
-      endpoint expects.
+- [ ] Re-provisioning always rotates the secret; a `--notify`/`--silent` flag on the script
+      controls whether that rotation sends the "your access changed" revoke-style email or
+      quietly re-delivers the updated config through the same reusable download-token
+      channel — one code path, one branch on whether to notify, not two rotation mechanisms
+      (spec.md's Implementation Decisions — a leaked secret with an innocent Cliente is
+      rotated silently, an actual revoke rotates *and* notifies).
+- [ ] Tests: provisioning script is idempotent-safe to re-run, both notify and silent
+      rotation paths write the same D1 state and differ only in whether an email is sent,
+      and the delivery route serves a config file whose contents round-trip against what
+      ticket 02's verify endpoint expects.
 - [ ] `pnpm test` and `pnpm run typecheck` pass.

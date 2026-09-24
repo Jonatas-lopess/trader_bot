@@ -33,10 +33,10 @@ still needs to travel in-band).
       is fully per-license (arbitrary per-customer values) — this determines whether
       provisioning (ticket 03) picks from a small fixed set or generates/accepts bespoke
       values per license.
-- [ ] Confirm this doesn't reopen brokerage-account binding (spec.md's Implementation
-      Decisions keeps that out of scope) — if a candidate payload design requires
-      corretora-specific data that isn't collected anywhere yet, that's a scope conflict to
-      flag, not silently work around.
+- [ ] Confirm this doesn't duplicate corretora binding (now in scope, tickets 06/07,
+      verified live via `AccountInfoInteger`) — if a candidate payload design would carry
+      corretora-specific data, check whether that's better served by the live-verified
+      binding instead of a static value baked into `payload` at provisioning.
 - [ ] Record the decision by editing this ticket's body under an `## Answer` heading
       (`docs/agents/issue-tracker.md`'s convention) and updating spec.md's Open Questions
       and Solution (piece 4) to describe the payload concretely instead of as opaque bytes.

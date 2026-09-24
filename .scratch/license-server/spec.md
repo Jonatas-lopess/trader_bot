@@ -18,8 +18,8 @@ carries only `status`/`expires_at` and gets extended here, not replaced.
 
 Governing docs: PLANNING.md §8 (today: no license server, no per-customer key — this effort
 is what supersedes that), §11 (License model — mints per-customer keys, possibly bound to a
-brokerage account; this effort implements that, brokerage-account binding still out of
-scope — see Implementation Decisions), CONTEXT.md (Robô — one program, not a family; this
+brokerage account; this effort implements that binding — see §Corretora binding), CONTEXT.md
+(Robô — one program, not a family; this
 effort makes the *payload* per-license while the compiled `.ex5` stays one program, per
 Implementation Decisions below), ADR-0004 (HMAC over RSA/Ed25519 — the crypto decision this
 spec assumes).
@@ -52,13 +52,17 @@ Four pieces, per the original design:
 3. At init and every hour, the robot sends `login + nonce` (nonce: fresh random value,
    robot-generated, one-time) to the server's verify endpoint.
 4. **Server responds** `{login, nonce, validade, payload}` plus an HMAC-SHA256 tag over
-   that tuple, keyed with that license's secret. The robot recomputes the HMAC with its own
-   embedded secret and accepts only if: tag matches, `nonce` echoes what it sent (replay
-   defense), `login` matches its own, and `validade` hasn't passed. Any failure — bad tag,
-   mismatched nonce/login, expired `validade`, or no reachable server — blocks new order
-   entries; positions already open are never touched (explicit rule, independent of cause).
-   An unreachable server is tolerated for a bounded window (Implementation Decisions) before
-   it starts blocking, so a transient outage doesn't strand paying customers.
+   that tuple, keyed with that license's secret. `payload` itself is **static** — the same
+   value set at provisioning (ticket 03), echoed back unchanged on every check-in, not a live
+   update channel (Implementation Decisions — grilled and settled: revisit only if a real
+   need for remote-updatable parameters shows up later, since the wire protocol already
+   supports it without a redesign). The robot recomputes the HMAC with its own embedded
+   secret and accepts only if: tag matches, `nonce` echoes what it sent (replay defense),
+   `login` matches its own, and `validade` hasn't passed. Any failure — bad tag, mismatched
+   nonce/login, expired `validade`, or no reachable server — blocks new order entries;
+   positions already open are never touched (explicit rule, independent of cause). An
+   unreachable server is tolerated for a bounded window (Implementation Decisions) before it
+   starts blocking, so a transient outage doesn't strand paying customers.
 
 ## Entitlement enforcement (robô count)
 
@@ -83,13 +87,30 @@ protocol:
   of a new instance, not continued operation of ones already counted, so a cap lowered by a
   downgrade (out of scope — §11) can't retroactively kill a running robô mid-position.
 
-**Corretora count is explicitly not covered by this ticket.** Capping "corretoras
-vinculadas" requires knowing which brokerage account each check-in is trading through, which
-means collecting that account number — PLANNING §11's own caveat that this "requires
-*collecting* that account number, which no current wireframe does" is unchanged by this
-effort. CONTEXT.md also hasn't decided whether one Robô ativo implies exactly one Corretora
-vinculada. Both are separate product/data-collection decisions, not implementation details
-of this check-in — flagged here rather than silently assumed.
+## Corretora binding
+
+§11's brokerage-account caveat is resolved, in part: the Cliente provides their Corretora
+account number at purchase (billing/checkout module — a new field, not yet in any current
+wireframe, per §11), stored per-license. What's decided now is the **verification
+mechanism**, not the checkout UX itself (separate ticket, 06):
+
+- The bound account number is never trusted from the robot's local config file alone — a
+  Cliente editing that file to declare a different account would defeat the point of binding
+  it. Instead, the robot reads the account it's *actually* connected to live, off the trading
+  terminal itself — MQL5's `AccountInfoInteger(ACCOUNT_LOGIN)`, sourced from the live
+  MT5↔Corretora connection, not from any file the installation controls — and sends that in
+  the check-in (ticket 07).
+- The server compares the reported live account against the one bound to that `login` at
+  purchase. A mismatch is a hard failure, same class as a bad signature — forging it requires
+  patching the compiled EA's own runtime logic (recompiling against a fake account query),
+  the same difficulty tier as bypassing any other part of this check, not a config-file edit.
+- **What stays open:** whether "corretoras vinculadas" as a plan entitlement (1/3/unlimited,
+  PLANNING §8) means *one* bound account per license forever, or up to N accounts under one
+  `login` (one Cliente running against several Corretoras under a higher plan). CONTEXT.md's
+  "Corretora vinculada" open term — whether it's independent of "Robô ativo" or one instance
+  implies exactly one bound Corretora — is not resolved by this decision; only *how a bound
+  account is verified*, once one exists, is settled. Counting/capping multiple bound accounts
+  per license is deferred to whenever that product question is answered.
 
 ## User Stories
 
@@ -119,9 +140,12 @@ of this check-in — flagged here rather than silently assumed.
 11. As a Cliente who stops one robô and starts another (e.g. new machine), I want the freed
     slot to become available again once the old instance's last-seen check-in ages out
     (§Entitlement enforcement's active window), not permanently consumed.
-12. As the business, I want it visible in this spec that corretora-count enforcement is not
-    part of this effort, so nobody assumes the plan's "corretoras" limit is enforced once
-    this ships.
+12. As the business, I want the Corretora account a Cliente registered at purchase verified
+    against the one their running Robô is actually connected to, so a bound account can't be
+    spoofed by editing a local config file.
+13. As the business, I want it visible in this spec that *capping how many* Corretora
+    accounts a license can bind is not part of this effort — only verifying one already-bound
+    account — so nobody assumes the plan's "corretoras" limit is enforced once this ships.
 
 ## Implementation Decisions
 
@@ -131,10 +155,16 @@ already the natural key tying a license to one Assinatura (migrations/0005's own
 already treats Assinatura and Licença as independent-lifecycle but 1:1-linked concepts for
 0.1's scope, and this effort doesn't reopen that.
 
-**Brokerage-account binding stays out of scope**, per §11's own caveat that it "requires
-*collecting* that account number, which no current wireframe does" — unchanged by this
-effort. `payload` may eventually carry corretora-specific filters once that data exists, but
-this effort doesn't add a collection flow for it.
+**Brokerage-account binding is in scope, verified live** — §Corretora binding above; not
+re-litigated here. Checkout UX for collecting the account number is ticket 06; live
+verification against `AccountInfoInteger(ACCOUNT_LOGIN)` is ticket 07.
+
+**License rotation supports a silent path, not only revoke-and-notify.** Re-running the
+provisioning script (ticket 03) always rotates the secret, but whether that also sends a
+"your access changed" style notification is a flag on the script, not two different code
+paths — a suspected leak with an innocent Cliente can be rotated and quietly re-delivered
+through the same reusable download-token channel `robot-delivery` already has, without
+implying revocation.
 
 **Delivery mechanism for the per-license secret and initial payload reuses `robot-delivery`'s
 signed-link pattern**, not a new channel: the compiled `.ex5` (unchanged, one program) plus a
@@ -177,6 +207,10 @@ new authenticated admin route.
   endpoint's path/auth (it needs no customer session — the robot calls it directly, so it's
   a new unauthenticated-but-signed surface, distinct from `customer-area`'s cookie-gated
   routes).
-- What exactly `payload` contains for 1.0.0's first cut — moved out of this list and into
-  ticket 01, which every other ticket is now blocked on; resolve there, then update this
-  spec's Solution (piece 4) to describe the payload concretely.
+- What exactly `payload` contains for 1.0.0's first cut (its lifecycle — static, set once at
+  provisioning — is decided; its content is not) — moved out of this list and into ticket 01,
+  which every other ticket is now blocked on; resolve there, then update this spec's Solution
+  (piece 4) to describe the payload concretely.
+- How "corretoras vinculadas" as a plan entitlement combines with "robôs ativos" (one bound
+  account per instance, or a license-wide pool up to the plan's corretora cap) — §Corretora
+  binding; not resolved by ticket 07, which only verifies one already-bound account.

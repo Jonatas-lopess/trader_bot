@@ -68,8 +68,13 @@ automatically, because the chosen reading is what has to be counted.
 
 **Corretora vinculada**:
 Sold as a separate entitlement axis from Robô ativo. Whether the two are genuinely
-independent, or whether one Robô ativo implies exactly one Corretora vinculada, is
-undecided.
+independent, or whether one Robô ativo implies exactly one Corretora vinculada, is still
+undecided as a *counting* question. Partially resolved as a *verification* question by
+`.scratch/license-server/spec.md`'s §Corretora binding: once an account is bound to a
+license (collected at purchase), the Robô must be actually connected to that account
+(`AccountInfoInteger(ACCOUNT_LOGIN)`, read live, never from local config) or the check-in
+fails — but how many accounts one license may bind, and how that interacts with the Robô
+ativo cap, remains open.
 
 **Chave vs. Corretora API credential**:
 Chave (above) is the credential that lets an installed Robô run. The landing page's "como

@@ -21,14 +21,17 @@ only), spec.md (nonce/replay defense, tolerance window, positions never abandone
 - [ ] Check-in on `OnInit` and on a 1-hour timer: generate a fresh random `nonce`, call the
       verify endpoint, recompute the HMAC over the response and compare to `signature`.
 - [ ] Accept only if: signature matches, `nonce` in the response equals the one just sent,
-      `login` equals this copy's own, `validade` is in the future. Any other outcome —
-      including no response / network failure — is a failed check-in.
+      `login` equals this copy's own, `validade` is in the future **compared against
+      `TimeCurrent()` (broker/trade-server time), never `TimeLocal()`** (spec.md — the local
+      machine clock is customer-controlled and would let the tolerance countdown be stalled
+      indefinitely). Any other outcome — including no response / network failure — is a
+      failed check-in.
 - [ ] On a failed check-in: block new order entries (`OrderSend` for opens) starting
       immediately for a hard failure (bad signature, wrong login, expired validade), or
       after a 24h grace period since the *last successful* check-in for
-      unreachable-server failures specifically (tolerance window, spec.md) — never touch
-      positions already open, regardless of which failure mode or how long it's been
-      failing.
+      unreachable-server failures specifically (tolerance window, spec.md) — measured with
+      `TimeCurrent()`, same reasoning as above. Never touch positions already open,
+      regardless of which failure mode or how long it's been failing.
 - [ ] Successful payload is applied (whatever operative parameters it carries) only after
       the checks above pass — never applied provisionally ahead of verification.
 - [ ] Test (against the real ticket-02 endpoint, no MQL5 test runner available): a fixture

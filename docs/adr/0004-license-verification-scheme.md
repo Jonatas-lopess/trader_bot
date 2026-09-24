@@ -1,7 +1,8 @@
 # License verification: per-license HMAC-SHA256, not RSA/Ed25519, in pure MQL5
 
-Status: Proposed — not yet Accepted. This records a recommendation for the license-server
-effort (`.scratch/license-server/`), pending confirmation before implementation starts.
+Status: Accepted. The premise below — that `CryptEncode`/`CryptDecode` cover only DES,
+AES128/256, MD5, SHA1, SHA256, Base64 and Deflate, no RSA/ECDSA/Ed25519 — was checked against
+MQL5's own documentation and confirmed before acceptance.
 
 We need the Robô (an MT5 Expert Advisor, MQL5, sold through the MetaTrader Market — which
 rules out DLLs) to check in with a server we control at init and hourly, and refuse new

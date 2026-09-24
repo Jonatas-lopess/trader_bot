@@ -18,6 +18,7 @@ import {
 	missingReferenceMessage,
 	pageDescription,
 	pageTitle,
+	pendingTimeoutMessage,
 } from '../../content/checkout-confirmation';
 
 export const prerender = false;
@@ -63,13 +64,26 @@ const initialState: SubscriptionState | null = initial.ok ? initial.state : null
 		// PLANNING.md §7: ~2s interval, no WebSocket, no Durable Object.
 		const POLL_INTERVAL_MS = 2000;
 
+		// No server-side timeout — the webhook is still the only thing that
+		// flips the row (PLANNING.md §7). This only swaps the on-screen copy
+		// after a long `pending` wait; polling keeps running underneath so a
+		// late webhook still resolves the page automatically.
+		const PENDING_TIMEOUT_MS = 5 * 60 * 1000;
+		const pollStartedAt = Date.now();
+
 		const messages: Record<string, string> = JSON.parse(
 			document.getElementById('confirmation-messages-data')?.textContent ?? '{}'
+		);
+		const timeoutMessage: string = JSON.parse(
+			document.getElementById('confirmation-timeout-message-data')?.textContent ?? '""'
 		);
 
 		const applyState = (state: string) => {
 			root.setAttribute('data-state', state);
-			if (messageEl && messages[state]) messageEl.textContent = messages[state];
+			if (messageEl && messages[state]) {
+				const timedOut = state === 'pending' && Date.now() - pollStartedAt >= PENDING_TIMEOUT_MS;
+				messageEl.textContent = timedOut && timeoutMessage ? timeoutMessage : messages[state];
+			}
 			if (ctaEl) {
 				if (state === 'active') ctaEl.setAttribute('data-visible', '');
 				else ctaEl.removeAttribute('data-visible');
@@ -93,3 +107,4 @@ const initialState: SubscriptionState | null = initial.ok ? initial.state : null
 </script>
 
 <script id="confirmation-messages-data" type="application/json" set:html={JSON.stringify(confirmationMessages)} />
+<script id="confirmation-timeout-message-data" type="application/json" set:html={JSON.stringify(pendingTimeoutMessage)} />

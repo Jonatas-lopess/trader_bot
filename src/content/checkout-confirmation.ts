@@ -37,3 +37,10 @@ export const activeCtaLabel = 'Entrar na área do cliente';
 
 export const missingReferenceMessage =
 	'Não encontramos esse checkout. Volte à página de planos e tente novamente.';
+
+// Shown in place of confirmationMessages.pending once polling has run past
+// PENDING_TIMEOUT_MS (src/pages/checkout/confirmacao.astro) without the
+// webhook confirming — polling keeps running in the background regardless,
+// this only changes what's on screen while the customer waits.
+export const pendingTimeoutMessage =
+	'Isso está demorando mais que o esperado. Continue nesta página — assim que o pagamento for confirmado, atualizamos automaticamente. Se preferir, entre em contato com o suporte.';

@@ -22,7 +22,7 @@ Frontier: **06** (deferred — social proof needs real metrics/testimonials befo
 
 ## checkout-webhooks
 
-Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) — status `ready-for-agent`.
+Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) — status `done`.
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
@@ -38,7 +38,7 @@ All 7 tickets done.
 
 ## customer-area
 
-Spec: [.scratch/customer-area/spec.md](.scratch/customer-area/spec.md) — status `ready-for-agent`.
+Spec: [.scratch/customer-area/spec.md](.scratch/customer-area/spec.md) — status `done`.
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |

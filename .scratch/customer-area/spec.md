@@ -1,6 +1,6 @@
 # customer-area
 
-Status: ready-for-agent
+Status: done
 
 Magic-link login, an authenticated customer area showing Licença status and expiry, and
 self-service subscription cancellation. Scope matches `.scratch/backlog.md`'s "Magic-link

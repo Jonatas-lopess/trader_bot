@@ -1,6 +1,6 @@
 # license-server
 
-Status: needs-triage
+Status: ready-for-agent
 
 A license-verification protocol between this server and the MT5 Expert Advisor (Robô) it
 already delivers: the Robô checks in at init and hourly with `login + nonce`, the server

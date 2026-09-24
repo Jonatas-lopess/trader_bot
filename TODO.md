@@ -67,9 +67,9 @@ All 3 tickets done.
 
 ## license-server
 
-Spec: [.scratch/license-server/spec.md](.scratch/license-server/spec.md) — status `needs-triage`.
-See ADR-0004 (per-license HMAC-SHA256, not RSA/Ed25519 — MQL5 has no native asymmetric
-primitive).
+Spec: [.scratch/license-server/spec.md](.scratch/license-server/spec.md) — status
+`ready-for-agent`. See ADR-0004 (Accepted — per-license HMAC-SHA256, not RSA/Ed25519; MQL5
+has no native asymmetric primitive, confirmed against its own docs).
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |

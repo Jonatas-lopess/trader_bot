@@ -286,8 +286,6 @@ single-use mode, expiry only. R2 egress is free, so re-issuing links costs nothi
 
 ## 9. Compliance
 
-**NFS-e is obligatory and will be issued manually in 0.1.**
-
 Selling software as a service from a Brazilian CNPJ carries an ISS obligation — the STF
 settled the tax nature of software licensing in 2021 (ADI 1945, ADI 5659), and LC 116/2003
 covers it. MEI is exempt from issuing to a *pessoa física* buyer but not to a PJ buyer, and

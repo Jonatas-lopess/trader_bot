@@ -38,7 +38,12 @@ async function main() {
 		process.exitCode = 1;
 		return;
 	}
-	const origin = parseArg(argv, 'origin') ?? DEFAULT_ORIGIN;
+	// Empty string (`--origin=` with nothing after it, e.g. from an unset
+	// shell variable expanding into the flag) must fall back the same way a
+	// missing flag does — `??` alone only catches `null` (code review
+	// finding).
+	const originArg = parseArg(argv, 'origin');
+	const origin = originArg === null || originArg === '' ? DEFAULT_ORIGIN : originArg;
 
 	const proxy = await getPlatformProxy<Cloudflare.Env>({
 		configPath: new URL('../wrangler.jsonc', import.meta.url).pathname,
@@ -51,6 +56,14 @@ async function main() {
 			return;
 		}
 		console.log(`Download link sent to ${result.email}: ${result.downloadUrl}`);
+	} catch (error) {
+		// `sendDownloadLinkEmail` (mirroring `identity/resend-client.ts`) only
+		// catches an HTTP-level failure, not a network-level one (DNS, timeout,
+		// TLS) — that throws past `dispatchDownloadLink`. A token may already
+		// be minted by this point; report it plainly instead of an unhandled
+		// rejection's raw stack trace (code review finding).
+		console.error(`Could not send download link: unexpected error — ${error instanceof Error ? error.message : String(error)}`);
+		process.exitCode = 1;
 	} finally {
 		await proxy.dispose();
 	}

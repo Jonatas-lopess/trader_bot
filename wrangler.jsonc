@@ -11,37 +11,27 @@
 	"compatibility_date": "2026-08-22",
 	// Astro's Cloudflare adapter (SSR-capable) needs both flags — see
 	// PLANNING.md §3 and ADR-0002, even though 0.1 ships prerendered-only.
-	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
 	"assets": {
 		"directory": "./dist/client"
 	},
-	// `database_id` is a placeholder — no D1 database has been created against
-	// a real Cloudflare account yet. Local dev/test (miniflare, this repo's
-	// vitest pool) works against it as-is; run `wrangler d1 create trader-bot-db`
-	// and replace this id before the first real deploy (PLANNING.md §12 — a
-	// go-live gate, not a build blocker).
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "trader-bot-db",
-			"database_id": "00000000-0000-0000-0000-000000000000",
+			"database_id": "9f1a450b-1a2b-407a-9dc5-8ce21f17b2e9",
 			"migrations_dir": "migrations"
 		}
 	],
 	"observability": {
 		"enabled": true
 	},
-	// `bucket_name` is a placeholder — no R2 bucket has been created against a
-	// real Cloudflare account yet, same status as `d1_databases`'s
-	// `database_id` above. Local dev/test (miniflare, this repo's vitest
-	// pool) works against it as-is; run `wrangler r2 bucket create
-	// trader-bot-robot-binary` before the first real deploy. Unlike the D1
-	// database this isn't itself a go-live gate (PLANNING.md §12 — only the
-	// custom domain blocks going live): `wrangler deploy` fails loudly if the
-	// bucket doesn't exist, an easy pre-deploy fix rather than an external
-	// prerequisite to arrange in advance. Holds the one fixed robot binary
-	// (CONTEXT.md — "Robô: one program, not a family of them"), streamed via
-	// this binding by `GET /download/:token` (PLANNING.md §8, §11).
+	// Holds the one fixed robot binary (CONTEXT.md — "Robô: one program, not a
+	// family of them"), streamed via this binding by `GET /download/:token`
+	// (PLANNING.md §8, §11).
 	"r2_buckets": [
 		{
 			"binding": "ROBOT_BINARY",
@@ -55,7 +45,10 @@
 		{
 			"name": "WEBHOOK_RATE_LIMITER",
 			"namespace_id": "1",
-			"simple": { "limit": 30, "period": 10 }
+			"simple": {
+				"limit": 30,
+				"period": 10
+			}
 		},
 		// Basic per-email/per-IP throttle on /login/request (spec.md's
 		// Implementation Decisions — "no captcha or heavier abuse tooling, no
@@ -66,7 +59,10 @@
 		{
 			"name": "LOGIN_RATE_LIMITER",
 			"namespace_id": "2",
-			"simple": { "limit": 5, "period": 60 }
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
 		}
 	]
 }

@@ -4,7 +4,7 @@ import { cancelSubscription, createCheckoutSession, fetchAuthoritativeStatus, st
 const env = { STRIPE_SECRET_KEY: 'sk_test_dummy' };
 
 // The `stripeProvider` adapter tests below go through the shared
-// `PaymentProvider` type, which accepts either gateway's credentials
+// `IPaymentProvider` type, which accepts either gateway's credentials
 // (payment-provider.ts's `PaymentProviderEnv`) — Appmax's two fields are
 // unused by the Stripe driver but still required by the type.
 const providerEnv = { ...env, APPMAX_CLIENT_ID: 'unused', APPMAX_CLIENT_SECRET: 'unused' };
@@ -158,7 +158,7 @@ describe('stripeProvider adapter', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('maps createCheckoutSession onto the shared PaymentProvider shape', async () => {
+	it('maps createCheckoutSession onto the shared IPaymentProvider shape', async () => {
 		vi.spyOn(globalThis, 'fetch').mockResolvedValue(
 			new Response(JSON.stringify({ id: 'cs_adapter', url: 'https://checkout.stripe.com/pay/cs_adapter' }), {
 				status: 200,

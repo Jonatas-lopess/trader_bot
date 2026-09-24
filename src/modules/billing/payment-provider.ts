@@ -48,7 +48,8 @@ export type PaymentProviderEnv = Pick<
 	'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'STRIPE_SECRET_KEY'
 >;
 
-export type PaymentProvider = {
+/** `I` prefix per convention (projeto_ebd's own `IPaymentProvider`) — a polymorphic contract two concrete drivers implement, not a plain data shape. */
+export type IPaymentProvider = {
 	id: ProviderId;
 	createCheckoutSession(
 		env: PaymentProviderEnv,

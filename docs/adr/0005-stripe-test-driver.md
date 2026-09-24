@@ -20,7 +20,7 @@ test mode is usable today with no onboarding gate.
 
 ## Decision
 
-A minimal `PaymentProvider` interface (`src/modules/billing/payment-provider.ts`), scoped to
+A minimal `IPaymentProvider` interface (`src/modules/billing/payment-provider.ts`), scoped to
 exactly the two operations that needed a second implementation — `createCheckoutSession` and
 `cancelSubscription` (plus `fetchAuthoritativeStatus`, needed by both) — not a general
 gateway abstraction. `factory.ts` selects the implementation off `PAYMENT_PROVIDER`, defaulting

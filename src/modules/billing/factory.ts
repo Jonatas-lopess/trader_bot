@@ -1,5 +1,5 @@
 /**
- * Picks the `PaymentProvider` impl at runtime off `env.PAYMENT_PROVIDER`
+ * Picks the `IPaymentProvider` impl at runtime off `env.PAYMENT_PROVIDER`
  * (docs/adr/0005-stripe-test-driver.md). Fails closed to Appmax — the
  * committed production gateway (ADR-0003) — for anything but an explicit
  * `"stripe"`: unset, empty, or a typo'd value all resolve to Appmax rather
@@ -7,11 +7,11 @@
  */
 
 import { appmaxProvider } from './appmax-client';
-import type { PaymentProvider } from './payment-provider';
+import type { IPaymentProvider } from './payment-provider';
 import { stripeProvider } from './stripe-client';
 
 type FactoryEnv = Pick<Cloudflare.Env, 'PAYMENT_PROVIDER'>;
 
-export function selectProvider(env: FactoryEnv): PaymentProvider {
+export function selectProvider(env: FactoryEnv): IPaymentProvider {
 	return env.PAYMENT_PROVIDER === 'stripe' ? stripeProvider : appmaxProvider;
 }

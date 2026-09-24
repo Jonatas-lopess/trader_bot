@@ -14,7 +14,7 @@
  * this driver exists to work around not having yet) — card only.
  */
 
-import type { PaymentProvider } from './payment-provider';
+import type { IPaymentProvider } from './payment-provider';
 
 type StripeCredentials = Pick<Cloudflare.Env, 'STRIPE_SECRET_KEY'>;
 
@@ -153,8 +153,8 @@ function mapSessionStatus(status: string, paymentStatus: string): StripeSubscrip
 	return 'pending';
 }
 
-/** Adapter onto the shared `PaymentProvider` seam (docs/adr/0005) — selected by `factory.ts` only on explicit `PAYMENT_PROVIDER=stripe`. */
-export const stripeProvider: PaymentProvider = {
+/** Adapter onto the shared `IPaymentProvider` seam (docs/adr/0005) — selected by `factory.ts` only on explicit `PAYMENT_PROVIDER=stripe`. */
+export const stripeProvider: IPaymentProvider = {
 	id: 'stripe',
 	async createCheckoutSession(env, params) {
 		const result = await createCheckoutSession(env, {

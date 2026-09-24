@@ -191,7 +191,7 @@ against the Figma design. Revisit with conversion data, not before.
 **Appmax is the committed gateway** (ADR-0003, supersedes ADR-0001), with no swap planned
 for production.
 
-**A narrow, test-only `PaymentProvider` seam exists** (ADR-0005), reopening what this
+**A narrow, test-only `IPaymentProvider` seam exists** (ADR-0005), reopening what this
 section previously ruled out ("no payment-provider interface... an abstraction would be
 built for a second implementation that doesn't exist — speculative generality §5 already
 rules out"). That second implementation now exists for a concrete reason: Appmax's own

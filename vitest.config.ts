@@ -10,7 +10,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	test: {
 		include: ['src/**/*.{test,spec}.ts'],
-		setupFiles: ['./test/apply-migrations.ts'],
+		setupFiles: ['./test/apply-migrations.ts', './test/seed-r2-fixture.ts'],
 		// The default 5s is occasionally too tight for a test that touches
 		// WEBHOOK_RATE_LIMITER (a Durable-Object-backed binding) alongside a
 		// D1 write and a mocked fetch — its cold start has been observed to

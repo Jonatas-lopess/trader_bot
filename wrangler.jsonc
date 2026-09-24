@@ -31,6 +31,23 @@
 	"observability": {
 		"enabled": true
 	},
+	// `bucket_name` is a placeholder — no R2 bucket has been created against a
+	// real Cloudflare account yet, same status as `d1_databases`'s
+	// `database_id` above. Local dev/test (miniflare, this repo's vitest
+	// pool) works against it as-is; run `wrangler r2 bucket create
+	// trader-bot-robot-binary` before the first real deploy. Unlike the D1
+	// database this isn't itself a go-live gate (PLANNING.md §12 — only the
+	// custom domain blocks going live): `wrangler deploy` fails loudly if the
+	// bucket doesn't exist, an easy pre-deploy fix rather than an external
+	// prerequisite to arrange in advance. Holds the one fixed robot binary
+	// (CONTEXT.md — "Robô: one program, not a family of them"), streamed via
+	// this binding by `GET /download/:token` (PLANNING.md §8, §11).
+	"r2_buckets": [
+		{
+			"binding": "ROBOT_BINARY",
+			"bucket_name": "trader-bot-robot-binary"
+		}
+	],
 	// One source's requests to /billing/webhook, per ~2s Appmax's own retry
 	// cadence is assumed to look like (unverified, PLANNING.md §13) plus
 	// headroom for a legitimate burst — .scratch/checkout-webhooks/issues/06-webhook-hardening.md.

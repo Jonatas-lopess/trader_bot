@@ -30,6 +30,35 @@ jobs:
       - name: Build
         run: npm run build
 
-# No deploy job: deployment is blocked on an external prerequisite (a
-# registered domain on a Cloudflare zone, PLANNING.md §12) that does not
-# exist yet. This workflow builds; it does not ship.
+  deploy:
+    name: Deploy (workers.dev test route)
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # workers.dev only — PLANNING.md §12's custom-domain prerequisite still
+    # gates production, so this is the test-phase route, not a go-live
+    # deploy. Requires database_id/bucket_name in wrangler.jsonc to be swapped
+    # from their placeholders (`wrangler d1 create` / `wrangler r2 bucket
+    # create` against the target account) before this job can succeed.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

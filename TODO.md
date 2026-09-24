@@ -49,8 +49,9 @@ Spec: [.scratch/customer-area/spec.md](.scratch/customer-area/spec.md) — statu
 | 05 | [End-to-end verification — login-to-cancel happy path](.scratch/customer-area/issues/05-end-to-end-verification.md) | 02, 03, 04 | done |
 | 06 | [Log magic-link send failures](.scratch/customer-area/issues/06-log-magic-link-send-failure.md) | 02 | done |
 | 07 | [Auto-send magic-link on first activation](.scratch/customer-area/issues/07-auto-send-magic-link-on-activation.md) | 01, 02, 06 | done |
+| 08 | [Recover a subscription stuck by a null email on activation](.scratch/customer-area/issues/08-recover-null-email-activation.md) | 01, 07 | done |
 
-All 7 tickets done.
+All 8 tickets done.
 
 ## robot-delivery
 

@@ -30,6 +30,22 @@ export async function provisionCustomer(
 		.run();
 }
 
+/**
+ * Read-only lookup by `customers.id` — .scratch/robot-delivery/issues/02-mint-dispatch-redeem.md's
+ * ops-run CLI script needs the Cliente's email to dispatch the download
+ * link, given only a `--customer-id=` argument. `identity` owns the
+ * `customers` table's reads/writes (PLANNING.md §4); `modules/licensing`
+ * imports this directly rather than duplicating a customers query, the same
+ * "modules import each other directly" convention `account-page.ts` already
+ * follows for `getCustomerAccount`.
+ */
+export async function getCustomerEmail(env: CustomersEnv, customerId: string): Promise<string | null> {
+	const row = await env.DB.prepare('SELECT email FROM customers WHERE id = ?')
+		.bind(customerId)
+		.first<{ email: string }>();
+	return row?.email ?? null;
+}
+
 export type SubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
 
 /**

@@ -11,7 +11,8 @@
     "preview": "astro preview",
     "astro": "astro",
     "typecheck": "wrangler types && astro check",
-    "test": "wrangler types && vitest run"
+    "test": "wrangler types && vitest run",
+    "send-download-link": "node --experimental-strip-types scripts/send-download-link.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.3",

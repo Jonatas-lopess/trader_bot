@@ -16,6 +16,37 @@ const TOKEN_TTL_MS = 15 * 60 * 1000;
 
 type RequestEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY' | 'LOGIN_RATE_LIMITER'>;
 type RedeemEnv = Pick<Cloudflare.Env, 'DB' | 'SESSION_SECRET'>;
+type IssueEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY'>;
+
+/**
+ * Mint-and-send, factored out of `requestMagicLink` so a caller that
+ * already knows the customer (no email lookup, no throttle — e.g.
+ * `webhook.ts`'s auto-send on first activation, customer-area ticket 06)
+ * can reuse the exact same token/session-issuance path instead of a second
+ * implementation. `requestMagicLink` itself becomes a thin wrapper: resolve
+ * `email` -> `customerId`, then call this.
+ */
+export async function issueMagicLink(
+	env: IssueEnv,
+	params: { customerId: string; email: string; origin: string }
+): Promise<void> {
+	const token = crypto.randomUUID();
+	const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
+	await env.DB.prepare('INSERT INTO login_tokens (token, customer_id, expires_at) VALUES (?, ?, ?)')
+		.bind(token, params.customerId, expiresAt)
+		.run();
+
+	const magicLinkUrl = new URL(`/login/verify?token=${token}`, params.origin).toString();
+	const sent = await sendMagicLinkEmail(env, { to: params.email, magicLinkUrl });
+	// Previously discarded — a Resend outage (or a misconfigured key) left
+	// no trace anywhere while the Cliente-facing response stayed identical
+	// either way (User Story 3's generic redirect). Logged, not surfaced:
+	// the response contract is unchanged, this is purely for ops visibility
+	// (customer-area ticket 06).
+	if (!sent.ok) {
+		console.error(`issueMagicLink: Resend send failed for customer_id=${params.customerId}`);
+	}
+}
 
 /**
  * Basic per-email and per-IP throttle (spec.md — "no captcha or heavier
@@ -53,14 +84,7 @@ export async function requestMagicLink(
 		.first<{ id: string }>();
 	if (customer === null) return;
 
-	const token = crypto.randomUUID();
-	const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
-	await env.DB.prepare('INSERT INTO login_tokens (token, customer_id, expires_at) VALUES (?, ?, ?)')
-		.bind(token, customer.id, expiresAt)
-		.run();
-
-	const magicLinkUrl = new URL(`/login/verify?token=${token}`, params.origin).toString();
-	await sendMagicLinkEmail(env, { to: email, magicLinkUrl });
+	await issueMagicLink(env, { customerId: customer.id, email, origin: params.origin });
 }
 
 export type RedeemMagicLinkResult =

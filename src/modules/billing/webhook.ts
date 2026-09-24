@@ -20,8 +20,17 @@ import {
 	type AppmaxWebhookEvent,
 } from './appmax-client';
 import { provisionCustomer } from '../identity/customers';
+import { issueMagicLink } from '../identity/magic-link';
 
-type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET'>;
+type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'RESEND_API_KEY'>;
+
+// Same not-yet-registered placeholder domain as `resend-client.ts`'s
+// `FROM_ADDRESS` and `scripts/send-download-link.ts`'s `DEFAULT_ORIGIN`
+// (PLANNING.md §12 — a go-live gate, not a build blocker). The webhook has
+// no request of its own to derive an origin from (a server-to-server Appmax
+// callback), unlike `requestMagicLink`'s caller (`pages/login/request.ts`),
+// which passes the real `url.origin`.
+const APP_ORIGIN = 'https://robotrader.com.br';
 
 // pending < active < past_due < canceled. This ticket's scope
 // (checkout-webhooks) only exercises pending→active and the
@@ -82,6 +91,16 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
  * transition itself was already decided atomically by the CAS `UPDATE`;
  * this lookup only resolves an id for a write that's already committed to
  * happening.
+ *
+ * Also the point a first-activation auto-sends the magic-link login email
+ * (customer-area ticket 06/07) — the Cliente never types an email anywhere
+ * on our own checkout (`checkout.ts` only ever collects `planId`; Appmax's
+ * hosted page is what collects the email this function receives). Gated on
+ * `provisionCustomer`'s `created` flag, not merely "status is active": a
+ * reapplied/renewal event that resolves to the `ON CONFLICT` no-op must not
+ * re-issue a login email on every renewal, only on the subscription's first
+ * activation. `/login`'s own type-your-email flow (`requestMagicLink`)
+ * still exists unchanged as the self-service fallback.
  */
 async function onSubscriptionBecameActive(
 	env: WebhookEnv,
@@ -102,7 +121,10 @@ async function onSubscriptionBecameActive(
 		.first<{ id: string }>();
 	if (row === null) return;
 
-	await provisionCustomer(env, { subscriptionId: row.id, email });
+	const customer = await provisionCustomer(env, { subscriptionId: row.id, email });
+	if (!customer.created) return;
+
+	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
 }
 
 export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{ status: number }> {

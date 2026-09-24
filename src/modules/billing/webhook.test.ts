@@ -16,14 +16,19 @@ function mockAppmax(status: { status: string; paymentMethod?: string; email?: st
 				{ status: 200 }
 			);
 		}
+		// First activation now also sends the magic-link email (customer-area
+		// ticket 07) — same Resend seam `identity/magic-link.test.ts` mocks.
+		if (url.includes('api.resend.com')) {
+			return new Response(null, { status: 200 });
+		}
 		throw new Error(`unexpected fetch: ${url}`);
 	});
 }
 
-async function customerFor(subscriptionRowId: string): Promise<{ email: string } | null> {
-	return env.DB.prepare('SELECT email FROM customers WHERE subscription_id = ?')
+async function customerFor(subscriptionRowId: string): Promise<{ id: string; email: string } | null> {
+	return env.DB.prepare('SELECT id, email FROM customers WHERE subscription_id = ?')
 		.bind(subscriptionRowId)
-		.first<{ email: string }>();
+		.first<{ id: string; email: string }>();
 }
 
 async function seed(row: { id: string; appmax_order_id?: string; appmax_subscription_id?: string; status: string }) {
@@ -32,6 +37,13 @@ async function seed(row: { id: string; appmax_order_id?: string; appmax_subscrip
 	)
 		.bind(row.id, 'starter', row.status, row.appmax_order_id ?? null, row.appmax_subscription_id ?? null)
 		.run();
+}
+
+async function loginTokenCountFor(customerId: string): Promise<number> {
+	const { results } = await env.DB.prepare('SELECT * FROM login_tokens WHERE customer_id = ?')
+		.bind(customerId)
+		.all();
+	return results.length;
 }
 
 async function statusOf(id: string): Promise<string> {
@@ -126,10 +138,23 @@ describe('handleWebhook', () => {
 
 		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_provision' }));
 
-		expect(await customerFor('sub-provision')).toEqual({ email: 'cliente@example.com' });
+		const customer = await customerFor('sub-provision');
+		expect(customer?.email).toBe('cliente@example.com');
 	});
 
-	it('does not duplicate the customers row when an already-active event is reapplied', async () => {
+	it('first activation also auto-sends the magic-link login email — no email typed anywhere on our own checkout', async () => {
+		await seed({ id: 'sub-auto-link', appmax_order_id: 'ord_auto_link', status: 'pending' });
+		const fetchSpy = mockAppmax({ status: 'aprovado', email: 'cliente@example.com' });
+
+		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_auto_link' }));
+
+		const customer = await customerFor('sub-auto-link');
+		expect(customer).not.toBeNull();
+		expect(await loginTokenCountFor(customer!.id)).toBe(1);
+		expect(fetchSpy.mock.calls.some((call) => call[0]?.toString().includes('api.resend.com'))).toBe(true);
+	});
+
+	it('does not duplicate the customers row, nor re-send a login email, when an already-active event is reapplied', async () => {
 		await seed({ id: 'sub-reapply', appmax_order_id: 'ord_reapply', status: 'active' });
 		mockAppmax({ status: 'aprovado', email: 'cliente@example.com' });
 
@@ -143,6 +168,11 @@ describe('handleWebhook', () => {
 			.bind('sub-reapply')
 			.all();
 		expect(results).toHaveLength(1);
+
+		// The renewal event must not re-issue a login email — only the
+		// subscription's first activation does (customer-area ticket 07).
+		const customer = await customerFor('sub-reapply');
+		expect(await loginTokenCountFor(customer!.id)).toBe(1);
 	});
 
 	it('logs visibly and leaves customers unpopulated when Appmax reports no email field', async () => {

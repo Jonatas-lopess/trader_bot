@@ -53,6 +53,20 @@ describe('magic-link', () => {
 		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 
+	it('logs visibly when Resend fails, but still mints the token and keeps the generic response contract', async () => {
+		await seedCustomer('cust-ml-send-fail', 'send-fail@example.com');
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(null, { status: 500 }));
+		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await requestMagicLink(env, { email: 'send-fail@example.com', ip: '203.0.113.9', origin: 'https://example.com' });
+
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('cust-ml-send-fail'));
+		const { results } = await env.DB.prepare('SELECT * FROM login_tokens WHERE customer_id = ?')
+			.bind('cust-ml-send-fail')
+			.all();
+		expect(results).toHaveLength(1);
+	});
+
 	it('redeeming a valid token sets a session and consumes the token', async () => {
 		await seedCustomer('cust-ml-redeem', 'redeem@example.com');
 		await seedToken('tok-redeem', 'cust-ml-redeem');

@@ -13,12 +13,19 @@ type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
  * one atomic statement, no prior `SELECT` — a reapplied `active` webhook
  * event (checkout-webhooks ticket 07's own reapplied-event case) must not
  * duplicate the row for the same subscription (migrations/0003_customers.sql).
+ *
+ * `created` tells the caller (`webhook.ts`'s `onSubscriptionBecameActive`)
+ * whether this call actually inserted the row versus hit the `ON CONFLICT`
+ * no-op — a reapplied/renewal event resolving to `created: false` is how
+ * that caller knows not to re-issue a magic link on every renewal, only on
+ * the subscription's first activation (customer-area ticket 06).
  */
 export async function provisionCustomer(
 	env: CustomersEnv,
 	params: { subscriptionId: string; email: string }
-): Promise<void> {
-	await env.DB.prepare(
+): Promise<{ id: string; created: boolean }> {
+	const id = crypto.randomUUID();
+	const result = await env.DB.prepare(
 		'INSERT INTO customers (id, subscription_id, email) VALUES (?, ?, ?) ON CONFLICT(subscription_id) DO NOTHING'
 	)
 		// Normalized the same way `requestMagicLink`'s lookup normalizes its
@@ -26,8 +33,19 @@ export async function provisionCustomer(
 		// authoritative response (mixed case, stray whitespace) would
 		// otherwise never match a login attempt typed in the customer's own
 		// casing (code review finding, src/modules/identity/magic-link.ts:46).
-		.bind(crypto.randomUUID(), params.subscriptionId, params.email.trim().toLowerCase())
+		.bind(id, params.subscriptionId, params.email.trim().toLowerCase())
 		.run();
+
+	if (result.meta.changes > 0) return { id, created: true };
+
+	// Conflict hit — another delivery for this subscription already
+	// provisioned it. Not a TOCTOU read: the conflict itself was already
+	// decided atomically by the `INSERT` above; this only resolves which
+	// id that earlier insert used.
+	const existing = await env.DB.prepare('SELECT id FROM customers WHERE subscription_id = ?')
+		.bind(params.subscriptionId)
+		.first<{ id: string }>();
+	return { id: existing!.id, created: false };
 }
 
 /**

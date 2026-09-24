@@ -47,8 +47,10 @@ Spec: [.scratch/customer-area/spec.md](.scratch/customer-area/spec.md) — statu
 | 03 | [Customer area — license status](.scratch/customer-area/issues/03-license-status-page.md) | 02, 01 | done |
 | 04 | [Cancel subscription](.scratch/customer-area/issues/04-cancel-subscription.md) | 03, 01 | done |
 | 05 | [End-to-end verification — login-to-cancel happy path](.scratch/customer-area/issues/05-end-to-end-verification.md) | 02, 03, 04 | done |
+| 06 | [Log magic-link send failures](.scratch/customer-area/issues/06-log-magic-link-send-failure.md) | 02 | done |
+| 07 | [Auto-send magic-link on first activation](.scratch/customer-area/issues/07-auto-send-magic-link-on-activation.md) | 01, 02, 06 | done |
 
-All 5 tickets done.
+All 7 tickets done.
 
 ## robot-delivery
 

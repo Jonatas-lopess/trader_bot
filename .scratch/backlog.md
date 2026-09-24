@@ -4,9 +4,9 @@ Work with no effort directory yet. Not tickets; nothing here is ready to pick up
 
 ## Remaining 0.1 (PLANNING.md §10)
 
-- Email with the signed download link
 - Legal pages with placeholder text — dropped from `marketing-pages` on purpose
-- Manual NFS-e process, documented
+- Manual NFS-e process, documented — scaffolded at `docs/ops/nfse.md`, TODOs pending
+  contador specifics (rate, portal access, issuance cadence)
 
 ## External prerequisites
 

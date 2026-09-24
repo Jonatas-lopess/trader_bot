@@ -32,6 +32,8 @@ export type CreateCheckoutSessionParams = {
 	planId: string;
 	amountCents: number;
 	returnUrl: string;
+	/** Where an abandoned checkout goes back to. Appmax's hosted checkout has no such concept; Stripe's driver uses it as `cancel_url`, distinct from `returnUrl` so a cancelled checkout doesn't land on the same confirmation page a successful payer sees. */
+	cancelUrl: string;
 };
 
 export type CreateCheckoutSessionResult =

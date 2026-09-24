@@ -9,6 +9,16 @@ export const prerender = false;
 // not in place of it. Signature verification is handleStripeWebhook's own
 // job, same split as webhook-hardening.ts vs webhook.ts for Appmax.
 export const POST: APIRoute = async ({ request }) => {
+	// Rate-limited by source IP, same pattern webhook-hardening.ts applies to
+	// the Appmax route (code review finding: this route previously had no
+	// throttling). No fixed Stripe source-IP list to allowlist against
+	// (unlike Appmax's APPMAX_WEBHOOK_IPS) — Stripe's ranges are broad and
+	// rotate — so this is throttling only, checked before the request body
+	// is even read.
+	const sourceIp = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+	const rateLimit = await env.STRIPE_WEBHOOK_RATE_LIMITER.limit({ key: sourceIp });
+	if (!rateLimit.success) return new Response(null, { status: 429 });
+
 	const rawBody = await request.text();
 	const signatureHeader = request.headers.get('Stripe-Signature');
 

@@ -72,12 +72,25 @@ describe('fetchAuthoritativeStatus', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('resolves an active subscription by subscriptionId', async () => {
+	it('resolves an active subscription by subscriptionId, expanding the customer for their email', async () => {
 		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
 			const url = typeof input === 'string' ? input : input.toString();
-			expect(url).toBe('https://api.stripe.com/v1/subscriptions/sub_123');
-			return new Response(JSON.stringify({ status: 'active' }), { status: 200 });
+			expect(url).toBe('https://api.stripe.com/v1/subscriptions/sub_123?expand[]=customer');
+			return new Response(
+				JSON.stringify({ status: 'active', customer: { email: 'buyer@example.com' } }),
+				{ status: 200 }
+			);
 		});
+
+		const result = await fetchAuthoritativeStatus(env, { orderId: null, subscriptionId: 'sub_123' });
+
+		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com' });
+	});
+
+	it('resolves email as null when the customer is unexpanded (an id string, not an object)', async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			new Response(JSON.stringify({ status: 'active', customer: 'cus_123' }), { status: 200 })
+		);
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: null, subscriptionId: 'sub_123' });
 
@@ -170,6 +183,7 @@ describe('stripeProvider adapter', () => {
 			planId: 'starter',
 			amountCents: 4990,
 			returnUrl: 'https://example.com/x',
+			cancelUrl: 'https://example.com/',
 		});
 
 		expect(result).toEqual({
@@ -187,6 +201,7 @@ describe('stripeProvider adapter', () => {
 			planId: 'starter',
 			amountCents: 4990,
 			returnUrl: 'https://example.com/x',
+			cancelUrl: 'https://example.com/',
 		});
 
 		expect(result).toEqual({ ok: false, reason: 'provider_unavailable' });

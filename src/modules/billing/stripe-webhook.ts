@@ -21,7 +21,13 @@
 
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
-import { fetchAuthoritativeStatus, type StripeSubscriptionState } from './stripe-client';
+import { timingSafeEqual } from '../identity/session';
+import { fetchAuthoritativeStatus } from './stripe-client';
+import {
+	STATUS_RIGIDITY,
+	STATUS_RIGIDITY_CASE_SQL,
+	findSubscriptionIdByProviderRef,
+} from './subscription-lookup';
 
 type StripeWebhookEnv = Pick<
 	Cloudflare.Env,
@@ -33,24 +39,10 @@ type StripeWebhookEnv = Pick<
 // from.
 const APP_ORIGIN = 'https://robotrader.com.br';
 
-const STATUS_RIGIDITY: Record<StripeSubscriptionState, number> = {
-	pending: 0,
-	active: 1,
-	past_due: 2,
-	canceled: 3,
-};
-
 function hex(bytes: ArrayBuffer): string {
 	return Array.from(new Uint8Array(bytes))
 		.map((b) => b.toString(16).padStart(2, '0'))
 		.join('');
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-	if (a.length !== b.length) return false;
-	let diff = 0;
-	for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-	return diff === 0;
 }
 
 /**
@@ -65,7 +57,12 @@ async function verifySignature(
 	rawBody: string,
 	signatureHeader: string | null
 ): Promise<boolean> {
-	if (signatureHeader === null || env.STRIPE_WEBHOOK_SECRET === '') return false;
+	// `!env.STRIPE_WEBHOOK_SECRET` (not just `=== ''`) — an unset binding is
+	// `undefined`, not `''`, and must fail closed the same way an empty one
+	// does. Production never provisions this secret (Stripe is a test-only
+	// stopgap, ADR-0003/docs/adr/0005), so `undefined` is the expected
+	// production value, not an edge case.
+	if (signatureHeader === null || !env.STRIPE_WEBHOOK_SECRET) return false;
 
 	const parts = new Map(
 		signatureHeader
@@ -134,14 +131,10 @@ async function onSubscriptionBecameActive(
 		return;
 	}
 
-	const row = await env.DB.prepare(
-		"SELECT id FROM subscriptions WHERE provider = 'stripe' AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1"
-	)
-		.bind(ref.orderId, ref.subscriptionId)
-		.first<{ id: string }>();
-	if (row === null) return;
+	const subscriptionId = await findSubscriptionIdByProviderRef(env, 'stripe', ref);
+	if (subscriptionId === null) return;
 
-	const customer = await provisionCustomer(env, { subscriptionId: row.id, email });
+	const customer = await provisionCustomer(env, { subscriptionId, email });
 	if (!customer.created) return;
 
 	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
@@ -181,16 +174,31 @@ export async function handleStripeWebhook(
 	const authoritative = await fetchAuthoritativeStatus(env, ref);
 	if (!authoritative.ok) return { status: 200 };
 
+	// `appmax_subscription_id = COALESCE(appmax_subscription_id, ?)`: the
+	// checkout.session.completed row is inserted (checkout.ts) with only
+	// appmax_order_id (the `cs_...` session id) — the `sub_...` subscription
+	// id only becomes known here, on the first event that carries it, and
+	// must be persisted or every later event keyed by subscription id alone
+	// (customer.subscription.updated/.deleted) can never match this row
+	// again, and cancel.ts's gateway cancel call can never be dispatched.
 	const result = await env.DB.prepare(
 		`UPDATE subscriptions
-		 SET status = ?, payment_method = COALESCE(?, payment_method), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+		 SET status = ?,
+		     payment_method = COALESCE(?, payment_method),
+		     appmax_subscription_id = COALESCE(appmax_subscription_id, ?),
+		     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		 WHERE provider = 'stripe'
 		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
-		   AND CASE status
-		         WHEN 'pending' THEN 0 WHEN 'active' THEN 1 WHEN 'past_due' THEN 2 WHEN 'canceled' THEN 3
-		       END <= ?`
+		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
 	)
-		.bind(authoritative.status, authoritative.paymentMethod, ref.orderId, ref.subscriptionId, STATUS_RIGIDITY[authoritative.status])
+		.bind(
+			authoritative.status,
+			authoritative.paymentMethod,
+			ref.subscriptionId,
+			ref.orderId,
+			ref.subscriptionId,
+			STATUS_RIGIDITY[authoritative.status]
+		)
 		.run();
 
 	if (authoritative.status === 'active' && result.meta.changes > 0) {

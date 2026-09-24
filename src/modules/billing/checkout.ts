@@ -36,6 +36,10 @@ export async function createCheckoutSession(
 	const plan = plans.find((candidate) => candidate.id === params.planId)!;
 	const reference = crypto.randomUUID();
 	const returnUrl = new URL(`/checkout/confirmacao?ref=${reference}`, params.origin).toString();
+	// Back to where the Cliente started, not the success confirmation page
+	// (code review finding: reusing returnUrl as cancel_url made an abandoned
+	// Stripe checkout indistinguishable on-screen from a successful one).
+	const cancelUrl = params.origin;
 
 	const provider = selectProvider(env);
 	const session = await provider.createCheckoutSession(env, {
@@ -43,6 +47,7 @@ export async function createCheckoutSession(
 		planId: plan.id,
 		amountCents: Math.round(plan.price.monthly * 100),
 		returnUrl,
+		cancelUrl,
 	});
 	if (!session.ok) {
 		return {

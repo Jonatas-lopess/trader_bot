@@ -14,13 +14,13 @@
  * this driver exists to work around not having yet) — card only.
  */
 
-import type { IPaymentProvider } from './payment-provider';
+import type { IPaymentProvider, SubscriptionState } from './payment-provider';
 
 type StripeCredentials = Pick<Cloudflare.Env, 'STRIPE_SECRET_KEY'>;
 
 const STRIPE_API_BASE_URL = 'https://api.stripe.com/v1';
 
-export type StripeSubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
+export type StripeSubscriptionState = SubscriptionState;
 
 type CreateCheckoutSessionParams = {
 	reference: string;
@@ -95,12 +95,19 @@ export async function fetchAuthoritativeStatus(
 	ref: { orderId: string | null; subscriptionId: string | null }
 ): Promise<FetchAuthoritativeStatusResult> {
 	if (ref.subscriptionId !== null) {
-		const response = await fetch(`${STRIPE_API_BASE_URL}/subscriptions/${ref.subscriptionId}`, {
-			headers: authHeaders(env),
-		});
+		// `expand[]=customer` — checkout.session.completed fires with the
+		// subscription id already attached (before any invoice-paid event),
+		// so this is the normal first-purchase path, not a rare later-event
+		// case; without the expand, Stripe's own `customer` field is just an
+		// id string, and provisioning needs the buyer's actual email.
+		const response = await fetch(
+			`${STRIPE_API_BASE_URL}/subscriptions/${ref.subscriptionId}?expand[]=customer`,
+			{ headers: authHeaders(env) }
+		);
 		if (!response.ok) return { ok: false };
-		const body = await response.json<{ status: string }>();
-		return { ok: true, status: mapSubscriptionStatus(body.status), paymentMethod: 'card', email: null };
+		const body = await response.json<{ status: string; customer: { email: string | null } | string }>();
+		const email = typeof body.customer === 'string' ? null : (body.customer?.email ?? null);
+		return { ok: true, status: mapSubscriptionStatus(body.status), paymentMethod: 'card', email };
 	}
 
 	if (ref.orderId === null) return { ok: false };
@@ -162,7 +169,7 @@ export const stripeProvider: IPaymentProvider = {
 			planId: params.planId,
 			amountCents: params.amountCents,
 			returnUrl: params.returnUrl,
-			cancelUrl: params.returnUrl,
+			cancelUrl: params.cancelUrl,
 		});
 		if (!result.ok) {
 			return {

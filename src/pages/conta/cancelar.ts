@@ -22,12 +22,13 @@ export const POST: APIRoute = async ({ request, url }) => {
 	if (account === null) return Response.redirect(new URL('/login', url.origin), 303);
 
 	// The page re-renders with whatever the current status is either way —
-	// if Appmax's cancel call failed, status simply didn't change, which is
-	// an honest reflection of reality without a separate error page (this
-	// repo's generally terse error-handling style elsewhere).
+	// if the gateway's cancel call failed, status simply didn't change,
+	// which is an honest reflection of reality without a separate error
+	// page (this repo's generally terse error-handling style elsewhere).
 	await cancelSubscription(env, {
 		subscriptionId: account.subscriptionId,
-		appmaxSubscriptionId: account.appmaxSubscriptionId,
+		provider: account.provider,
+		providerSubscriptionId: account.appmaxSubscriptionId,
 	});
 
 	return Response.redirect(new URL('/conta', url.origin), 303);

@@ -33,8 +33,9 @@ Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) �
 | 05 | [Intermediate confirmation page](.scratch/checkout-webhooks/issues/05-intermediate-confirmation-page.md) | 02, 03 | done |
 | 06 | [Webhook hardening — IP filter, payload validation, rate limit](.scratch/checkout-webhooks/issues/06-webhook-hardening.md) | 04 | done |
 | 07 | [End-to-end verification — happy path, boleto branch, concurrency](.scratch/checkout-webhooks/issues/07-end-to-end-verification.md) | 04, 05, 06 | done |
+| 08 | [No event-ordering tiebreak in the webhook status CAS](.scratch/checkout-webhooks/issues/08-webhook-status-tiebreak.md) | — | needs-triage |
 
-All 7 tickets done.
+Tickets 01-07 done. 08 open (needs-triage) — found via cross-repo comparison, not blocking.
 
 ## customer-area
 

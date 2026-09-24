@@ -6,6 +6,8 @@
  * subscription first lands on `active`. Nothing else writes `customers`.
  */
 
+import type { ProviderId, SubscriptionState } from '../billing/payment-provider';
+
 type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
 
 /**
@@ -64,7 +66,7 @@ export async function getCustomerEmail(env: CustomersEnv, customerId: string): P
 	return row?.email ?? null;
 }
 
-export type SubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
+export type { SubscriptionState };
 
 /**
  * The Assinatura + Plano a logged-in Cliente owns — .scratch/customer-area/issues/03-license-status-page.md.
@@ -73,7 +75,10 @@ export type SubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
  * Assinatura under the same Cliente. `status`/`appmaxSubscriptionId` added
  * by ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md) —
  * the page needs the Assinatura's own status to reflect a cancel, and the
- * cancel action needs the Appmax id to call their cancel API.
+ * cancel action needs the gateway id to call its cancel API. `provider`
+ * added alongside the Stripe test driver (docs/adr/0005-stripe-test-driver.md)
+ * — cancel.ts needs to know which gateway actually owns the row, not just
+ * its id, since `appmaxSubscriptionId` may hold either gateway's id.
  */
 export async function getCustomerAccount(
 	env: CustomersEnv,
@@ -82,10 +87,11 @@ export async function getCustomerAccount(
 	subscriptionId: string;
 	planId: string;
 	status: SubscriptionState;
+	provider: ProviderId;
 	appmaxSubscriptionId: string | null;
 } | null> {
 	const row = await env.DB.prepare(
-		`SELECT s.id AS subscription_id, s.plan_id AS plan_id, s.status AS status,
+		`SELECT s.id AS subscription_id, s.plan_id AS plan_id, s.status AS status, s.provider AS provider,
 		        s.appmax_subscription_id AS appmax_subscription_id
 		 FROM customers c JOIN subscriptions s ON s.id = c.subscription_id
 		 WHERE c.id = ?`
@@ -95,6 +101,7 @@ export async function getCustomerAccount(
 			subscription_id: string;
 			plan_id: string;
 			status: SubscriptionState;
+			provider: ProviderId;
 			appmax_subscription_id: string | null;
 		}>();
 	if (row === null) return null;
@@ -102,6 +109,7 @@ export async function getCustomerAccount(
 		subscriptionId: row.subscription_id,
 		planId: row.plan_id,
 		status: row.status,
+		provider: row.provider,
 		appmaxSubscriptionId: row.appmax_subscription_id,
 	};
 }

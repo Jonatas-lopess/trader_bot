@@ -74,4 +74,29 @@ describe('createCheckoutSession', () => {
 			.first();
 		expect(row).toBeNull();
 	});
+
+	it('routes to Stripe instead when PAYMENT_PROVIDER=stripe (docs/adr/0005-stripe-test-driver.md)', async () => {
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+			const url = typeof input === 'string' ? input : input.toString();
+			if (url === 'https://api.stripe.com/v1/checkout/sessions') {
+				return new Response(
+					JSON.stringify({ id: 'cs_stripe_route', url: 'https://checkout.stripe.com/pay/cs_stripe_route' }),
+					{ status: 200 }
+				);
+			}
+			throw new Error(`unexpected fetch: ${url}`);
+		});
+
+		const result = await createCheckoutSession(
+			{ ...env, PAYMENT_PROVIDER: 'stripe' },
+			{ planId: 'starter', origin: 'https://example.com' }
+		);
+
+		expect(result).toEqual({ ok: true, redirectUrl: 'https://checkout.stripe.com/pay/cs_stripe_route' });
+
+		const row = await env.DB.prepare('SELECT * FROM subscriptions WHERE appmax_order_id = ?')
+			.bind('cs_stripe_route')
+			.first();
+		expect(row).toMatchObject({ plan_id: 'starter', status: 'pending', provider: 'stripe' });
+	});
 });

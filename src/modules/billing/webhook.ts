@@ -13,14 +13,14 @@
  * `src/pages/billing/webhook.ts` is the thin Astro adapter around this.
  */
 
-import {
-	fetchAuthoritativeStatus,
-	parseWebhookPayload,
-	type AppmaxSubscriptionState,
-	type AppmaxWebhookEvent,
-} from './appmax-client';
+import { fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
+import {
+	STATUS_RIGIDITY,
+	STATUS_RIGIDITY_CASE_SQL,
+	findSubscriptionIdByProviderRef,
+} from './subscription-lookup';
 
 type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'RESEND_API_KEY'>;
 
@@ -32,18 +32,12 @@ type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIEN
 // which passes the real `url.origin`.
 const APP_ORIGIN = 'https://robotrader.com.br';
 
-// pending < active < past_due < canceled. This ticket's scope
-// (checkout-webhooks) only exercises pending→active and the
-// canceled-must-not-be-undone case from spec.md's user story 8; it does not
-// cover recovering a `past_due` subscription back to `active` — that's
+// pending < active < past_due < canceled (STATUS_RIGIDITY, subscription-lookup.ts).
+// This ticket's scope (checkout-webhooks) only exercises pending→active and
+// the canceled-must-not-be-undone case from spec.md's user story 8; it does
+// not cover recovering a `past_due` subscription back to `active` — that's
 // multi-day dunning, PLANNING.md §6, "ours to build" as separate future
 // work. Revisit this ranking when that's built if recovery needs to apply.
-const STATUS_RIGIDITY: Record<AppmaxSubscriptionState, number> = {
-	pending: 0,
-	active: 1,
-	past_due: 2,
-	canceled: 3,
-};
 
 function buildIdempotencyKey(event: AppmaxWebhookEvent): string {
 	// spec.md: "subscription_id + order_id + event" for subscription-lifecycle
@@ -114,14 +108,14 @@ async function onSubscriptionBecameActive(
 		return;
 	}
 
-	const row = await env.DB.prepare(
-		'SELECT id FROM subscriptions WHERE (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
-	)
-		.bind(ref.orderId, ref.subscriptionId)
-		.first<{ id: string }>();
-	if (row === null) return;
+	// `provider = 'appmax'` guards against ever matching a row created by
+	// the test-only Stripe driver (docs/adr/0005-stripe-test-driver.md) —
+	// same defense-in-depth stripe-webhook.ts's own CAS applies in reverse,
+	// even though the two gateways' id formats don't collide in practice.
+	const subscriptionId = await findSubscriptionIdByProviderRef(env, 'appmax', ref);
+	if (subscriptionId === null) return;
 
-	const customer = await provisionCustomer(env, { subscriptionId: row.id, email });
+	const customer = await provisionCustomer(env, { subscriptionId, email });
 	if (!customer.created) return;
 
 	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
@@ -161,10 +155,9 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	const result = await env.DB.prepare(
 		`UPDATE subscriptions
 		 SET status = ?, payment_method = COALESCE(?, payment_method), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-		 WHERE (appmax_order_id = ? OR appmax_subscription_id = ?)
-		   AND CASE status
-		         WHEN 'pending' THEN 0 WHEN 'active' THEN 1 WHEN 'past_due' THEN 2 WHEN 'canceled' THEN 3
-		       END <= ?`
+		 WHERE provider = 'appmax'
+		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
+		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
 	)
 		.bind(
 			authoritative.status,

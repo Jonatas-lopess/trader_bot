@@ -23,11 +23,19 @@ async function seed(row: {
 	appmax_order_id?: string;
 	appmax_subscription_id?: string;
 	status: string;
+	provider?: 'appmax' | 'stripe';
 }) {
 	await env.DB.prepare(
-		'INSERT INTO subscriptions (id, plan_id, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, ?, ?)'
+		'INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, ?, ?, ?)'
 	)
-		.bind(row.id, 'starter', row.status, row.appmax_order_id ?? null, row.appmax_subscription_id ?? null)
+		.bind(
+			row.id,
+			'starter',
+			row.status,
+			row.provider ?? 'appmax',
+			row.appmax_order_id ?? null,
+			row.appmax_subscription_id ?? null
+		)
 		.run();
 }
 
@@ -55,7 +63,8 @@ describe('cancelSubscription', () => {
 
 		const result = await cancelSubscription(env, {
 			subscriptionId: 'sub-cancel-happy',
-			appmaxSubscriptionId: 'appmax_sub_happy',
+			provider: 'appmax',
+			providerSubscriptionId: 'appmax_sub_happy',
 		});
 
 		expect(result).toEqual({ ok: true });
@@ -73,31 +82,60 @@ describe('cancelSubscription', () => {
 		});
 	});
 
-	it('returns no_appmax_subscription_id and touches neither D1 nor Appmax when there is nothing to cancel at Appmax', async () => {
-		await seed({ id: 'sub-cancel-no-appmax-id', status: 'active' });
+	it('returns no_provider_subscription_id and touches neither D1 nor the gateway when there is nothing to cancel', async () => {
+		await seed({ id: 'sub-cancel-no-provider-id', status: 'active' });
 		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
 		const result = await cancelSubscription(env, {
-			subscriptionId: 'sub-cancel-no-appmax-id',
-			appmaxSubscriptionId: null,
+			subscriptionId: 'sub-cancel-no-provider-id',
+			provider: 'appmax',
+			providerSubscriptionId: null,
 		});
 
-		expect(result).toEqual({ ok: false, reason: 'no_appmax_subscription_id' });
+		expect(result).toEqual({ ok: false, reason: 'no_provider_subscription_id' });
 		expect(fetchSpy).not.toHaveBeenCalled();
-		expect(await statusOf('sub-cancel-no-appmax-id')).toBe('active');
+		expect(await statusOf('sub-cancel-no-provider-id')).toBe('active');
 	});
 
-	it('leaves status unchanged when Appmax rejects the cancel call', async () => {
+	it('leaves status unchanged when the gateway rejects the cancel call', async () => {
 		await seed({ id: 'sub-cancel-appmax-fail', appmax_subscription_id: 'appmax_sub_fail', status: 'active' });
 		mockAppmaxCancel('fail');
 
 		const result = await cancelSubscription(env, {
 			subscriptionId: 'sub-cancel-appmax-fail',
-			appmaxSubscriptionId: 'appmax_sub_fail',
+			provider: 'appmax',
+			providerSubscriptionId: 'appmax_sub_fail',
 		});
 
-		expect(result).toEqual({ ok: false, reason: 'appmax_unavailable' });
+		expect(result).toEqual({ ok: false, reason: 'provider_unavailable' });
 		expect(await statusOf('sub-cancel-appmax-fail')).toBe('active');
+	});
+
+	it('routes to Stripe instead of Appmax for a Stripe-provider row (docs/adr/0005-stripe-test-driver.md)', async () => {
+		await seed({
+			id: 'sub-cancel-stripe',
+			provider: 'stripe',
+			appmax_subscription_id: 'sub_stripe_cancel',
+			status: 'active',
+		});
+		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+			const url = typeof input === 'string' ? input : input.toString();
+			expect(url).toBe('https://api.stripe.com/v1/subscriptions/sub_stripe_cancel');
+			expect(init?.method).toBe('DELETE');
+			return new Response(JSON.stringify({ status: 'canceled' }), { status: 200 });
+		});
+
+		const result = await cancelSubscription(env, {
+			subscriptionId: 'sub-cancel-stripe',
+			provider: 'stripe',
+			providerSubscriptionId: 'sub_stripe_cancel',
+		});
+
+		expect(result).toEqual({ ok: true });
+		expect(await statusOf('sub-cancel-stripe')).toBe('canceled');
+		// Never touched Appmax's OAuth token endpoint — confirms the Stripe
+		// row's cancel never fell through to the Appmax driver.
+		expect(fetchSpy.mock.calls.some((call) => call[0]?.toString().includes('/oauth2/token'))).toBe(false);
 	});
 
 	it('a cancel racing a concurrently-delivered webhook re-confirming active resolves to canceled, no lost update', async () => {
@@ -131,7 +169,8 @@ describe('cancelSubscription', () => {
 
 		const cancel = cancelSubscription(env, {
 			subscriptionId: 'sub-cancel-race',
-			appmaxSubscriptionId: 'sub_race',
+			provider: 'appmax',
+			providerSubscriptionId: 'sub_race',
 		});
 		const webhook = handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_race' }));
 		const [cancelResult, webhookResult] = await Promise.all([cancel, webhook]);

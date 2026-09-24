@@ -63,6 +63,20 @@
 				"limit": 5,
 				"period": 60
 			}
+		},
+		// `/billing/webhook/stripe` (stripe-webhook.ts) had no throttling at all
+		// — unlike the Appmax route, which sits behind webhook-hardening.ts's
+		// IP allowlist + this same rate-limit pattern (code review finding). No
+		// equivalent fixed Stripe source-IP list exists to allowlist against
+		// (Stripe's ranges are broad and rotate), so this is throttling only,
+		// same limit/period as WEBHOOK_RATE_LIMITER.
+		{
+			"name": "STRIPE_WEBHOOK_RATE_LIMITER",
+			"namespace_id": "3",
+			"simple": {
+				"limit": 30,
+				"period": 10
+			}
 		}
 	]
 }

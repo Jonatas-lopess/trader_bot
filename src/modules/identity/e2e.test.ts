@@ -120,7 +120,8 @@ describe('customer-area end to end: login to cancel', () => {
 		// 4. Cancel (ticket 04) — Appmax call + CAS `UPDATE`, no touch to `licenses`.
 		const cancelResult = await cancelSubscription(env, {
 			subscriptionId: 'sub-e2e-happy',
-			appmaxSubscriptionId: 'asub_e2e_happy',
+			provider: 'appmax',
+			providerSubscriptionId: 'asub_e2e_happy',
 		});
 		expect(cancelResult).toEqual({ ok: true });
 

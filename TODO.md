@@ -77,6 +77,7 @@ primitive).
 | 02 | [Per-license secret/payload schema + verify endpoint](.scratch/license-server/issues/02-schema-and-verify-endpoint.md) | 01 | needs-triage |
 | 03 | [Provision per-license secret/payload and deliver alongside the binary](.scratch/license-server/issues/03-provisioning-and-delivery.md) | 01, 02 | needs-triage |
 | 04 | [MQL5 check-in client — verify, fail-closed with tolerance](.scratch/license-server/issues/04-mql5-checkin-client.md) | 02 | needs-triage |
+| 05 | [Enforce N robôs ativos simultâneos via check-in instance tracking](.scratch/license-server/issues/05-robo-count-entitlement.md) | 01, 02 | needs-triage |
 
 Frontier: **01** — the payload-content decision blocks everything else in this effort; resolve it first.
 

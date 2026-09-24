@@ -1,4 +1,4 @@
-# 02: Provision per-license secret/payload and deliver alongside the binary
+# 03: Provision per-license secret/payload and deliver alongside the binary
 
 **What to build:** the ops-run path that mints a license's secret and initial payload, and
 extends `robot-delivery`'s download flow to hand the robot its per-license config alongside
@@ -10,13 +10,13 @@ the `.ex5` itself stays a single object; only the config/license file is per-cus
 `scripts/provision-customer.ts` / `scripts/send-download-link.ts` as the existing
 human-in-the-loop scripting pattern to mirror.
 
-**Blocked by:** 01
+**Blocked by:** 01, 02
 
 - [ ] `pnpm run provision-license -- --subscription-id=<id>` (ops-run, no admin HTTP route,
       same shape as `send-download-link`): generates a fresh per-license secret, writes it
-      and an initial `payload` to the row/table from ticket 01, and (re)sets `validade` from
-      the existing `licenses.expires_at` issuance step — does not duplicate that issuance
-      step, only adds secret/payload alongside it.
+      and an initial `payload` (content decided in ticket 01) to the row/table from ticket
+      02, and (re)sets `validade` from the existing `licenses.expires_at` issuance step —
+      does not duplicate that issuance step, only adds secret/payload alongside it.
 - [ ] Extend the download-token redemption (`robot-delivery` ticket 02, `GET
       /download/:token`) or add a sibling route so the Cliente receives, alongside the
       `.ex5`, a small per-license config/license file containing the secret and `login`
@@ -29,6 +29,6 @@ human-in-the-loop scripting pattern to mirror.
 - [ ] Tests: provisioning script is idempotent-safe to re-run (re-provisioning rotates the
       secret deliberately, documented as the revoke-and-reissue path — a compromised license
       is revoked by rotating its secret, not by deleting the row), and the delivery route
-      serves a config file whose contents round-trip against what ticket 01's verify
+      serves a config file whose contents round-trip against what ticket 02's verify
       endpoint expects.
 - [ ] `pnpm test` and `pnpm run typecheck` pass.

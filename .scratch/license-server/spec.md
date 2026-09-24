@@ -113,6 +113,6 @@ new authenticated admin route.
   endpoint's path/auth (it needs no customer session — the robot calls it directly, so it's
   a new unauthenticated-but-signed surface, distinct from `customer-area`'s cookie-gated
   routes).
-- What exactly `payload` contains for 1.0.0's first cut — this spec treats it as opaque
-  bytes the robot consumes; the actual trading parameters it carries are a product decision
-  outside this spec's scope.
+- What exactly `payload` contains for 1.0.0's first cut — moved out of this list and into
+  ticket 01, which every other ticket is now blocked on; resolve there, then update this
+  spec's Solution (piece 4) to describe the payload concretely.

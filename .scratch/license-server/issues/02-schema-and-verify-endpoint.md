@@ -1,4 +1,4 @@
-# 01: Per-license secret/payload schema + verify endpoint
+# 02: Per-license secret/payload schema + verify endpoint
 
 **What to build:** the server side of the check-in — a D1 migration extending licensing
 with a per-license HMAC secret and payload, plus the `login + nonce` verify endpoint that
@@ -9,7 +9,7 @@ RSA/Ed25519), PLANNING.md §8 (fail-closed with tolerance, positions never aband
 robot-side half, but the server response must carry everything the robot needs to enforce
 it: `validade` truthfully, no partial/ambiguous states).
 
-**Blocked by:** —
+**Blocked by:** 01
 
 - [ ] Migration `0007_license_secrets.sql`: add `secret` (per-license HMAC key, generated
       server-side, never sent back in cleartext except at initial provisioning) and

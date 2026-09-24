@@ -114,8 +114,12 @@ async function onSubscriptionBecameActive(
 		return;
 	}
 
+	// `provider = 'appmax'` guards against ever matching a row created by
+	// the test-only Stripe driver (docs/adr/0005-stripe-test-driver.md) —
+	// same defense-in-depth stripe-webhook.ts's own CAS applies in reverse,
+	// even though the two gateways' id formats don't collide in practice.
 	const row = await env.DB.prepare(
-		'SELECT id FROM subscriptions WHERE (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+		"SELECT id FROM subscriptions WHERE provider = 'appmax' AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1"
 	)
 		.bind(ref.orderId, ref.subscriptionId)
 		.first<{ id: string }>();
@@ -161,7 +165,8 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	const result = await env.DB.prepare(
 		`UPDATE subscriptions
 		 SET status = ?, payment_method = COALESCE(?, payment_method), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-		 WHERE (appmax_order_id = ? OR appmax_subscription_id = ?)
+		 WHERE provider = 'appmax'
+		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
 		   AND CASE status
 		         WHEN 'pending' THEN 0 WHEN 'active' THEN 1 WHEN 'past_due' THEN 2 WHEN 'canceled' THEN 3
 		       END <= ?`

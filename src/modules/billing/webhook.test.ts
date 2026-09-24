@@ -127,6 +127,23 @@ describe('handleWebhook', () => {
 		expect(row).toBeNull();
 	});
 
+	it('never applies against a Stripe-provider row even if ids happened to collide (docs/adr/0005-stripe-test-driver.md)', async () => {
+		await env.DB.prepare(
+			"INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id) VALUES (?, ?, ?, 'stripe', ?)"
+		)
+			.bind('sub-stripe-collision', 'starter', 'pending', 'ord_stripe_collision')
+			.run();
+		mockAppmax({ status: 'aprovado' });
+
+		const result = await handleWebhook(
+			env,
+			JSON.stringify({ event: 'order.paid', order_id: 'ord_stripe_collision' })
+		);
+
+		expect(result).toEqual({ status: 200 });
+		expect(await statusOf('sub-stripe-collision')).toBe('pending');
+	});
+
 	it('responds 200 and does not throw for an unparseable body', async () => {
 		const result = await handleWebhook(env, 'not json');
 		expect(result).toEqual({ status: 200 });

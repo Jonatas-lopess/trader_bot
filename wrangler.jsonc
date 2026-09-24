@@ -29,11 +29,6 @@
 	"observability": {
 		"enabled": true
 	},
-	// Picks the Stripe test driver in factory.ts's selectProvider — anything
-	// but exactly "stripe" fails closed to Appmax (ADR-0005).
-	"vars": {
-		"PAYMENT_PROVIDER": "stripe"
-	},
 	// Holds the one fixed robot binary (CONTEXT.md — "Robô: one program, not a
 	// family of them"), streamed via this binding by `GET /download/:token`
 	// (PLANNING.md §8, §11).

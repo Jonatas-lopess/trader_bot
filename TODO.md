@@ -58,9 +58,9 @@ No spec.md — small enough to skip straight to tickets.
 | --- | --- | --- | --- |
 | 01 | [Download-token D1 schema + R2 binding scaffold](.scratch/robot-delivery/issues/01-download-token-schema-r2-scaffold.md) | — | done |
 | 02 | [Mint, dispatch, and redeem the download link](.scratch/robot-delivery/issues/02-mint-dispatch-redeem.md) | 01 | done |
-| 03 | [End-to-end verification — mint to download](.scratch/robot-delivery/issues/03-end-to-end-verification.md) | 02 | ready-for-agent |
+| 03 | [End-to-end verification — mint to download](.scratch/robot-delivery/issues/03-end-to-end-verification.md) | 02 | done |
 
-Frontier: **03**.
+All 3 tickets done.
 
 ## Untracked
 

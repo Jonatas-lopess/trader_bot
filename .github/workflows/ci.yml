@@ -94,4 +94,13 @@ jobs:
           # copies this step wholesale onto a different Environment — won't
           # inherit it: `vars.PAYMENT_PROVIDER` only resolves on Environments
           # where it's explicitly set.
-          command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}
+          #
+          # SENTRY_ENVIRONMENT follows the same pattern, tagging captured
+          # events with which deploy they came from
+          # (src/shared/sentry-environment.ts, sentry-integration/issues/07).
+          # Unset is fine either way — sentry.server.config.ts falls back to
+          # 'unconfigured' rather than Sentry's own 'production' default, so
+          # setting this "dev" Environment variable (e.g. to
+          # `workers-dev-test`) only sharpens the dashboard label, it isn't
+          # required for the test-phase deploy to stop reading as production.
+          command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}${{ vars.SENTRY_ENVIRONMENT && format(' --var SENTRY_ENVIRONMENT:{0}', vars.SENTRY_ENVIRONMENT) || '' }}

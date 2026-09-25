@@ -37,6 +37,16 @@ declare global {
 			APPMAX_WEBHOOK_IPS?: string;
 			/** Sentry DSN (sentry.server.config.ts). Unset locally/pre-account — Sentry.withSentry's `enabled` gates on its presence, no behavior change either way. */
 			SENTRY_DSN?: string;
+			/**
+			 * Distinguishes which deploy a captured Sentry event came from
+			 * (src/shared/sentry-environment.ts). Not a wrangler.jsonc `var`: this
+			 * repo has no per-environment wrangler.jsonc blocks, and baking one
+			 * value into the flat config would apply identically to every deploy
+			 * target — same reason `PAYMENT_PROVIDER` is injected via `--var` at
+			 * deploy time in ci.yml rather than committed. Unset falls back to
+			 * `'unconfigured'`, never Sentry's own `'production'` default.
+			 */
+			SENTRY_ENVIRONMENT?: string;
 		}
 	}
 	// `@astrojs/cloudflare`'s own generated Worker handler types its `env`

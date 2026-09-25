@@ -6,6 +6,10 @@ SESSION_SECRET=
 # Unset ships fine — Sentry.withSentry gates on this being present
 # (sentry.server.config.ts), same convention as Appmax/Resend above.
 SENTRY_DSN=
+# Tags captured events so the dashboard can tell deploys apart. Unset falls
+# back to 'unconfigured' (src/shared/sentry-environment.ts) rather than
+# Sentry's own 'production' default.
+SENTRY_ENVIRONMENT=
 # Test-only stopgap (docs/adr/0005-stripe-test-driver.md) — leave unset/appmax
 # unless you're testing checkout locally against Stripe while Appmax
 # onboarding is blocked. Never set to stripe in a deployed environment.

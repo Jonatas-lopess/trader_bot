@@ -71,7 +71,7 @@ tracked as a known risk, not a solved problem.
 | Database | D1 | Single store for all application state |
 | Object storage | R2 | Robot binary, served through a Worker binding |
 | Email | Resend | Plain `fetch`, no SDK |
-| Error tracking | `@sentry/cloudflare`, `Sentry.withSentry` as the outermost Worker export (`sentry.server.config.ts`) | Error capture only, `tracesSampleRate: 0` — no stated need for performance tracing yet. Unset `SENTRY_DSN` ships fine, same gate convention as Appmax/Resend |
+| Error tracking | `@sentry/cloudflare`, `Sentry.withSentry` as the outermost Worker export (`sentry.server.config.ts`) | Error capture only, `tracesSampleRate: 0` — no stated need for performance tracing yet. Unset `SENTRY_DSN` ships fine, same gate convention as Appmax/Resend. `environment` tag read per-request off `SENTRY_ENVIRONMENT`, falling back to `'unconfigured'` rather than Sentry's own `'production'` default (sentry-integration/issues/07) |
 | Styling | Tailwind v4, `@theme` tokens | Figma file defines zero variables; tokens authored by hand |
 | Icons | `@lucide/astro` | Per-icon Astro components, tree-shaken to only what's imported. `lucide-astro` (no scope) is deprecated upstream in favour of this package — do not add it |
 | Analytics | Cloudflare Web Analytics | Cookieless, no consent banner required |

@@ -26,17 +26,18 @@ failures**, not every branch that returns early.
 
 **Category:** enhancement
 
-**Status:** phase 1 done — findings below; phase 2 (adding capture calls) needs maintainer
-sign-off on which findings to act on before starting
+**Status:** phase 2 done — maintainer sign-off given via direct `/implement sentry-integration
+05 phase 2` invocation, acting on the sole finding (`robot-binary.ts`'s R2-missing branch).
+No other candidate module had an agreed site.
 
-- [ ] Repo-wide grep/review for caught-and-handled failure branches outside
+- [x] Repo-wide grep/review for caught-and-handled failure branches outside
       `src/modules/billing/` that currently only log to console or nothing at all
-- [ ] Findings written up per-site (file, condition, why it's a friction point worth paging
+- [x] Findings written up per-site (file, condition, why it's a friction point worth paging
       on vs. expected/noisy) before any capture code is added
-- [ ] Agreed sites get `Sentry.captureException`/`captureMessage` with structured context,
+- [x] Agreed sites get `Sentry.captureException`/`captureMessage` with structured context,
       additive to existing `console.error`
-- [ ] Existing tests extended per site to assert capture fires under the triggering condition
-- [ ] `pnpm test` and `pnpm run typecheck` pass
+- [x] Existing tests extended per site to assert capture fires under the triggering condition
+- [x] `pnpm test` and `pnpm run typecheck` pass
 
 ## Agent Brief
 
@@ -131,3 +132,10 @@ the same file, which is deliberately byte-identical and unlogged by design (tick
   `licensing/resend-client.ts`'s `sendDownloadLinkEmail`, reachable solely through
   `dispatch.ts` → `scripts/send-download-link.ts` (confirmed by grep — no other caller).
   Same script-scope exclusion as above.
+
+### Phase 2
+
+`streamRobotBinary`'s R2-missing branch now calls `Sentry.captureMessage('streamRobotBinary:
+R2 object missing', { extra: { key } })` alongside the existing `console.error`, additive per
+ticket convention. Test extended to assert the capture fires when the fixture object is
+deleted. `pnpm test` (112 passed) and `pnpm run typecheck` (0 errors) both pass.

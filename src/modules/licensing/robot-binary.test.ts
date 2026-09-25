@@ -1,12 +1,20 @@
 import { env } from 'cloudflare:workers';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as Sentry from '@sentry/cloudflare';
 import { ROBOT_BINARY_BYTES, ROBOT_BINARY_CONTENT_TYPE, ROBOT_BINARY_KEY } from '../../../test/robot-binary-fixture';
 import { streamRobotBinary } from './robot-binary';
+
+vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
 
 // The "binary storage" concern PLANNING.md §4 lists for `modules/licensing`
 // — CONTEXT.md: "Robô: one program, not a family of them", so this reads
 // one fixed R2 key, no per-plan variant.
 describe('streamRobotBinary', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
 	it('streams the fixture object with its content type, filename, and size', async () => {
 		const result = await streamRobotBinary(env);
 
@@ -26,5 +34,9 @@ describe('streamRobotBinary', () => {
 		const result = await streamRobotBinary(env);
 
 		expect(result).toEqual({ ok: false });
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('R2 object missing'),
+			expect.objectContaining({ extra: expect.objectContaining({ key: ROBOT_BINARY_KEY }) })
+		);
 	});
 });

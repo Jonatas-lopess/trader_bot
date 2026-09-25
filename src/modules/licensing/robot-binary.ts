@@ -12,6 +12,8 @@
  * blocked outright").
  */
 
+import * as Sentry from '@sentry/cloudflare';
+
 const ROBOT_BINARY_KEY = 'robo-trader.ex5';
 const DEFAULT_CONTENT_TYPE = 'application/octet-stream';
 
@@ -23,7 +25,16 @@ export type StreamRobotBinaryResult =
 
 export async function streamRobotBinary(env: RobotBinaryEnv): Promise<StreamRobotBinaryResult> {
 	const object = await env.ROBOT_BINARY.get(ROBOT_BINARY_KEY);
-	if (object === null) return { ok: false };
+	if (object === null) {
+		// The one fixed object "should always be there" (header comment above)
+		// — unlike the token-expired/unknown-token 404 branch, this is not an
+		// ordinary outcome, so it pages (ticket 05 audit finding).
+		console.error(`streamRobotBinary: R2 object missing for key=${ROBOT_BINARY_KEY}`);
+		Sentry.captureMessage('streamRobotBinary: R2 object missing', {
+			extra: { key: ROBOT_BINARY_KEY },
+		});
+		return { ok: false };
+	}
 
 	return {
 		ok: true,

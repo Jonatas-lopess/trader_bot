@@ -1,0 +1,22 @@
+# 04: Source-map upload and a correct `environment` tag
+
+**What to build:** two related dashboard-readability gaps found while verifying ticket 01,
+deliberately deferred out of it (user: "add it later"):
+
+1. **No source maps uploaded.** Any real deploy (even the workers.dev test route, not just a
+   future production one) ships the Vite-bundled `dist/server/entry.mjs` and its chunks —
+   minified, renamed. A captured exception's stack trace in the Sentry dashboard currently
+   resolves to that renamed chunk output (confirmed on the ticket-01 verification event:
+   `Module.GET(debug-sentry_BLY-NfUD.mjs)`), not original `file:line`. Needs a source-map
+   upload step (Sentry's Vite plugin or CLI, wired into the build/deploy) plus a Sentry
+   auth-token secret in CI.
+2. **`environment` tag defaults to `"production"`.** `sentry.server.config.ts`'s
+   `Sentry.withSentry` options don't set `environment`, so Sentry's own default applies —
+   confirmed on the same verification event. Misleading once this is deployed to the
+   workers.dev test route (PLANNING.md §12: not production), and doubly so once a real
+   production deploy exists alongside it. Needs a value that actually distinguishes the two
+   (an env var, a `wrangler.jsonc` var per environment, or similar — not yet decided).
+
+**Blocked by:** 01 (both need the wrapper this ticket's dashboard evidence came from).
+
+**Status:** needs-triage

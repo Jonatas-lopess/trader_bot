@@ -98,11 +98,12 @@ No spec.md — small enough to skip straight to tickets.
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Wire Sentry into the Worker](.scratch/sentry-integration/issues/01-wire-sentry-into-worker.md) | — | ready-for-agent |
-| 02 | [Report the 3 known caught-and-handled failures](.scratch/sentry-integration/issues/02-report-caught-failures.md) | 01 | ready-for-agent |
-| 03 | [Report webhook-hardening's security-relevant rejections](.scratch/sentry-integration/issues/03-report-webhook-hardening-rejections.md) | 01 | ready-for-agent |
+| 01 | [Wire Sentry into the Worker](.scratch/sentry-integration/issues/01-wire-sentry-into-worker.md) | — | done |
+| 02 | [Report the 3 known caught-and-handled failures](.scratch/sentry-integration/issues/02-report-caught-failures.md) | 01 | done |
+| 03 | [Report webhook-hardening's security-relevant rejections](.scratch/sentry-integration/issues/03-report-webhook-hardening-rejections.md) | 01 | done |
+| 04 | [Source-map upload and a correct `environment` tag](.scratch/sentry-integration/issues/04-sourcemaps-and-environment-tag.md) | 01 | needs-triage |
 
-Frontier: **01** (unblocked, ready-for-agent) — 02 and 03 both wait on it, independent of each other.
+Frontier: **04** — dashboard-readability follow-up, not yet scoped.
 
 ## Untracked
 

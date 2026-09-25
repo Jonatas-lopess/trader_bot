@@ -1,7 +1,10 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as Sentry from '@sentry/cloudflare';
 import { redeemMagicLink, requestMagicLink } from './magic-link';
 import { isSessionValid, verifySessionCookie } from './session';
+
+vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
 
 function mockResend() {
 	return vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(null, { status: 200 }));
@@ -30,6 +33,7 @@ async function seedToken(token: string, customerId: string, opts: { expired?: bo
 describe('magic-link', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('a matching email gets a token and an email is sent', async () => {
@@ -43,6 +47,7 @@ describe('magic-link', () => {
 			.bind('cust-ml-match')
 			.all();
 		expect(results).toHaveLength(1);
+		expect(Sentry.captureMessage).not.toHaveBeenCalled();
 	});
 
 	it('a non-matching email sends no email — same externally-observable outcome as a match being throttled', async () => {
@@ -61,6 +66,10 @@ describe('magic-link', () => {
 		await requestMagicLink(env, { email: 'send-fail@example.com', ip: '203.0.113.9', origin: 'https://example.com' });
 
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('cust-ml-send-fail'));
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('Resend send failed'),
+			expect.objectContaining({ extra: expect.objectContaining({ customer_id: 'cust-ml-send-fail' }) })
+		);
 		const { results } = await env.DB.prepare('SELECT * FROM login_tokens WHERE customer_id = ?')
 			.bind('cust-ml-send-fail')
 			.all();

@@ -9,6 +9,7 @@
  * token is single-use-checked-and-consumed, atomically.
  */
 
+import * as Sentry from '@sentry/cloudflare';
 import { sendMagicLinkEmail } from './resend-client';
 import { createSession } from './session';
 
@@ -50,6 +51,9 @@ export async function issueMagicLink(
 	// unchanged, this is purely for ops visibility (customer-area ticket 06).
 	if (!sent.ok) {
 		console.error(`issueMagicLink: Resend send failed for customer_id=${params.customerId}`);
+		Sentry.captureMessage('issueMagicLink: Resend send failed', {
+			extra: { customer_id: params.customerId, email: params.email },
+		});
 	}
 	return { ok: sent.ok };
 }

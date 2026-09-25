@@ -35,8 +35,15 @@ declare global {
 			 * fail open — a go-live gate (PLANNING.md §12), not a build blocker.
 			 */
 			APPMAX_WEBHOOK_IPS?: string;
+			/** Sentry DSN (sentry.server.config.ts). Unset locally/pre-account — Sentry.withSentry's `enabled` gates on its presence, no behavior change either way. */
+			SENTRY_DSN?: string;
 		}
 	}
+	// `@astrojs/cloudflare`'s own generated Worker handler types its `env`
+	// param against the bare global `Env`, not `Cloudflare.Env` — only
+	// relevant to sentry.server.config.ts, which wraps that handler directly.
+	// Extends rather than duplicates the secrets declared above.
+	interface Env extends Cloudflare.Env {}
 }
 
 export {};

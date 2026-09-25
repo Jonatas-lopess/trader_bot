@@ -13,6 +13,7 @@
  * `src/pages/billing/webhook.ts` is the thin Astro adapter around this.
  */
 
+import * as Sentry from '@sentry/cloudflare';
 import { fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
@@ -105,6 +106,9 @@ async function onSubscriptionBecameActive(
 		console.error(
 			`onSubscriptionBecameActive: no email field on Appmax's authoritative response for order_id=${ref.orderId ?? 'null'} subscription_id=${ref.subscriptionId ?? 'null'} — customers row not created`
 		);
+		Sentry.captureMessage("onSubscriptionBecameActive: no email field on Appmax's authoritative response", {
+			extra: { order_id: ref.orderId, subscription_id: ref.subscriptionId },
+		});
 		return;
 	}
 
@@ -174,6 +178,26 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 			{ orderId: event.orderId, subscriptionId: event.subscriptionId },
 			authoritative.email
 		);
+	}
+
+	// `result.meta.changes === 0` is ambiguous by itself: a genuinely
+	// unmatched ref and a rigidity-blocked stale event (out-of-order
+	// delivery, expected/benign) both land here. Only the former is worth
+	// reporting — resolved by a second lookup, same ref-matching query
+	// `onSubscriptionBecameActive` already uses.
+	if (result.meta.changes === 0) {
+		const existing = await findSubscriptionIdByProviderRef(env, 'appmax', {
+			orderId: event.orderId,
+			subscriptionId: event.subscriptionId,
+		});
+		if (existing === null) {
+			console.error(
+				`handleWebhook: no subscription row matches order_id=${event.orderId ?? 'null'} subscription_id=${event.subscriptionId ?? 'null'}`
+			);
+			Sentry.captureMessage('handleWebhook: no subscription row matches order/subscription id', {
+				extra: { order_id: event.orderId, subscription_id: event.subscriptionId },
+			});
+		}
 	}
 
 	return { status: 200 };

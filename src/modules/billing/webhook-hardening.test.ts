@@ -1,7 +1,10 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as Sentry from '@sentry/cloudflare';
 import { checkWebhookRequest } from './webhook-hardening';
 import { handleWebhook } from './webhook';
+
+vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
 
 const ALLOWED_IP = '203.0.113.10';
 const validPayload = JSON.stringify({ event: 'order.paid', order_id: 'ord_hardening' });
@@ -13,6 +16,7 @@ function envWithAllowedIp() {
 describe('checkWebhookRequest', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('lets a legitimate request pass through to be processed by the core handler', async () => {
@@ -48,11 +52,19 @@ describe('checkWebhookRequest', () => {
 			rawBody: validPayload,
 		});
 		expect(result).toEqual({ ok: false, status: 403 });
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('source IP not on allowlist'),
+			expect.objectContaining({ extra: expect.objectContaining({ source_ip: '198.51.100.1' }) })
+		);
 	});
 
 	it('rejects a request with no source IP at all', async () => {
 		const result = await checkWebhookRequest(envWithAllowedIp(), { sourceIp: null, rawBody: validPayload });
 		expect(result).toEqual({ ok: false, status: 403 });
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('source IP not on allowlist'),
+			expect.objectContaining({ extra: expect.objectContaining({ source_ip: null }) })
+		);
 	});
 
 	it('fails closed when APPMAX_WEBHOOK_IPS is unconfigured (empty)', async () => {
@@ -66,6 +78,10 @@ describe('checkWebhookRequest', () => {
 			rawBody: 'not json',
 		});
 		expect(result).toEqual({ ok: false, status: 400 });
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('payload does not match expected shape'),
+			expect.objectContaining({ extra: expect.objectContaining({ source_ip: ALLOWED_IP }) })
+		);
 	});
 
 	it('lets a well-formed request from an allowed IP through', async () => {
@@ -74,6 +90,7 @@ describe('checkWebhookRequest', () => {
 			rawBody: validPayload,
 		});
 		expect(result).toEqual({ ok: true });
+		expect(Sentry.captureMessage).not.toHaveBeenCalled();
 	});
 
 	// The real WEBHOOK_RATE_LIMITER binding (wrangler.jsonc, Cloudflare's own
@@ -98,5 +115,8 @@ describe('checkWebhookRequest', () => {
 
 		expect(result).toEqual({ ok: false, status: 429 });
 		expect(floodEnv.WEBHOOK_RATE_LIMITER.limit).toHaveBeenCalledWith({ key: ALLOWED_IP });
+		// Ordinary throttling is expected noise, not an error worth alerting
+		// on (sentry-integration ticket 03 — 429 deliberately excluded).
+		expect(Sentry.captureMessage).not.toHaveBeenCalled();
 	});
 });

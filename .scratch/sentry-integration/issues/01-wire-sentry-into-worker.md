@@ -27,7 +27,7 @@ performance tracing — this repo has no stated need for it yet.
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `@sentry/cloudflare` added as a dependency
 - [ ] Worker's exported fetch handler wrapped in `Sentry.withSentry`, DSN + `enabled` shape
@@ -42,3 +42,40 @@ performance tracing — this repo has no stated need for it yet.
       confirmed in the Sentry dashboard, **then the route deleted** — same
       verify-then-remove pattern as `projeto_ebd`'s own `/debug-sentry`
 - [ ] `pnpm run typecheck` passes
+
+## Comments
+
+**No `src/index.ts` to wrap — Astro generates its own entry.** Unlike `projeto_ebd`'s Hono
+app, this repo's Worker is entirely `@astrojs/cloudflare`-generated (`output: 'static'`,
+per-page `prerender = false`); there's no hand-written top-level export. The adapter's own
+convention resolves its Vite/Rollup SSR entry from whatever `wrangler.jsonc`'s `main` field
+names (defaulting to `@astrojs/cloudflare/entrypoints/server` when unset) — confirmed against
+`@astrojs/cloudflare`'s own `cloudflareConfigCustomizer` source and Sentry's own
+"Astro on Cloudflare Workers" docs, which document exactly this pattern. So: `wrangler.jsonc`'s
+`main` now points at `sentry.server.config.ts` (repo root, mirroring Sentry's own doc example),
+which imports the adapter's default export from `@astrojs/cloudflare/entrypoints/server` and
+wraps it in `Sentry.withSentry`. `astro build` picks this up and bundles Sentry straight into
+`dist/server/entry.mjs` (confirmed: `grep -c Sentry` on the built output, upload size grew
+~700 KiB → ~1090 KiB); `wrangler deploy --dry-run` resolves and lists it cleanly.
+
+**This broke `@cloudflare/vitest-pool-workers`.** It reads `wrangler.jsonc` directly
+(`vitest.config.ts`'s `wrangler.configPath`) and, once `main` was genuinely present, tried to
+statically load `sentry.server.config.ts` as the test pool's worker — which fails standalone
+(`@astrojs/cloudflare/entrypoints/server` needs a Vite virtual module only resolvable inside
+Astro's own build, not under plain miniflare). Fixed by giving the test pool its own trivial
+stand-in (`test/worker-entry.ts`) via `vitest.config.ts`'s top-level `main` option, which
+pre-empts the `wrangler.jsonc`-derived one — tests call exported functions directly and never
+hit a fetch handler, so this only needs to exist so miniflare has something loadable.
+
+**Verified against a real DSN** (`wrangler dev` on the built output, `curl /debug-sentry` once
+— `GET /debug-sentry 200 OK`), event confirmed by the user in the Sentry dashboard (issue
+7754898234, "Error: test event", `runtime.name: cloudflare`), route then deleted.
+
+**Follow-ups, deliberately out of scope here** (user: "add it later"):
+- Source-map upload on deploy — dashboard stack traces on any real deploy (even the
+  workers.dev test route) currently resolve to renamed/minified Vite chunk output, not
+  original file:line. Needs a CI step + auth-token secret; bigger than this ticket.
+- The captured test event's `environment` tag defaulted to `"production"` (Sentry's own
+  default when `Sentry.withSentry`'s options don't set `environment`) — misleading for a
+  workers.dev test-phase deploy. Worth setting explicitly once source-map/environment wiring
+  is tackled together.

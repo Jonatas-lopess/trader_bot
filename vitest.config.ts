@@ -21,6 +21,12 @@ export default defineConfig({
 		cloudflareTest(async () => {
 			const migrations = await readD1Migrations(path.join(import.meta.dirname, 'migrations'));
 			return {
+				// Explicit `main` pre-empts wrangler.jsonc's own `main`
+				// (sentry.server.config.ts) — that file imports
+				// `@astrojs/cloudflare/entrypoints/server`, loadable only inside
+				// Astro's own Vite build, not standalone under miniflare
+				// (sentry-integration/issues/01; see test/worker-entry.ts).
+				main: './test/worker-entry.ts',
 				wrangler: { configPath: './wrangler.jsonc' },
 				miniflare: {
 					bindings: {

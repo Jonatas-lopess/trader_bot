@@ -3,6 +3,9 @@ APPMAX_CLIENT_SECRET=
 APPMAX_WEBHOOK_IPS=
 RESEND_API_KEY=
 SESSION_SECRET=
+# Unset ships fine — Sentry.withSentry gates on this being present
+# (sentry.server.config.ts), same convention as Appmax/Resend above.
+SENTRY_DSN=
 # Test-only stopgap (docs/adr/0005-stripe-test-driver.md) — leave unset/appmax
 # unless you're testing checkout locally against Stripe while Appmax
 # onboarding is blocked. Never set to stripe in a deployed environment.

@@ -1,6 +1,10 @@
 {
 	"$schema": "./node_modules/wrangler/config-schema.json",
 	"name": "trader-bot",
+	// Overrides the Astro Cloudflare adapter's default entrypoint so the
+	// Worker's exported fetch handler can be wrapped in Sentry.withSentry
+	// (sentry.server.config.ts) — sentry-integration/issues/01.
+	"main": "./sentry.server.config.ts",
 	// Pinned behind today's date: the installed @cloudflare/vitest-pool-workers
 	// (0.22.0, latest published) bundles a workerd binary whose newest
 	// supported compatibility date is 2026-08-22 — a newer date makes the

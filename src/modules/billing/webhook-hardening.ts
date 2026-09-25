@@ -7,6 +7,7 @@
  * reject early; they don't grant trust to anything that passes.
  */
 
+import * as Sentry from '@sentry/cloudflare';
 import { parseWebhookPayload } from './appmax-client';
 
 type HardeningEnv = Pick<Cloudflare.Env, 'APPMAX_WEBHOOK_IPS' | 'WEBHOOK_RATE_LIMITER'>;
@@ -51,16 +52,33 @@ export async function checkWebhookRequest(
 	env: HardeningEnv,
 	params: { sourceIp: string | null; rawBody: string }
 ): Promise<HardeningResult> {
-	if (!isAllowedSourceIp(env, params.sourceIp)) return { ok: false, status: 403 };
+	if (!isAllowedSourceIp(env, params.sourceIp)) {
+		// Visible in Sentry so a false reject (once APPMAX_WEBHOOK_IPS carries
+		// Appmax's real list, PLANNING.md §12) is diagnosable from the event
+		// alone, not only inferred from "webhook never confirmed" support
+		// tickets.
+		Sentry.captureMessage('webhook-hardening: rejected — source IP not on allowlist', {
+			extra: { source_ip: params.sourceIp, rejection_reason: 'ip_not_allowlisted' },
+		});
+		return { ok: false, status: 403 };
+	}
 
 	// Rate-limited by source, regardless of payload validity — a flood of
 	// malformed posts must not even reach the shape check or D1, let alone
 	// webhook.ts's own D1 writes and Appmax re-fetch (user story 12).
+	// Deliberately no Sentry capture here: ordinary throttling (a burst of
+	// legitimate Appmax retries) is expected noise, not an error worth
+	// alerting on — same stance as projeto_ebd's own rate-limit middleware.
 	if (!(await isWithinRateLimit(env, params.sourceIp ?? 'unknown'))) {
 		return { ok: false, status: 429 };
 	}
 
-	if (!hasValidPayloadShape(params.rawBody)) return { ok: false, status: 400 };
+	if (!hasValidPayloadShape(params.rawBody)) {
+		Sentry.captureMessage('webhook-hardening: rejected — payload does not match expected shape', {
+			extra: { source_ip: params.sourceIp, rejection_reason: 'invalid_payload_shape' },
+		});
+		return { ok: false, status: 400 };
+	}
 
 	return { ok: true };
 }

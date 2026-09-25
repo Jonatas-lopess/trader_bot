@@ -23,7 +23,7 @@ console template string) call.
 
 **Blocked by:** 01 (needs the SDK wired in before anything can call `captureException`)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] All 3 sites call `Sentry.captureException`/`captureMessage` with structured context
       (order_id/subscription_id/customer_id/email as available)
@@ -33,3 +33,24 @@ console template string) call.
 - [ ] Existing unit tests for `webhook.ts` and `magic-link.ts` extended to assert the
       capture call fires under each of the 3 triggering conditions (mock `Sentry.captureException`)
 - [ ] `pnpm test` and `pnpm run typecheck` pass
+
+## Comments
+
+**Site 2 had no existing `console.error` to be additive to** — unlike sites 1 and 3, a CAS
+update landing zero changes was previously silent either way (stale/out-of-order event and
+genuinely-unmatched ref were indistinguishable, and neither logged). Added a
+`console.error` alongside the new `Sentry.captureMessage` call there too, matching the other
+two sites' double-write pattern, rather than leaving it Sentry-only.
+
+**Site 2 placed in `webhook.ts` (Appmax) only, not `stripe-webhook.ts`** — Appmax is the
+committed production gateway (ADR-0003); Stripe is a test-only stopgap (docs/adr/0005) that
+never runs in production. The ticket's "wherever the equivalent lives" read as picking one
+canonical site, not duplicating into the test-only driver too.
+
+**Site 2 needed a way to tell "no matching row" apart from "row exists, rigidity blocked it"**
+(an expected out-of-order/stale delivery, not an error) — `result.meta.changes === 0` alone
+can't distinguish them. Resolved with a second lookup via
+`findSubscriptionIdByProviderRef` (already shared with `onSubscriptionBecameActive`): only
+capture when that also comes back `null`. Covered by two new test assertions — the existing
+"no matching row" test now asserts the capture fires, and the existing "out-of-order
+delivery" test now asserts it does not.

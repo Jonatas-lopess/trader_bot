@@ -16,7 +16,7 @@ Appmax retries hitting `WEBHOOK_RATE_LIMITER` is not a signal anyone needs paged
 
 **Blocked by:** 01 (needs the SDK wired in before anything can call `captureException`)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] The 403 (IP-allowlist) rejection path calls `Sentry.captureException`/`captureMessage`
       with the rejected source IP
@@ -26,3 +26,12 @@ Appmax retries hitting `WEBHOOK_RATE_LIMITER` is not a signal anyone needs paged
 - [ ] Existing tests for `webhook-hardening.ts` extended to assert capture fires on the 403
       and 400 paths and does not fire on the 429 path
 - [ ] `pnpm test` and `pnpm run typecheck` pass
+
+## Comments
+
+Both captures carry `source_ip` (`null` when the request had none at all); the 400 path
+carries a fixed `rejection_reason: 'invalid_payload_shape'` string rather than a
+finer-grained reason — `hasValidPayloadShape` only ever returns a boolean today, no detail
+to surface beyond "didn't match the expected shape". Tests assert the capture fires on both
+403 and 400, and explicitly assert it does *not* fire on 429 or on a legitimate
+allowed-IP/well-formed request.

@@ -1,6 +1,9 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as Sentry from '@sentry/cloudflare';
 import { handleWebhook } from './webhook';
+
+vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
 
 function mockAppmax(status: { status: string; paymentMethod?: string; email?: string }) {
 	return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
@@ -57,6 +60,7 @@ async function statusOf(id: string): Promise<string> {
 describe('handleWebhook', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('confirms a pending subscription to active by re-fetching Appmax, never trusting the payload status', async () => {
@@ -110,6 +114,9 @@ describe('handleWebhook', () => {
 
 		expect(result).toEqual({ status: 200 });
 		expect(await statusOf('sub-stale')).toBe('canceled');
+		// Row exists, just rigidity-blocked — expected out-of-order delivery,
+		// not a "no matching row" condition (sentry-integration ticket 02).
+		expect(Sentry.captureMessage).not.toHaveBeenCalled();
 	});
 
 	it('ignores a webhook for an order/subscription with no matching row — no error, no new row', async () => {
@@ -125,6 +132,10 @@ describe('handleWebhook', () => {
 			.bind('ord_unknown_ref')
 			.first();
 		expect(row).toBeNull();
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('no subscription row matches'),
+			expect.objectContaining({ extra: expect.objectContaining({ order_id: 'ord_unknown_ref' }) })
+		);
 	});
 
 	it('never applies against a Stripe-provider row even if ids happened to collide (docs/adr/0005-stripe-test-driver.md)', async () => {
@@ -201,5 +212,9 @@ describe('handleWebhook', () => {
 
 		expect(await customerFor('sub-no-email')).toBeNull();
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('ord_no_email'));
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('no email field'),
+			expect.objectContaining({ extra: expect.objectContaining({ order_id: 'ord_no_email' }) })
+		);
 	});
 });

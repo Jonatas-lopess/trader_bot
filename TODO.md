@@ -102,8 +102,10 @@ No spec.md — small enough to skip straight to tickets.
 | 02 | [Report the 3 known caught-and-handled failures](.scratch/sentry-integration/issues/02-report-caught-failures.md) | 01 | done |
 | 03 | [Report webhook-hardening's security-relevant rejections](.scratch/sentry-integration/issues/03-report-webhook-hardening-rejections.md) | 01 | done |
 | 04 | [Source-map upload and a correct `environment` tag](.scratch/sentry-integration/issues/04-sourcemaps-and-environment-tag.md) | 01 | needs-triage |
+| 05 | [Identify and report remaining friction points](.scratch/sentry-integration/issues/05-audit-remaining-friction-points.md) | 01 | needs-triage |
 
-Frontier: **04** — dashboard-readability follow-up, not yet scoped.
+Frontier: **04** — dashboard-readability follow-up, not yet scoped. **05** — repo-wide audit
+outside billing, not yet scoped.
 
 ## Untracked
 

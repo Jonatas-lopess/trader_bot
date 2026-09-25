@@ -33,11 +33,13 @@ Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) �
 | 05 | [Intermediate confirmation page](.scratch/checkout-webhooks/issues/05-intermediate-confirmation-page.md) | 02, 03 | done |
 | 06 | [Webhook hardening — IP filter, payload validation, rate limit](.scratch/checkout-webhooks/issues/06-webhook-hardening.md) | 04 | done |
 | 07 | [End-to-end verification — happy path, boleto branch, concurrency](.scratch/checkout-webhooks/issues/07-end-to-end-verification.md) | 04, 05, 06 | done |
-| 08 | [No event-ordering tiebreak in the webhook status CAS](.scratch/checkout-webhooks/issues/08-webhook-status-tiebreak.md) | — | needs-triage |
+| 08 | [No event-ordering tiebreak in the webhook status CAS](.scratch/checkout-webhooks/issues/08-webhook-status-tiebreak.md) | — | wontfix |
 | 09 | [`--var PAYMENT_PROVIDER:stripe` on the deploy job must not ship to real production](.scratch/checkout-webhooks/issues/09-revert-payment-provider-before-golive.md) | — | done |
 
-Tickets 01-07, 09 done. 08 open (needs-triage) — found via cross-repo comparison, doesn't
-block current test-phase work. 09 closed by making the flag self-dropping (deploy-Environment
+All 9 tickets closed. 08 traced and closed `wontfix` — real but narrow race (transient
+`payment_method` staleness, Appmax-only, self-corrects next delivery), and no gateway
+timestamp field exists to build a real tiebreak on without trusting the payload or an
+unverified Appmax field. 09 closed by making the flag self-dropping (deploy-Environment
 variable, not a literal) rather than by scoping a removal — see ticket for the required
 one-time manual step (set `PAYMENT_PROVIDER=stripe` on the "dev" Environment before next
 push to main).

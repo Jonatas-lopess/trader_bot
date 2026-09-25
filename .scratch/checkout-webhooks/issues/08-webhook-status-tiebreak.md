@@ -10,7 +10,7 @@ Governing docs: spec.md's "D1 concurrency — compare-and-swap, not read-then-wr
 
 **Blocked by:** none — informational finding, not yet scoped.
 
-**Status:** needs-triage
+**Status:** wontfix
 
 ## Problem
 
@@ -40,6 +40,41 @@ stored procedures, so that exact approach doesn't port as-is.
   is built around).
 - Scope: this affects both `webhook.ts` (Appmax) and `stripe-webhook.ts` (Stripe) since
   both now share `subscription-lookup.ts`'s `STATUS_RIGIDITY`/CAS SQL.
+
+## Answer
+
+Both handlers re-fetch *authoritative* status live from the gateway at processing time
+(`fetchAuthoritativeStatus`, spec.md's trust model) — the payload's own status is never
+trusted. So the race isn't "stale payload beats fresh payload": it's that two concurrent
+deliveries each independently query the gateway, each getting whatever's true at that
+instant, then race to `UPDATE` in D1. The CAS only gates on rigidity bucket, not on when
+each fetch happened, so whichever `UPDATE` lands last in D1 wins even if its own fetch
+was chronologically earlier.
+
+Actual exposure, traced through `webhook.ts`/`stripe-webhook.ts`/`appmax-client.ts`/
+`stripe-client.ts`:
+
+- `status` itself can't regress to something *wrong* — same-rigidity means both fetches
+  returned the same bucket from the live gateway, so a "stale write wins" only reverts to
+  an older-but-still-valid value in that bucket, not a fabricated one.
+- The one field actually at risk is `payment_method` (`COALESCE(?, payment_method)`),
+  Appmax-only — Stripe's driver returns `paymentMethod: 'card'` unconditionally once a
+  subscription exists, so `stripe-webhook.ts` isn't exposed. Worst case: a boleto/pix
+  method transiently reverts to `null`/an older value.
+- Self-healing: the next real delivery re-fetches truth and re-applies, so any wrong
+  `payment_method` doesn't persist past one more webhook.
+- No fix is buildable without a worse trade-off: neither gateway's authoritative
+  response carries a timestamp/sequence field to bind a real tiebreak on
+  (`FetchAuthoritativeStatusResult` in both appmax-client.ts and stripe-client.ts —
+  `status`/`paymentMethod`/`email` only). A tiebreak would have to either trust a
+  payload-supplied timestamp (breaks the "authoritative fetch, not payload" trust model
+  this whole design is built on) or depend on an Appmax response field that's unverified
+  to even exist (appmax-client.ts's own "UNVERIFIED CONTRACT" header).
+
+Not worth building: real but narrow (one field, one gateway, self-correcting), and the
+only implementable fixes cost more architecturally than the bug is worth. Closing as
+`wontfix` rather than leaving it open against a fix that isn't buildable on what
+`fetchAuthoritativeStatus` actually returns.
 
 ## Comments
 

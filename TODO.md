@@ -102,12 +102,13 @@ No spec.md — small enough to skip straight to tickets.
 | 02 | [Report the 3 known caught-and-handled failures](.scratch/sentry-integration/issues/02-report-caught-failures.md) | 01 | done |
 | 03 | [Report webhook-hardening's security-relevant rejections](.scratch/sentry-integration/issues/03-report-webhook-hardening-rejections.md) | 01 | done |
 | 04 | [Source-map upload and a correct `environment` tag](.scratch/sentry-integration/issues/04-sourcemaps-and-environment-tag.md) | 01 | split — see 06, 07 |
-| 05 | [Identify and report remaining friction points](.scratch/sentry-integration/issues/05-audit-remaining-friction-points.md) | 01 | ready-for-agent (write-up only) |
+| 05 | [Identify and report remaining friction points](.scratch/sentry-integration/issues/05-audit-remaining-friction-points.md) | 01 | phase 1 done — see ticket |
 | 06 | [Source-map upload on deploy](.scratch/sentry-integration/issues/06-sourcemap-upload.md) | 01 | ready-for-human |
-| 07 | [Correct `environment` tag on captured events](.scratch/sentry-integration/issues/07-environment-tag.md) | 01 | ready-for-agent |
+| 07 | [Correct `environment` tag on captured events](.scratch/sentry-integration/issues/07-environment-tag.md) | 01 | done |
 
-Frontier: **06** — needs a human to create a Sentry auth token and add it to CI first. **07**
-and **05** — ready for an AFK agent to pick up now.
+Frontier: **06** — needs a human to create a Sentry auth token and add it to CI first. **05**'s
+phase 2 (adding capture calls for the one finding) needs maintainer sign-off before an agent
+can pick it up.
 
 ## Untracked
 

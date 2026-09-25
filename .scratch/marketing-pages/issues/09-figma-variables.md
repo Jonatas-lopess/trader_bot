@@ -32,3 +32,7 @@ Shadows: Figma effect styles have no direct Variable equivalent for `global.css`
 - [ ] `get_variable_defs` on both frames returns a non-empty map
 - [ ] Only values matching ticket 02's named recurring primitives are variablized — no one-off values turned into Variables
 - [ ] Any disagreement found between the extracted Figma values and `global.css` is written up, not silently fixed on either side
+
+## Comments
+
+- 2026-09-25: Attempted implementation. Blocked before any read/write — Figma MCP account is Starter plan, View seat, 20 tool calls/month, quota already exhausted (`whoami` still works, all read/write calls fail with the monthly limit error). Resets are monthly, not daily, so this isn't a short retry. No frame values read, no Variables created, `global.css` untouched. Needs a Pro/Org/Enterprise plan with a Dev or Full seat before this ticket is actionable again.

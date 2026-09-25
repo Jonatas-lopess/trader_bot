@@ -17,8 +17,9 @@ Spec: [.scratch/marketing-pages/spec.md](.scratch/marketing-pages/spec.md)
 | 06 | [Landing — social proof](.scratch/marketing-pages/issues/06-landing-social-proof.md) | 03 | deferred |
 | 07 | [Plans page](.scratch/marketing-pages/issues/07-plans-page.md) | 03 | done |
 | 08 | [Landing — plan teaser and FAQ](.scratch/marketing-pages/issues/08-landing-plan-teaser-and-faq.md) | 03, 07 | done |
+| 09 | [Extract the Figma frames' own raw values into Variables](.scratch/marketing-pages/issues/09-figma-variables.md) | 02 | ready-for-agent |
 
-Frontier: **06** (deferred — social proof needs real metrics/testimonials before it can be picked up; see the ticket's launch-blocking inventory).
+Frontier: **06** (deferred — social proof needs real metrics/testimonials before it can be picked up; see the ticket's launch-blocking inventory), **09** (ready-for-agent, unblocked — 02 is done).
 
 ## checkout-webhooks
 

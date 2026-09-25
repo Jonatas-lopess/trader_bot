@@ -87,4 +87,11 @@ jobs:
           # This workers.dev test route is the only deploy target that should
           # opt into the Stripe test driver (ADR-0005) — a go-live deploy to
           # the real production domain must not carry this flag.
-          command: deploy --var PAYMENT_PROVIDER:stripe
+          #
+          # The var name/value live in the "dev" GitHub Environment's
+          # variables (Settings → Environments → dev → Variables), not as a
+          # literal here, so a future production deploy job — even if it
+          # copies this step wholesale onto a different Environment — won't
+          # inherit it: `vars.PAYMENT_PROVIDER` only resolves on Environments
+          # where it's explicitly set.
+          command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}

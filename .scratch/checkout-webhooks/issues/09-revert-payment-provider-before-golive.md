@@ -10,7 +10,7 @@ Governing docs: docs/adr/0003 (Appmax as committed production gateway); docs/adr
 
 **Blocked by:** none — pending action, not yet scoped.
 
-**Status:** needs-triage
+**Status:** done
 
 ## Problem
 
@@ -39,6 +39,32 @@ silently — no error, just the wrong gateway.
 - Should `PAYMENT_PROVIDER` instead be removed entirely once Appmax onboarding
   unblocks, so the test-phase deploy also relies on `factory.ts`'s fail-closed default,
   rather than any deploy target ever setting it explicitly again?
+
+## Answer
+
+No go-live workflow exists yet in ci.yml, so there is nothing to scope a removal
+against — the first open question can't be answered until that job exists. Resolved
+the underlying risk instead of the literal ask: the deploy step no longer hardcodes
+`--var PAYMENT_PROVIDER:stripe`. It now reads the value from `vars.PAYMENT_PROVIDER`,
+a variable scoped to the "dev" GitHub Environment (Settings → Environments → dev →
+Variables), and omits `--var` entirely when unset:
+
+```
+command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}
+```
+
+This makes the risk self-closing: a future production deploy job that copies this step
+wholesale onto a different Environment (or none) won't inherit the Stripe var, because
+`vars.PAYMENT_PROVIDER` only resolves where it's explicitly set. `factory.ts`'s
+fail-closed Appmax default takes over automatically anywhere else.
+
+Second open question (drop `PAYMENT_PROVIDER` entirely once Appmax onboarding lands)
+stays open — still blocked on the external Appmax prerequisite (`.scratch/backlog.md`).
+
+**Required one-time manual step, not done by this change:** set `PAYMENT_PROVIDER=stripe`
+as a Variable on the repo's "dev" Environment before the next push to main, or the
+workers.dev deploy falls through to the Appmax fail-closed default and errors (Appmax
+isn't onboarded yet).
 
 ## Comments
 

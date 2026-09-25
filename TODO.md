@@ -34,9 +34,13 @@ Spec: [.scratch/checkout-webhooks/spec.md](.scratch/checkout-webhooks/spec.md) �
 | 06 | [Webhook hardening — IP filter, payload validation, rate limit](.scratch/checkout-webhooks/issues/06-webhook-hardening.md) | 04 | done |
 | 07 | [End-to-end verification — happy path, boleto branch, concurrency](.scratch/checkout-webhooks/issues/07-end-to-end-verification.md) | 04, 05, 06 | done |
 | 08 | [No event-ordering tiebreak in the webhook status CAS](.scratch/checkout-webhooks/issues/08-webhook-status-tiebreak.md) | — | needs-triage |
-| 09 | [`--var PAYMENT_PROVIDER:stripe` on the deploy job must not ship to real production](.scratch/checkout-webhooks/issues/09-revert-payment-provider-before-golive.md) | — | needs-triage |
+| 09 | [`--var PAYMENT_PROVIDER:stripe` on the deploy job must not ship to real production](.scratch/checkout-webhooks/issues/09-revert-payment-provider-before-golive.md) | — | done |
 
-Tickets 01-07 done. 08, 09 open (needs-triage) — 08 found via cross-repo comparison, 09 is a go-live blocker, neither blocks current test-phase work.
+Tickets 01-07, 09 done. 08 open (needs-triage) — found via cross-repo comparison, doesn't
+block current test-phase work. 09 closed by making the flag self-dropping (deploy-Environment
+variable, not a literal) rather than by scoping a removal — see ticket for the required
+one-time manual step (set `PAYMENT_PROVIDER=stripe` on the "dev" Environment before next
+push to main).
 
 ## customer-area
 

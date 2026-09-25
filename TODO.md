@@ -92,6 +92,18 @@ has no native asymmetric primitive, confirmed against its own docs).
 
 Frontier: **01** — the payload-content decision blocks everything else in this effort; resolve it first.
 
+## sentry-integration
+
+No spec.md — small enough to skip straight to tickets.
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Wire Sentry into the Worker](.scratch/sentry-integration/issues/01-wire-sentry-into-worker.md) | — | ready-for-agent |
+| 02 | [Report the 3 known caught-and-handled failures](.scratch/sentry-integration/issues/02-report-caught-failures.md) | 01 | ready-for-agent |
+| 03 | [Report webhook-hardening's security-relevant rejections](.scratch/sentry-integration/issues/03-report-webhook-hardening-rejections.md) | 01 | ready-for-agent |
+
+Frontier: **01** (unblocked, ready-for-agent) — 02 and 03 both wait on it, independent of each other.
+
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work and the external prerequisites.

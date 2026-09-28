@@ -4,9 +4,12 @@ Work with no effort directory yet. Not tickets; nothing here is ready to pick up
 
 ## Remaining 0.1 (PLANNING.md §10)
 
-- Legal pages with placeholder text — dropped from `marketing-pages` on purpose
-- Manual NFS-e process, documented — scaffolded at `docs/ops/nfse.md`, TODOs pending
-  contador specifics (rate, portal access, issuance cadence)
+- Legal pages with placeholder text — dropped from `marketing-pages` on purpose, now tracked
+  at `.scratch/legal-pages/issues/01-termos-e-privacidade-pages.md`
+
+NFS-e is no longer listed here: `docs/ops/nfse.md`'s own Status section already counts the
+structure-with-TODOs scaffold as satisfying "manual NFS-e process documented" — the same bar
+PLANNING §9 sets for legal pages, and the one `legal-pages`/01 now follows.
 
 ## External prerequisites
 

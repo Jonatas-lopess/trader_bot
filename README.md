@@ -37,11 +37,27 @@ checkout-to-customer-area happy path).
 
 ## Status
 
-Landing page and plans page implemented (tickets 01–05, 07–08 in `TODO.md`) — Astro +
-Cloudflare Workers scaffold, Tailwind v4 design tokens, site shell, hero, video/how-it-works,
-plans page, plan teaser and FAQ. Ticket 06 (social proof) is deferred: the frame's metrics
-and testimonials are fabricated placeholders (PLANNING.md §2) with no real figures to ship
-yet.
+Built and done, per `TODO.md`:
+
+- **marketing-pages** — Astro + Cloudflare Workers scaffold, Tailwind v4 design tokens,
+  site shell, hero, video/how-it-works, plans page, plan teaser and FAQ. Ticket 06 (social
+  proof) is deferred: the frame's metrics and testimonials are fabricated placeholders
+  (PLANNING.md §2) with no real figures to ship yet.
+- **checkout-webhooks** — hosted checkout, webhook (idempotent, compare-and-swap state
+  sync, IP filter, payload validation, rate limit), intermediate confirmation page
+  including the boleto branch.
+- **customer-area** — magic-link login, license status, cancel subscription, magic-link
+  send-failure logging, auto-send on activation.
+- **robot-delivery** — signed, expiring download link (D1 token + R2 binding), email
+  dispatch.
+- **sentry-integration** — error reporting wired into the Worker; source-map upload is
+  `ready-for-human` (needs a Sentry auth token in CI first).
+
+Not yet built: **legal-pages** (Termos de uso / Política de privacidade — `needs-triage`)
+and **license-server** (automated license issuance, `needs-triage`, blocked on the payload
+decision — see ADR-0004). Deploy to production is blocked on PLANNING.md §12
+prerequisites (Appmax onboarding, Resend domain verification, custom domain) — none of
+these block the build or test-phase work.
 
 Several copy items ship wrapped in a `launchBlocking()` marker — drawn from the Figma
 frames but not approved to go live (fabricated claims, unverified compatibility, pricing
@@ -51,5 +67,4 @@ claims contingent on decisions not yet made). Find them with:
 grep -rn "launchBlocking(" src/content/
 ```
 
-See `docs/agents/content-files.md` for the convention. Not yet built: checkout, auth,
-customer area, legal pages, deploy (blocked on PLANNING.md §12 prerequisites).
+See `docs/agents/content-files.md` for the convention.

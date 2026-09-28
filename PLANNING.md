@@ -382,7 +382,10 @@ External, none of them code. Split by what they actually block.
 3. **Resend account with domain verification (SPF/DKIM).** Magic-link deliverability in
    production depends on it, and a magic link that lands in spam is a customer who cannot log
    in. Same as Appmax: build and test against Resend's test mode/sending, verify the domain
-   before flipping to production sends.
+   before flipping to production sends. **Currently using Resend's shared test sender**
+   (`onboarding@resend.dev`, `src/modules/identity/resend-client.ts`) since `robotrader.com.br`
+   is unverified — go-live must swap `FROM_ADDRESS` back to `login@robotrader.com.br` once
+   verification lands.
 4. **Appmax's published webhook source-IP list, once Appmax provides one.** §13 —
    `APPMAX_WEBHOOK_IPS` (`src/modules/billing/webhook-hardening.ts`) ships unset and fails
    closed until then; `/billing/webhook` rejects every delivery, Appmax's included, so this

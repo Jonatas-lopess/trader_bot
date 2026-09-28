@@ -6,12 +6,15 @@
  * cannot open SMTP connections", §12 — Resend, test mode until domain
  * verification lands).
  *
- * From-address is illustrative — `robotrader.com.br` is not a verified
- * Resend domain yet (PLANNING.md §12, a go-live gate, not a build blocker).
+ * From-address uses Resend's shared test sender (`onboarding@resend.dev`) because
+ * `robotrader.com.br` is not a verified Resend domain yet (PLANNING.md §12, a
+ * go-live gate, not a build blocker). Swap back to `login@robotrader.com.br`
+ * once that domain's SPF/DKIM verification lands — tracked in PLANNING.md §12
+ * item 3 and .scratch/backlog.md.
  */
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
-const FROM_ADDRESS = 'Robô Trader <login@robotrader.com.br>';
+const FROM_ADDRESS = 'Robô Trader <onboarding@resend.dev>';
 
 type ResendCredentials = Pick<Cloudflare.Env, 'RESEND_API_KEY'>;
 

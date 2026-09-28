@@ -21,7 +21,9 @@ already engaged.
 1. Domain registered and on a Cloudflare zone — go-live only, test phase uses `workers.dev`
 2. Appmax onboarding with written approval of the business category — go-live only, build
    against sandbox
-3. Resend account with domain verification (SPF/DKIM) — go-live only, build against test mode
+3. Resend account with domain verification (SPF/DKIM) — go-live only, build against test mode.
+   Using `onboarding@resend.dev` as sender meanwhile (`src/modules/identity/resend-client.ts`);
+   go-live must swap `FROM_ADDRESS` to `login@robotrader.com.br` once verified.
 4. Appmax's published webhook source-IP list — go-live only; `/billing/webhook` fails closed
    without it (PLANNING.md §12/§13)
 5. Contador engaged for NFS-e — done

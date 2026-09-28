@@ -110,6 +110,17 @@ Frontier: **06** — needs a human to create a Sentry auth token and add it to C
 phase 2 (adding capture calls for the one finding) needs maintainer sign-off before an agent
 can pick it up.
 
+## legal-pages
+
+No spec.md — small enough to skip straight to tickets. The last remaining code piece of
+PLANNING §10's 0.1 milestone (see `.scratch/backlog.md`).
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Termos de uso and Política de privacidade pages — structure + placeholder text](.scratch/legal-pages/issues/01-termos-e-privacidade-pages.md) | — | needs-triage |
+
+Frontier: **01** — unblocked, ready to pick up.
+
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work and the external prerequisites.

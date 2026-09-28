@@ -90,6 +90,13 @@ const initialState: SubscriptionState | null = initial.ok ? initial.state : null
 			}
 		};
 
+		// Reflects whatever state the server already resolved on first
+		// paint — without this, a page landed on already `active` (the
+		// common case: card payments confirm before the redirect
+		// completes) never shows the CTA, since `poll`'s own `active`
+		// guard below returns before ever calling `applyState`.
+		applyState(root.dataset.state ?? 'pending');
+
 		const poll = async () => {
 			if (root.getAttribute('data-state') === 'active') return; // confirmed, stop polling
 			try {

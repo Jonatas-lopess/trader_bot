@@ -105,10 +105,10 @@ No spec.md — small enough to skip straight to tickets.
 | 05 | [Identify and report remaining friction points](.scratch/sentry-integration/issues/05-audit-remaining-friction-points.md) | 01 | phase 1 done — see ticket |
 | 06 | [Source-map upload on deploy](.scratch/sentry-integration/issues/06-sourcemap-upload.md) | 01 | ready-for-human |
 | 07 | [Correct `environment` tag on captured events](.scratch/sentry-integration/issues/07-environment-tag.md) | 01 | done |
+| 08 | [Surface Resend's rejection reason in the send-failure logs](.scratch/sentry-integration/issues/08-resend-rejection-detail.md) | — | ready-for-agent |
 
-Frontier: **06** — needs a human to create a Sentry auth token and add it to CI first. **05**'s
-phase 2 (adding capture calls for the one finding) needs maintainer sign-off before an agent
-can pick it up.
+Frontier: **06** — needs a human to create a Sentry auth token and add it to CI first. **08** —
+ready-for-agent, unblocked.
 
 ## legal-pages
 

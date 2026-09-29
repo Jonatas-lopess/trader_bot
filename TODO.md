@@ -139,6 +139,7 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 | 10 | [Copy and docs sweep for leftover Plano language](.scratch/catalog-pivot/issues/10-copy-and-docs-sweep.md) | 06 | ready-for-agent |
 | 11 | [Research: automated compile/issuance and annual auto-renew](.scratch/catalog-pivot/issues/11-research-automation.md) | — | deferred (1.0.0) |
 | 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | ready-for-agent |
+| 13 | [Persist fiscal data on the purchase for NFS-e](.scratch/catalog-pivot/issues/13-fiscal-data-for-nfse.md) | 02, 04 | ready-for-agent |
 
 Frontier: **01**, **09**. Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 

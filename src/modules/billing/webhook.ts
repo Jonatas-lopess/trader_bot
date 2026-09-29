@@ -20,8 +20,8 @@ import { issueMagicLink } from '../identity/magic-link';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
-	findSubscriptionIdByProviderRef,
-} from './subscription-lookup';
+	findPurchaseIdByProviderRef,
+} from './purchase-lookup';
 
 type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'RESEND_API_KEY'>;
 
@@ -33,7 +33,7 @@ type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIEN
 // which passes the real `url.origin`.
 const APP_ORIGIN = 'https://robotrader.com.br';
 
-// pending < active < past_due < canceled (STATUS_RIGIDITY, subscription-lookup.ts).
+// pending < active < past_due < canceled (STATUS_RIGIDITY, purchase-lookup.ts).
 // This ticket's scope (checkout-webhooks) only exercises pending→active and
 // the canceled-must-not-be-undone case from spec.md's user story 8; it does
 // not cover recovering a `past_due` subscription back to `active` — that's
@@ -116,10 +116,10 @@ async function onSubscriptionBecameActive(
 	// the test-only Stripe driver (docs/adr/0005-stripe-test-driver.md) —
 	// same defense-in-depth stripe-webhook.ts's own CAS applies in reverse,
 	// even though the two gateways' id formats don't collide in practice.
-	const subscriptionId = await findSubscriptionIdByProviderRef(env, 'appmax', ref);
-	if (subscriptionId === null) return;
+	const purchaseId = await findPurchaseIdByProviderRef(env, 'appmax', ref);
+	if (purchaseId === null) return;
 
-	const customer = await provisionCustomer(env, { subscriptionId, email });
+	const customer = await provisionCustomer(env, { purchaseId, email });
 	if (!customer.created) return;
 
 	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
@@ -157,7 +157,7 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	// (`<=`, not `<`) already makes this safe, and payment_method needs to
 	// land independent of whether status itself changed.
 	const result = await env.DB.prepare(
-		`UPDATE subscriptions
+		`UPDATE purchases
 		 SET status = ?, payment_method = COALESCE(?, payment_method), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		 WHERE provider = 'appmax'
 		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
@@ -186,7 +186,7 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	// reporting — resolved by a second lookup, same ref-matching query
 	// `onSubscriptionBecameActive` already uses.
 	if (result.meta.changes === 0) {
-		const existing = await findSubscriptionIdByProviderRef(env, 'appmax', {
+		const existing = await findPurchaseIdByProviderRef(env, 'appmax', {
 			orderId: event.orderId,
 			subscriptionId: event.subscriptionId,
 		});

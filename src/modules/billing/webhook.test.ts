@@ -29,14 +29,14 @@ function mockAppmax(status: { status: string; paymentMethod?: string; email?: st
 }
 
 async function customerFor(subscriptionRowId: string): Promise<{ id: string; email: string } | null> {
-	return env.DB.prepare('SELECT id, email FROM customers WHERE subscription_id = ?')
+	return env.DB.prepare('SELECT id, email FROM customers WHERE purchase_id = ?')
 		.bind(subscriptionRowId)
 		.first<{ id: string; email: string }>();
 }
 
 async function seed(row: { id: string; appmax_order_id?: string; appmax_subscription_id?: string; status: string }) {
 	await env.DB.prepare(
-		'INSERT INTO subscriptions (id, plan_id, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, ?, ?)'
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'monthly', 0, ?, ?, ?)"
 	)
 		.bind(row.id, 'starter', row.status, row.appmax_order_id ?? null, row.appmax_subscription_id ?? null)
 		.run();
@@ -50,7 +50,7 @@ async function loginTokenCountFor(customerId: string): Promise<number> {
 }
 
 async function statusOf(id: string): Promise<string> {
-	const row = await env.DB.prepare('SELECT status FROM subscriptions WHERE id = ?').bind(id).first<{
+	const row = await env.DB.prepare('SELECT status FROM purchases WHERE id = ?').bind(id).first<{
 		status: string;
 	}>();
 	if (row === null) throw new Error('row not found');
@@ -128,7 +128,7 @@ describe('handleWebhook', () => {
 		);
 
 		expect(result).toEqual({ status: 200 });
-		const row = await env.DB.prepare('SELECT * FROM subscriptions WHERE appmax_order_id = ?')
+		const row = await env.DB.prepare('SELECT * FROM purchases WHERE appmax_order_id = ?')
 			.bind('ord_unknown_ref')
 			.first();
 		expect(row).toBeNull();
@@ -140,7 +140,7 @@ describe('handleWebhook', () => {
 
 	it('never applies against a Stripe-provider row even if ids happened to collide (docs/adr/0005-stripe-test-driver.md)', async () => {
 		await env.DB.prepare(
-			"INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id) VALUES (?, ?, ?, 'stripe', ?)"
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, 'monthly', 0, ?, 'stripe', ?)"
 		)
 			.bind('sub-stripe-collision', 'starter', 'pending', 'ord_stripe_collision')
 			.run();
@@ -192,7 +192,7 @@ describe('handleWebhook', () => {
 		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_reapply' }));
 		await handleWebhook(env, JSON.stringify({ event: 'subscription.renewed', order_id: 'ord_reapply' }));
 
-		const { results } = await env.DB.prepare('SELECT * FROM customers WHERE subscription_id = ?')
+		const { results } = await env.DB.prepare('SELECT * FROM customers WHERE purchase_id = ?')
 			.bind('sub-reapply')
 			.all();
 		expect(results).toHaveLength(1);

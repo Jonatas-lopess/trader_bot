@@ -6,12 +6,12 @@
  * subscription first lands on `active`. Nothing else writes `customers`.
  */
 
-import type { ProviderId, SubscriptionState } from '../billing/payment-provider';
+import type { ProviderId, PurchaseStatus } from '../billing/payment-provider';
 
 type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
 
 /**
- * Idempotent by construction: `ON CONFLICT(subscription_id) DO NOTHING` is
+ * Idempotent by construction: `ON CONFLICT(purchase_id) DO NOTHING` is
  * one atomic statement, no prior `SELECT` — a reapplied `active` webhook
  * event (checkout-webhooks ticket 07's own reapplied-event case) must not
  * duplicate the row for the same subscription (migrations/0003_customers.sql).
@@ -24,18 +24,18 @@ type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
  */
 export async function provisionCustomer(
 	env: CustomersEnv,
-	params: { subscriptionId: string; email: string }
+	params: { purchaseId: string; email: string }
 ): Promise<{ id: string; created: boolean }> {
 	const id = crypto.randomUUID();
 	const result = await env.DB.prepare(
-		'INSERT INTO customers (id, subscription_id, email) VALUES (?, ?, ?) ON CONFLICT(subscription_id) DO NOTHING'
+		'INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?) ON CONFLICT(purchase_id) DO NOTHING'
 	)
 		// Normalized the same way `requestMagicLink`'s lookup normalizes its
 		// input (magic-link.ts) — an email stored verbatim from Appmax's
 		// authoritative response (mixed case, stray whitespace) would
 		// otherwise never match a login attempt typed in the customer's own
 		// casing (code review finding, src/modules/identity/magic-link.ts:46).
-		.bind(id, params.subscriptionId, params.email.trim().toLowerCase())
+		.bind(id, params.purchaseId, params.email.trim().toLowerCase())
 		.run();
 
 	if (result.meta.changes > 0) return { id, created: true };
@@ -44,8 +44,8 @@ export async function provisionCustomer(
 	// provisioned it. Not a TOCTOU read: the conflict itself was already
 	// decided atomically by the `INSERT` above; this only resolves which
 	// id that earlier insert used.
-	const existing = await env.DB.prepare('SELECT id FROM customers WHERE subscription_id = ?')
-		.bind(params.subscriptionId)
+	const existing = await env.DB.prepare('SELECT id FROM customers WHERE purchase_id = ?')
+		.bind(params.purchaseId)
 		.first<{ id: string }>();
 	return { id: existing!.id, created: false };
 }
@@ -66,7 +66,7 @@ export async function getCustomerEmail(env: CustomersEnv, customerId: string): P
 	return row?.email ?? null;
 }
 
-export type { SubscriptionState };
+export type { PurchaseStatus };
 
 /**
  * The Assinatura + Plano a logged-in Cliente owns — .scratch/customer-area/issues/03-license-status-page.md.
@@ -84,30 +84,30 @@ export async function getCustomerAccount(
 	env: CustomersEnv,
 	customerId: string
 ): Promise<{
-	subscriptionId: string;
-	planId: string;
-	status: SubscriptionState;
+	purchaseId: string;
+	robotId: string;
+	status: PurchaseStatus;
 	provider: ProviderId;
 	appmaxSubscriptionId: string | null;
 } | null> {
 	const row = await env.DB.prepare(
-		`SELECT s.id AS subscription_id, s.plan_id AS plan_id, s.status AS status, s.provider AS provider,
+		`SELECT s.id AS purchase_id, s.robot_id AS robot_id, s.status AS status, s.provider AS provider,
 		        s.appmax_subscription_id AS appmax_subscription_id
-		 FROM customers c JOIN subscriptions s ON s.id = c.subscription_id
+		 FROM customers c JOIN purchases s ON s.id = c.purchase_id
 		 WHERE c.id = ?`
 	)
 		.bind(customerId)
 		.first<{
-			subscription_id: string;
-			plan_id: string;
-			status: SubscriptionState;
+			purchase_id: string;
+			robot_id: string;
+			status: PurchaseStatus;
 			provider: ProviderId;
 			appmax_subscription_id: string | null;
 		}>();
 	if (row === null) return null;
 	return {
-		subscriptionId: row.subscription_id,
-		planId: row.plan_id,
+		purchaseId: row.purchase_id,
+		robotId: row.robot_id,
 		status: row.status,
 		provider: row.provider,
 		appmaxSubscriptionId: row.appmax_subscription_id,

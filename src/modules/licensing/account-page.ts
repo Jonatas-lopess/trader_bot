@@ -8,7 +8,7 @@
  */
 
 import { plans } from '../../content/plans';
-import { getCustomerAccount, type SubscriptionState } from '../identity/customers';
+import { getCustomerAccount, type PurchaseStatus } from '../identity/customers';
 import { requireSession } from '../identity/session';
 import { getLicenseStatus, type LicenseStatus } from './license-status';
 
@@ -24,7 +24,7 @@ export type AccountView =
 			// to hide the cancel action once already canceled. `appmax_subscription_id`
 			// isn't needed here — /conta/cancelar resolves it itself via
 			// `getCustomerAccount` at cancel time, not from this render.
-			subscriptionStatus: SubscriptionState;
+			subscriptionStatus: PurchaseStatus;
 	  }
 	| { ok: false };
 
@@ -35,12 +35,12 @@ export async function resolveAccountView(env: AccountPageEnv, request: Request):
 	const account = await getCustomerAccount(env, session.customerId);
 	if (account === null) return { ok: false };
 
-	const plan = plans.find((candidate) => candidate.id === account.planId);
-	const license = await getLicenseStatus(env, account.subscriptionId);
+	const plan = plans.find((candidate) => candidate.id === account.robotId);
+	const license = await getLicenseStatus(env, account.purchaseId);
 
 	return {
 		ok: true,
-		planName: plan?.name ?? account.planId,
+		planName: plan?.name ?? account.robotId,
 		license,
 		subscriptionStatus: account.status,
 	};

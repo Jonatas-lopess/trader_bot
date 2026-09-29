@@ -15,6 +15,7 @@
 
 import { providerById } from './factory';
 import type { ProviderId } from './payment-provider';
+import { STATUS_RIGIDITY, STATUS_RIGIDITY_CASE_SQL } from './purchase-lookup';
 
 type CancelEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'STRIPE_SECRET_KEY'>;
 
@@ -24,7 +25,7 @@ export type CancelSubscriptionResult =
 
 export async function cancelSubscription(
 	env: CancelEnv,
-	params: { subscriptionId: string; provider: ProviderId; providerSubscriptionId: string | null }
+	params: { purchaseId: string; provider: ProviderId; providerSubscriptionId: string | null }
 ): Promise<CancelSubscriptionResult> {
 	if (params.providerSubscriptionId === null) {
 		return { ok: false, reason: 'no_provider_subscription_id' };
@@ -33,23 +34,19 @@ export async function cancelSubscription(
 	const result = await providerById(params.provider).cancelSubscription(env, params.providerSubscriptionId);
 	if (!result.ok) return { ok: false, reason: 'provider_unavailable' };
 
-	// The rigidity check (`<= 3`) is trivially true for every status since
-	// `canceled` is the most rigid state — that's intentional, not a no-op
-	// bug: cancellation is always immediate (spec.md's Implementation
-	// Decisions), so this CAS's job isn't to block the transition, only to
-	// make the write atomic and share webhook.ts's own ranking rather than a
-	// second, potentially-diverging rule. `meta.changes` is deliberately
-	// unchecked below: cancelling an already-`canceled` subscription is a
-	// no-op success from the Cliente's point of view, not an error.
+	// Same rigidity-ranked CAS as the webhooks (STATUS_RIGIDITY_CASE_SQL), so
+	// this write and theirs share one state-transition rule. A `refunded` or
+	// `chargeback` purchase outranks `canceled` and is never overwritten by a
+	// late cancel. `meta.changes` is deliberately unchecked below: cancelling
+	// an already-`canceled` (or higher) purchase is a no-op success from the
+	// Cliente's point of view, not an error.
 	await env.DB.prepare(
-		`UPDATE subscriptions
+		`UPDATE purchases
 		 SET status = 'canceled', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		 WHERE id = ?
-		   AND CASE status
-		         WHEN 'pending' THEN 0 WHEN 'active' THEN 1 WHEN 'past_due' THEN 2 WHEN 'canceled' THEN 3
-		       END <= 3`
+		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
 	)
-		.bind(params.subscriptionId)
+		.bind(params.purchaseId, STATUS_RIGIDITY.canceled)
 		.run();
 
 	return { ok: true };

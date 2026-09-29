@@ -26,7 +26,7 @@ export const POST: APIRoute = async ({ request, url }) => {
 	// which is an honest reflection of reality without a separate error
 	// page (this repo's generally terse error-handling style elsewhere).
 	await cancelSubscription(env, {
-		subscriptionId: account.subscriptionId,
+		purchaseId: account.purchaseId,
 		provider: account.provider,
 		providerSubscriptionId: account.appmaxSubscriptionId,
 	});

@@ -12,11 +12,11 @@ export const pageDescription =
 
 export const confirmationHeading = 'Confirmando seu pagamento';
 
-// Keyed by SubscriptionState (src/modules/billing/status.ts) — kept as a
+// Keyed by PurchaseState (src/modules/billing/status.ts) — kept as a
 // literal union here rather than importing that type, so this content file
 // doesn't reach into modules/billing for it.
 export const confirmationMessages: Record<
-	'pending' | 'active' | 'past_due' | 'canceled' | 'awaiting_boleto',
+	'pending' | 'rejected' | 'active' | 'past_due' | 'canceled' | 'refunded' | 'chargeback' | 'awaiting_boleto',
 	string
 > = {
 	pending: 'Aguardando confirmação do pagamento…',
@@ -26,6 +26,12 @@ export const confirmationMessages: Record<
 	past_due:
 		'Houve um problema com a cobrança. Entre em contato com o suporte para regularizar sua Assinatura.',
 	canceled: 'Este checkout foi cancelado.',
+	// Interim wording for the ranking's new states (catalog-pivot ticket 02);
+	// ticket 04 owns the real `rejected` copy (PLANNING.md §6: payment was
+	// received and is under review, never invites a second purchase).
+	rejected: 'Recebemos seu pagamento e ele está em análise. Entraremos em contato por e-mail.',
+	refunded: 'Este pagamento foi reembolsado.',
+	chargeback: 'Este pagamento foi contestado junto ao seu banco.',
 };
 
 // The login destination is out of scope here (magic-link login is a

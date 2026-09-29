@@ -52,10 +52,16 @@ describe('createCheckoutSession', () => {
 		if (!result.ok) throw new Error('expected ok result');
 		expect(result.redirectUrl).toBe('https://checkout.sandboxappmax.com.br/pay/abc');
 
-		const row = await env.DB.prepare('SELECT * FROM subscriptions WHERE appmax_order_id = ?')
+		const row = await env.DB.prepare('SELECT * FROM purchases WHERE appmax_order_id = ?')
 			.bind('ord_123')
 			.first();
-		expect(row).toMatchObject({ plan_id: 'starter', status: 'pending', appmax_order_id: 'ord_123' });
+		expect(row).toMatchObject({
+			robot_id: 'starter',
+			offer: 'monthly',
+			amount_cents: expect.any(Number),
+			status: 'pending',
+			appmax_order_id: 'ord_123',
+		});
 	});
 
 	it('returns 502 and writes no row when Appmax is unavailable', async () => {
@@ -69,7 +75,7 @@ describe('createCheckoutSession', () => {
 			message: 'Payment provider unavailable, try again shortly.',
 		});
 
-		const row = await env.DB.prepare('SELECT * FROM subscriptions WHERE plan_id = ?')
+		const row = await env.DB.prepare('SELECT * FROM purchases WHERE robot_id = ?')
 			.bind('pro')
 			.first();
 		expect(row).toBeNull();
@@ -94,9 +100,9 @@ describe('createCheckoutSession', () => {
 
 		expect(result).toEqual({ ok: true, redirectUrl: 'https://checkout.stripe.com/pay/cs_stripe_route' });
 
-		const row = await env.DB.prepare('SELECT * FROM subscriptions WHERE appmax_order_id = ?')
+		const row = await env.DB.prepare('SELECT * FROM purchases WHERE appmax_order_id = ?')
 			.bind('cs_stripe_route')
 			.first();
-		expect(row).toMatchObject({ plan_id: 'starter', status: 'pending', provider: 'stripe' });
+		expect(row).toMatchObject({ robot_id: 'starter', status: 'pending', provider: 'stripe' });
 	});
 });

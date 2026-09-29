@@ -21,6 +21,7 @@ describe('download_tokens D1 schema + R2 fixture scaffold', () => {
 			token: 'tok_schema_1',
 			customer_id: 'cust_schema_1',
 			expires_at: '2027-01-01T00:00:00.000Z',
+			license_id: null,
 			used_at: null,
 		});
 	});

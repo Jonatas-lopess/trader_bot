@@ -24,7 +24,15 @@
 
 export type ProviderId = 'appmax' | 'stripe';
 
-export type SubscriptionState = 'pending' | 'active' | 'past_due' | 'canceled';
+/** Ranked lowest to highest; `purchase-lookup.ts`'s `STATUS_RIGIDITY` and migrations/0008 must agree. Gateways currently report only the first four (`rejected`, `refunded`, `chargeback` arrive with catalog-pivot ticket 04). */
+export type PurchaseStatus =
+	| 'pending'
+	| 'rejected'
+	| 'active'
+	| 'past_due'
+	| 'canceled'
+	| 'refunded'
+	| 'chargeback';
 export type PaymentMethod = 'card' | 'boleto' | 'pix';
 
 export type CreateCheckoutSessionParams = {
@@ -41,7 +49,7 @@ export type CreateCheckoutSessionResult =
 	| { ok: false; reason: 'provider_auth_failed' | 'provider_unavailable' };
 
 export type FetchAuthoritativeStatusResult =
-	| { ok: true; status: SubscriptionState; paymentMethod: PaymentMethod | null; email: string | null }
+	| { ok: true; status: PurchaseStatus; paymentMethod: PaymentMethod | null; email: string | null }
 	| { ok: false };
 
 /** Exactly the credentials either driver needs — never the full `Cloudflare.Env`, so callers can pass their own narrower `Pick`. */

@@ -14,13 +14,13 @@
  * this driver exists to work around not having yet) — card only.
  */
 
-import type { IPaymentProvider, SubscriptionState } from './payment-provider';
+import type { IPaymentProvider, PurchaseStatus } from './payment-provider';
 
 type StripeCredentials = Pick<Cloudflare.Env, 'STRIPE_SECRET_KEY'>;
 
 const STRIPE_API_BASE_URL = 'https://api.stripe.com/v1';
 
-export type StripeSubscriptionState = SubscriptionState;
+export type StripePurchaseStatus = PurchaseStatus;
 
 type CreateCheckoutSessionParams = {
 	reference: string;
@@ -80,7 +80,7 @@ export async function createCheckoutSession(
 }
 
 export type FetchAuthoritativeStatusResult =
-	| { ok: true; status: StripeSubscriptionState; paymentMethod: 'card' | null; email: string | null }
+	| { ok: true; status: StripePurchaseStatus; paymentMethod: 'card' | null; email: string | null }
 	| { ok: false };
 
 /**
@@ -145,7 +145,7 @@ export async function cancelSubscription(
 	return { ok: true };
 }
 
-function mapSubscriptionStatus(raw: string): StripeSubscriptionState {
+function mapSubscriptionStatus(raw: string): StripePurchaseStatus {
 	if (raw === 'active' || raw === 'trialing') return 'active';
 	if (raw === 'past_due' || raw === 'unpaid') return 'past_due';
 	if (raw === 'canceled' || raw === 'incomplete_expired') return 'canceled';
@@ -154,7 +154,7 @@ function mapSubscriptionStatus(raw: string): StripeSubscriptionState {
 	return 'pending';
 }
 
-function mapSessionStatus(status: string, paymentStatus: string): StripeSubscriptionState {
+function mapSessionStatus(status: string, paymentStatus: string): StripePurchaseStatus {
 	if (status === 'expired') return 'canceled';
 	if (status === 'complete' && paymentStatus === 'paid') return 'active';
 	return 'pending';

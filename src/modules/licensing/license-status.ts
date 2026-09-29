@@ -14,9 +14,9 @@ export type LicenseStatus =
 	| { status: 'preparing'; expiresAt: null }
 	| { status: 'active'; expiresAt: string };
 
-export async function getLicenseStatus(env: LicensingEnv, subscriptionId: string): Promise<LicenseStatus> {
-	const row = await env.DB.prepare('SELECT expires_at FROM licenses WHERE subscription_id = ?')
-		.bind(subscriptionId)
+export async function getLicenseStatus(env: LicensingEnv, purchaseId: string): Promise<LicenseStatus> {
+	const row = await env.DB.prepare('SELECT expires_at FROM licenses WHERE purchase_id = ?')
+		.bind(purchaseId)
 		.first<{ expires_at: string | null }>();
 
 	if (row === null || row.expires_at === null) return { status: 'preparing', expiresAt: null };

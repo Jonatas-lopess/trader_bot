@@ -23,12 +23,12 @@ function mockResend() {
 }
 
 async function seedCustomer(id: string, email: string): Promise<void> {
-	const subscriptionId = `sub-${id}`;
-	await env.DB.prepare('INSERT INTO subscriptions (id, plan_id, status) VALUES (?, ?, ?)')
-		.bind(subscriptionId, 'starter', 'active')
+	const purchaseId = `sub-${id}`;
+	await env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)")
+		.bind(purchaseId, 'starter', 'active')
 		.run();
-	await env.DB.prepare('INSERT INTO customers (id, subscription_id, email) VALUES (?, ?, ?)')
-		.bind(id, subscriptionId, email)
+	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
+		.bind(id, purchaseId, email)
 		.run();
 }
 

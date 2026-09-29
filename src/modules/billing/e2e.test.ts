@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createCheckoutSession } from './checkout';
-import { getSubscriptionStatus } from './status';
+import { getPurchaseStatus } from './status';
 import { handleWebhook } from './webhook';
 
 /**
@@ -49,12 +49,12 @@ describe('checkout-webhooks end to end', () => {
 
 		const reference = new URL(capturedReturnUrl).searchParams.get('ref');
 		expect(reference).not.toBeNull();
-		expect(await getSubscriptionStatus(env, reference)).toEqual({ ok: true, state: 'pending' });
+		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'pending' });
 
 		const webhook = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_happy' }));
 		expect(webhook).toEqual({ status: 200 });
 
-		expect(await getSubscriptionStatus(env, reference)).toEqual({ ok: true, state: 'active' });
+		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'active' });
 	});
 
 	it('boleto branch: status shows the awaiting state before confirmation, then active after', async () => {
@@ -85,7 +85,7 @@ describe('checkout-webhooks end to end', () => {
 
 		const created = await handleWebhook(env, JSON.stringify({ event: 'order.created', order_id: 'ord_e2e_boleto' }));
 		expect(created).toEqual({ status: 200 });
-		expect(await getSubscriptionStatus(env, reference)).toEqual({ ok: true, state: 'awaiting_boleto' });
+		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'awaiting_boleto' });
 
 		// Boleto confirms up to a business day later (CONTEXT.md) — a second,
 		// distinct event re-fetches and finds it's now paid.
@@ -100,12 +100,12 @@ describe('checkout-webhooks end to end', () => {
 		});
 		const paid = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_boleto' }));
 		expect(paid).toEqual({ status: 200 });
-		expect(await getSubscriptionStatus(env, reference)).toEqual({ ok: true, state: 'active' });
+		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'active' });
 	});
 
 	it('concurrent delivery of two events for the same subscription resolves deterministically, no lost update', async () => {
 		await env.DB.prepare(
-			'INSERT INTO subscriptions (id, plan_id, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, ?, ?)'
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'monthly', 0, ?, ?, ?)"
 		)
 			.bind('sub-e2e-concurrent', 'pro', 'pending', 'ord_concurrent', 'sub_concurrent')
 			.run();
@@ -137,7 +137,7 @@ describe('checkout-webhooks end to end', () => {
 		// `canceled` outranks `active` (webhook.ts's STATUS_RIGIDITY) — the
 		// compare-and-swap UPDATE guarantees this regardless of which of the
 		// two concurrent requests' writes actually lands first at D1.
-		const row = await env.DB.prepare('SELECT status FROM subscriptions WHERE id = ?')
+		const row = await env.DB.prepare('SELECT status FROM purchases WHERE id = ?')
 			.bind('sub-e2e-concurrent')
 			.first<{ status: string }>();
 		expect(row?.status).toBe('canceled');

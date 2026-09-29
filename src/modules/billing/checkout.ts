@@ -65,10 +65,14 @@ export async function createCheckoutSession(
 	// (docs/adr/0005-stripe-test-driver.md) — defaults to `appmax` in the
 	// schema, written explicitly here so a Stripe test session is never
 	// mistaken for one.
+	// Interim bridge until catalog-pivot ticket 03 replaces the Plano lookup
+	// with `robot_id` + `offer` from src/content/catalog.ts: the plan id
+	// stands in for `robot_id` and the monthly price for the amount (ticket 04's
+	// amount check must not ship before this bridge is gone).
 	await env.DB.prepare(
-		'INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id) VALUES (?, ?, ?, ?, ?)'
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, 'monthly', ?, ?, ?, ?)"
 	)
-		.bind(reference, plan.id, 'pending', provider.id, session.providerOrderId)
+		.bind(reference, plan.id, Math.round(plan.price.monthly * 100), 'pending', provider.id, session.providerOrderId)
 		.run();
 
 	return { ok: true, redirectUrl: session.checkoutUrl };

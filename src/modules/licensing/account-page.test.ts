@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { createSession } from '../identity/session';
 import { resolveAccountView } from './account-page';
 
-async function seedAccount(params: { subscriptionId: string; customerId: string; planId: string }) {
-	await env.DB.prepare('INSERT INTO subscriptions (id, plan_id, status) VALUES (?, ?, ?)')
-		.bind(params.subscriptionId, params.planId, 'active')
+async function seedAccount(params: { purchaseId: string; customerId: string; planId: string }) {
+	await env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)")
+		.bind(params.purchaseId, params.planId, 'active')
 		.run();
-	await env.DB.prepare('INSERT INTO customers (id, subscription_id, email) VALUES (?, ?, ?)')
-		.bind(params.customerId, params.subscriptionId, `${params.customerId}@example.com`)
+	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
+		.bind(params.customerId, params.purchaseId, `${params.customerId}@example.com`)
 		.run();
 }
 
@@ -23,7 +23,7 @@ describe('resolveAccountView', () => {
 	});
 
 	it('resolves the Plano name and "preparing" license for an authenticated Cliente with no licenses row', async () => {
-		await seedAccount({ subscriptionId: 'sub-account-1', customerId: 'cust-account-1', planId: 'pro' });
+		await seedAccount({ purchaseId: 'sub-account-1', customerId: 'cust-account-1', planId: 'pro' });
 		const { cookieValue } = await createSession(env, 'cust-account-1');
 
 		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
@@ -37,9 +37,9 @@ describe('resolveAccountView', () => {
 	});
 
 	it('resolves the "active" license once expires_at is set', async () => {
-		await seedAccount({ subscriptionId: 'sub-account-2', customerId: 'cust-account-2', planId: 'starter' });
-		await env.DB.prepare('INSERT INTO licenses (subscription_id, status, expires_at) VALUES (?, ?, ?)')
-			.bind('sub-account-2', 'active', '2027-06-20T00:00:00.000Z')
+		await seedAccount({ purchaseId: 'sub-account-2', customerId: 'cust-account-2', planId: 'starter' });
+		await env.DB.prepare('INSERT INTO licenses (purchase_id, robot_id, status, expires_at) VALUES (?, ?, ?, ?)')
+			.bind('sub-account-2', 'starter', 'active', '2027-06-20T00:00:00.000Z')
 			.run();
 		const { cookieValue } = await createSession(env, 'cust-account-2');
 

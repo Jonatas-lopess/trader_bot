@@ -4,7 +4,7 @@
  * Real product copy, ships as drawn (docs/agents/content-files.md).
  */
 
-import type { SubscriptionState } from '../modules/identity/customers';
+import type { PurchaseStatus } from '../modules/identity/customers';
 
 export const pageTitle = 'Sua conta';
 export const pageDescription = 'Acompanhe o status da sua Licença e gerencie sua Assinatura.';
@@ -17,11 +17,16 @@ export const assinaturaLabel = 'Assinatura';
 // Ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md): the
 // page needs to reflect the Assinatura's own status too, not only the
 // Licença's — most visibly after a successful cancel.
-export const assinaturaStatusTexts: Record<SubscriptionState, string> = {
+export const assinaturaStatusTexts: Record<PurchaseStatus, string> = {
 	pending: 'Pendente',
 	active: 'Ativa',
 	past_due: 'Pagamento atrasado',
 	canceled: 'Cancelada',
+	// Interim wording for the ranking's new states (catalog-pivot ticket 02);
+	// tickets 04/07 own the real copy. Never says the Cliente was not charged.
+	rejected: 'Em análise',
+	refunded: 'Reembolsada',
+	chargeback: 'Contestada',
 };
 
 export const licensePreparingText = 'Sendo preparada';

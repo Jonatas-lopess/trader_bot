@@ -4,13 +4,13 @@
 // .scratch/checkout-webhooks/issues/05-intermediate-confirmation-page.md;
 // PLANNING.md §7 "Checkout sequence". Never trusts the redirect alone:
 // resolves state server-side by `ref` on first paint (calling
-// getSubscriptionStatus directly rather than round-tripping through
+// getPurchaseStatus directly rather than round-tripping through
 // /billing/status for this one render), then a client script polls
 // /billing/status every ~2s so a slow or dropped webhook doesn't leave a
 // stale message (user story 5).
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/base-layout.astro';
-import { getSubscriptionStatus, type SubscriptionState } from '../../modules/billing/status';
+import { getPurchaseStatus, type PurchaseState } from '../../modules/billing/status';
 import {
 	activeCtaLabel,
 	confirmationHeading,
@@ -24,8 +24,8 @@ import {
 export const prerender = false;
 
 const reference = Astro.url.searchParams.get('ref');
-const initial = await getSubscriptionStatus(env, reference);
-const initialState: SubscriptionState | null = initial.ok ? initial.state : null;
+const initial = await getPurchaseStatus(env, reference);
+const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>

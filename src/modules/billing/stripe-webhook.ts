@@ -26,8 +26,8 @@ import { fetchAuthoritativeStatus } from './stripe-client';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
-	findSubscriptionIdByProviderRef,
-} from './subscription-lookup';
+	findPurchaseIdByProviderRef,
+} from './purchase-lookup';
 
 type StripeWebhookEnv = Pick<
 	Cloudflare.Env,
@@ -131,10 +131,10 @@ async function onSubscriptionBecameActive(
 		return;
 	}
 
-	const subscriptionId = await findSubscriptionIdByProviderRef(env, 'stripe', ref);
-	if (subscriptionId === null) return;
+	const purchaseId = await findPurchaseIdByProviderRef(env, 'stripe', ref);
+	if (purchaseId === null) return;
 
-	const customer = await provisionCustomer(env, { subscriptionId, email });
+	const customer = await provisionCustomer(env, { purchaseId, email });
 	if (!customer.created) return;
 
 	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
@@ -182,7 +182,7 @@ export async function handleStripeWebhook(
 	// (customer.subscription.updated/.deleted) can never match this row
 	// again, and cancel.ts's gateway cancel call can never be dispatched.
 	const result = await env.DB.prepare(
-		`UPDATE subscriptions
+		`UPDATE purchases
 		 SET status = ?,
 		     payment_method = COALESCE(?, payment_method),
 		     appmax_subscription_id = COALESCE(appmax_subscription_id, ?),

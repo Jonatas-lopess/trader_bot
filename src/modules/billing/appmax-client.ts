@@ -29,14 +29,14 @@
  * out to be real.
  */
 
-import type { IPaymentProvider, SubscriptionState } from './payment-provider';
+import type { IPaymentProvider, PurchaseStatus } from './payment-provider';
 
 const APPMAX_AUTH_URL = 'https://auth.sandboxappmax.com.br/oauth2/token';
 const APPMAX_API_BASE_URL = 'https://api.sandboxappmax.com.br';
 
 type AppmaxCredentials = Pick<Cloudflare.Env, 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET'>;
 
-export type AppmaxSubscriptionState = SubscriptionState;
+export type AppmaxPurchaseStatus = PurchaseStatus;
 export type AppmaxPaymentMethod = 'card' | 'boleto' | 'pix';
 
 type CreateHostedCheckoutSessionParams = {
@@ -130,7 +130,7 @@ export function parseWebhookPayload(raw: unknown): AppmaxWebhookEvent | null {
 export type FetchAuthoritativeStatusResult =
 	| {
 			ok: true;
-			status: AppmaxSubscriptionState;
+			status: AppmaxPurchaseStatus;
 			paymentMethod: AppmaxPaymentMethod | null;
 			// The buyer's email — unverified field name, same status as
 			// `order_id`/`payment_method` above (this file's header comment,
@@ -188,7 +188,7 @@ export async function cancelSubscription(
 	return { ok: true };
 }
 
-function mapAppmaxStatus(raw: string): AppmaxSubscriptionState {
+function mapAppmaxStatus(raw: string): AppmaxPurchaseStatus {
 	const normalized = raw.toLowerCase();
 	if (['aprovado', 'pago', 'approved', 'paid', 'active'].includes(normalized)) return 'active';
 	if (['cancelado', 'estornado', 'recusado', 'canceled', 'refused'].includes(normalized)) {

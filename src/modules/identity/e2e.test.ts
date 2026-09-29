@@ -42,7 +42,7 @@ async function seedPendingSubscription(params: {
 	planId?: string;
 }): Promise<void> {
 	await env.DB.prepare(
-		'INSERT INTO subscriptions (id, plan_id, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, ?, ?)'
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'monthly', 0, ?, ?, ?)"
 	)
 		.bind(params.id, params.planId ?? 'pro', 'pending', params.appmaxOrderId, params.appmaxSubscriptionId)
 		.run();
@@ -94,7 +94,7 @@ describe('customer-area end to end: login to cancel', () => {
 		// (ticket 01) from the same authoritative re-fetch.
 		const webhookResult = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_happy' }));
 		expect(webhookResult).toEqual({ status: 200 });
-		const customer = await env.DB.prepare('SELECT id FROM customers WHERE subscription_id = ?')
+		const customer = await env.DB.prepare('SELECT id FROM customers WHERE purchase_id = ?')
 			.bind('sub-e2e-happy')
 			.first<{ id: string }>();
 		expect(customer).not.toBeNull();
@@ -119,7 +119,7 @@ describe('customer-area end to end: login to cancel', () => {
 
 		// 4. Cancel (ticket 04) — Appmax call + CAS `UPDATE`, no touch to `licenses`.
 		const cancelResult = await cancelSubscription(env, {
-			subscriptionId: 'sub-e2e-happy',
+			purchaseId: 'sub-e2e-happy',
 			provider: 'appmax',
 			providerSubscriptionId: 'asub_e2e_happy',
 		});

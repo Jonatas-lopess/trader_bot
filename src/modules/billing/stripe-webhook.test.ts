@@ -57,14 +57,14 @@ function mockStripe(status: { status: string; email?: string }) {
 
 async function seed(row: { id: string; appmax_order_id?: string; appmax_subscription_id?: string; status: string }) {
 	await env.DB.prepare(
-		"INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, 'stripe', ?, ?)"
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'monthly', 0, ?, 'stripe', ?, ?)"
 	)
 		.bind(row.id, 'starter', row.status, row.appmax_order_id ?? null, row.appmax_subscription_id ?? null)
 		.run();
 }
 
 async function statusOf(id: string): Promise<string> {
-	const row = await env.DB.prepare('SELECT status FROM subscriptions WHERE id = ?').bind(id).first<{
+	const row = await env.DB.prepare('SELECT status FROM purchases WHERE id = ?').bind(id).first<{
 		status: string;
 	}>();
 	if (row === null) throw new Error('row not found');
@@ -129,7 +129,7 @@ describe('handleStripeWebhook', () => {
 
 	it('never applies against an Appmax row even if ids happened to collide', async () => {
 		await env.DB.prepare(
-			"INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id) VALUES (?, ?, ?, 'appmax', ?)"
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, 'monthly', 0, ?, 'appmax', ?)"
 		)
 			.bind('sub-appmax-collision', 'starter', 'pending', 'cs_collision')
 			.run();
@@ -149,7 +149,7 @@ describe('handleStripeWebhook', () => {
 
 		await handleStripeWebhook(testEnv(), payload, await sign(payload));
 
-		const customer = await env.DB.prepare('SELECT id, email FROM customers WHERE subscription_id = ?')
+		const customer = await env.DB.prepare('SELECT id, email FROM customers WHERE purchase_id = ?')
 			.bind('sub-provision')
 			.first<{ id: string; email: string }>();
 		expect(customer?.email).toBe('cliente@example.com');

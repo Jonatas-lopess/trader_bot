@@ -26,7 +26,7 @@ async function seed(row: {
 	provider?: 'appmax' | 'stripe';
 }) {
 	await env.DB.prepare(
-		'INSERT INTO subscriptions (id, plan_id, status, provider, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, ?, ?, ?)'
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'monthly', 0, ?, ?, ?, ?)"
 	)
 		.bind(
 			row.id,
@@ -40,7 +40,7 @@ async function seed(row: {
 }
 
 async function statusOf(id: string): Promise<string> {
-	const row = await env.DB.prepare('SELECT status FROM subscriptions WHERE id = ?').bind(id).first<{
+	const row = await env.DB.prepare('SELECT status FROM purchases WHERE id = ?').bind(id).first<{
 		status: string;
 	}>();
 	if (row === null) throw new Error('row not found');
@@ -55,14 +55,14 @@ describe('cancelSubscription', () => {
 	it('flips status to canceled on success and leaves licenses untouched', async () => {
 		await seed({ id: 'sub-cancel-happy', appmax_subscription_id: 'appmax_sub_happy', status: 'active' });
 		await env.DB.prepare(
-			'INSERT INTO licenses (subscription_id, status, expires_at) VALUES (?, ?, ?)'
+			'INSERT INTO licenses (purchase_id, robot_id, status, expires_at) VALUES (?, ?, ?, ?)'
 		)
-			.bind('sub-cancel-happy', 'active', '2027-01-15T00:00:00.000Z')
+			.bind('sub-cancel-happy', 'starter', 'active', '2027-01-15T00:00:00.000Z')
 			.run();
 		mockAppmaxCancel('ok');
 
 		const result = await cancelSubscription(env, {
-			subscriptionId: 'sub-cancel-happy',
+			purchaseId: 'sub-cancel-happy',
 			provider: 'appmax',
 			providerSubscriptionId: 'appmax_sub_happy',
 		});
@@ -70,11 +70,13 @@ describe('cancelSubscription', () => {
 		expect(result).toEqual({ ok: true });
 		expect(await statusOf('sub-cancel-happy')).toBe('canceled');
 
-		const license = await env.DB.prepare('SELECT * FROM licenses WHERE subscription_id = ?')
+		const license = await env.DB.prepare('SELECT * FROM licenses WHERE purchase_id = ?')
 			.bind('sub-cancel-happy')
 			.first();
 		expect(license).toEqual({
-			subscription_id: 'sub-cancel-happy',
+			purchase_id: 'sub-cancel-happy',
+			robot_id: 'starter',
+			corretora_account: null,
 			status: 'active',
 			expires_at: '2027-01-15T00:00:00.000Z',
 			created_at: license?.created_at,
@@ -87,7 +89,7 @@ describe('cancelSubscription', () => {
 		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
 		const result = await cancelSubscription(env, {
-			subscriptionId: 'sub-cancel-no-provider-id',
+			purchaseId: 'sub-cancel-no-provider-id',
 			provider: 'appmax',
 			providerSubscriptionId: null,
 		});
@@ -102,7 +104,7 @@ describe('cancelSubscription', () => {
 		mockAppmaxCancel('fail');
 
 		const result = await cancelSubscription(env, {
-			subscriptionId: 'sub-cancel-appmax-fail',
+			purchaseId: 'sub-cancel-appmax-fail',
 			provider: 'appmax',
 			providerSubscriptionId: 'appmax_sub_fail',
 		});
@@ -126,7 +128,7 @@ describe('cancelSubscription', () => {
 		});
 
 		const result = await cancelSubscription(env, {
-			subscriptionId: 'sub-cancel-stripe',
+			purchaseId: 'sub-cancel-stripe',
 			provider: 'stripe',
 			providerSubscriptionId: 'sub_stripe_cancel',
 		});
@@ -168,7 +170,7 @@ describe('cancelSubscription', () => {
 		});
 
 		const cancel = cancelSubscription(env, {
-			subscriptionId: 'sub-cancel-race',
+			purchaseId: 'sub-cancel-race',
 			provider: 'appmax',
 			providerSubscriptionId: 'sub_race',
 		});

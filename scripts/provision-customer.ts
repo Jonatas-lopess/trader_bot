@@ -10,12 +10,12 @@
  *
  * Find candidates with:
  *   SELECT s.id, s.appmax_order_id, s.appmax_subscription_id, s.status
- *   FROM subscriptions s LEFT JOIN customers c ON c.subscription_id = s.id
+ *   FROM purchases s LEFT JOIN customers c ON c.purchase_id = s.id
  *   WHERE s.status = 'active' AND c.id IS NULL;
  * (or grep `onSubscriptionBecameActive: no email field` in Worker logs for
  * the order_id/subscription_id).
  *
- * Usage: pnpm run provision-customer -- --subscription-id=<subscriptions.id> --email=<email> [--origin=<url>]
+ * Usage: pnpm run provision-customer -- --purchase-id=<purchases.id> --email=<email> [--origin=<url>]
  *
  * Same `getPlatformProxy`/`--experimental-strip-types` shape as
  * `scripts/send-download-link.ts` — see that file's header for why.
@@ -38,11 +38,11 @@ function parseArg(argv: string[], name: string): string | null {
 
 async function main() {
 	const argv = process.argv.slice(2);
-	const subscriptionId = parseArg(argv, 'subscription-id');
+	const purchaseId = parseArg(argv, 'purchase-id');
 	const email = parseArg(argv, 'email');
-	if (subscriptionId === null || subscriptionId === '' || email === null || email === '') {
+	if (purchaseId === null || purchaseId === '' || email === null || email === '') {
 		console.error(
-			'Usage: pnpm run provision-customer -- --subscription-id=<id> --email=<email> [--origin=<url>]'
+			'Usage: pnpm run provision-customer -- --purchase-id=<id> --email=<email> [--origin=<url>]'
 		);
 		process.exitCode = 1;
 		return;
@@ -56,23 +56,23 @@ async function main() {
 		configPath: new URL('../wrangler.jsonc', import.meta.url).pathname,
 	});
 	try {
-		// No FK on `subscription_id` (this codebase's convention, per
+		// No FK on `purchase_id` (this codebase's convention, per
 		// `migrations/0003_customers.sql`) — `provisionCustomer` would happily
 		// insert against a typo'd id, so check it exists first rather than
 		// create an orphan row.
-		const subscription = await proxy.env.DB.prepare('SELECT id FROM subscriptions WHERE id = ?')
-			.bind(subscriptionId)
+		const subscription = await proxy.env.DB.prepare('SELECT id FROM purchases WHERE id = ?')
+			.bind(purchaseId)
 			.first<{ id: string }>();
 		if (subscription === null) {
-			console.error(`Could not provision customer: no subscription found for id=${subscriptionId}`);
+			console.error(`Could not provision customer: no purchase found for id=${purchaseId}`);
 			process.exitCode = 1;
 			return;
 		}
 
-		const customer = await provisionCustomer(proxy.env, { subscriptionId, email });
+		const customer = await provisionCustomer(proxy.env, { purchaseId, email });
 		if (!customer.created) {
 			console.log(
-				`Subscription ${subscriptionId} already has a customers row (id=${customer.id}) — no new row created, no email sent. The Cliente can already use /login.`
+				`Purchase ${purchaseId} already has a customers row (id=${customer.id}) — no new row created, no email sent. The Cliente can already use /login.`
 			);
 			return;
 		}
@@ -85,7 +85,7 @@ async function main() {
 			process.exitCode = 1;
 			return;
 		}
-		console.log(`Provisioned customer ${customer.id} for subscription ${subscriptionId} and sent the magic-link login email to ${email}.`);
+		console.log(`Provisioned customer ${customer.id} for purchase ${purchaseId} and sent the magic-link login email to ${email}.`);
 	} catch (error) {
 		// Mirrors `send-download-link.ts`: a network-level failure (DNS,
 		// timeout, TLS) throws past `issueMagicLink` rather than resolving to

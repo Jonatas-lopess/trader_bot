@@ -21,7 +21,7 @@ describe('checkWebhookRequest', () => {
 
 	it('lets a legitimate request pass through to be processed by the core handler', async () => {
 		await env.DB.prepare(
-			'INSERT INTO subscriptions (id, plan_id, status, appmax_order_id) VALUES (?, ?, ?, ?)'
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id) VALUES (?, ?, 'monthly', 0, ?, ?)"
 		)
 			.bind('sub-hardening-passthrough', 'starter', 'pending', 'ord_hardening_passthrough')
 			.run();
@@ -40,7 +40,7 @@ describe('checkWebhookRequest', () => {
 		const result = await handleWebhook(env, payload);
 		expect(result).toEqual({ status: 200 });
 
-		const row = await env.DB.prepare('SELECT status FROM subscriptions WHERE id = ?')
+		const row = await env.DB.prepare('SELECT status FROM purchases WHERE id = ?')
 			.bind('sub-hardening-passthrough')
 			.first<{ status: string }>();
 		expect(row?.status).toBe('active');

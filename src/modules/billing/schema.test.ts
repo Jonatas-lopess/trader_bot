@@ -7,20 +7,22 @@ import { describe, expect, it } from 'vitest';
 // No hand-rolled D1 stub: every later billing test runs against this same
 // binding, so behaviour here matches production D1 semantics exactly.
 describe('billing D1 schema', () => {
-	it('round-trips a subscriptions row', async () => {
+	it('round-trips a purchases row', async () => {
 		await env.DB.prepare(
-			'INSERT INTO subscriptions (id, plan_id, status) VALUES (?, ?, ?)'
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)"
 		)
 			.bind('checkout-attempt-1', 'starter', 'pending')
 			.run();
 
-		const row = await env.DB.prepare('SELECT * FROM subscriptions WHERE id = ?')
+		const row = await env.DB.prepare('SELECT * FROM purchases WHERE id = ?')
 			.bind('checkout-attempt-1')
 			.first();
 
 		expect(row).toMatchObject({
 			id: 'checkout-attempt-1',
-			plan_id: 'starter',
+			robot_id: 'starter',
+			offer: 'monthly',
+			amount_cents: 0,
 			status: 'pending',
 			payment_method: null,
 			appmax_order_id: null,
@@ -30,9 +32,9 @@ describe('billing D1 schema', () => {
 		});
 	});
 
-	it('rejects a status outside the plan lifecycle', async () => {
+	it('rejects a status outside the purchase lifecycle', async () => {
 		await expect(
-			env.DB.prepare('INSERT INTO subscriptions (id, plan_id, status) VALUES (?, ?, ?)')
+			env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)")
 				.bind('checkout-attempt-2', 'starter', 'made-up-status')
 				.run()
 		).rejects.toThrow();
@@ -75,5 +77,38 @@ describe('billing D1 schema', () => {
 			.bind('order.paid:ord_1')
 			.all();
 		expect(results).toHaveLength(2);
+	});
+});
+
+describe('catalog-pivot schema (migrations/0008_catalog_pivot.sql)', () => {
+	it('rejects an unknown offer and a negative amount', async () => {
+		await expect(
+			env.DB.prepare(
+				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES ('bad-offer', 'r', 'weekly', 0, 'pending')"
+			).run()
+		).rejects.toThrow();
+		await expect(
+			env.DB.prepare(
+				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES ('bad-amount', 'r', 'one_time', -1, 'pending')"
+			).run()
+		).rejects.toThrow();
+	});
+
+	it('round-trips a licenses row: awaiting_account by default, corretora_account nullable', async () => {
+		await env.DB.prepare("INSERT INTO licenses (purchase_id, robot_id) VALUES ('lic-schema-1', 'starter')").run();
+		const row = await env.DB.prepare('SELECT * FROM licenses WHERE purchase_id = ?').bind('lic-schema-1').first();
+		expect(row).toMatchObject({
+			purchase_id: 'lic-schema-1',
+			robot_id: 'starter',
+			corretora_account: null,
+			status: 'awaiting_account',
+			expires_at: null,
+		});
+
+		await expect(
+			env.DB.prepare(
+				"INSERT INTO licenses (purchase_id, robot_id, status) VALUES ('lic-schema-2', 'starter', 'made-up')"
+			).run()
+		).rejects.toThrow();
 	});
 });

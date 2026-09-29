@@ -49,4 +49,4 @@ already follows).
 
 ## Answer
 
-_Not yet triaged._
+Done. Routes `/termos-de-uso` and `/privacidade` (`src/pages/`), shared `src/components/legal-page.astro`, single content file `src/content/legal.ts` (section headings + `launchBlocking` TODO placeholder bodies). Both keys retired from `dead-links.ts`; footer renders them as real links, `contato` stays inert. `src/content/legal.test.ts` covers content and footer wiring. Typecheck clean, 115 tests pass, build emits both routes.

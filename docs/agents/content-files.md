@@ -81,8 +81,7 @@ grepping `from '../content/` (or `from '../../content/`) across `src/`.
 
 ## Dead links (adjacent, not the same convention)
 
-Links with no destination in this scope (Termos de uso, Política de privacidade, Contato,
-Login) are a separate concern from launch-blocking copy — they're not unapproved copy,
+Links with no destination in this scope (Contato) are a separate concern from launch-blocking copy — they're not unapproved copy,
 they're routes that don't exist yet. They're inventoried once, in
 `src/content/dead-links.ts`, and rendered as inert `<span>` elements (never
 `<a href="#">`) by `src/components/site-header.astro` and `site-footer.astro`. Grep:

@@ -1,8 +1,7 @@
 /**
  * Dead-link inventory.
  *
- * These labels have no destination in this scope — legal pages are out of
- * scope for the marketing slice (PLANNING.md §1; `.scratch/marketing-pages/spec.md`
+ * These labels have no destination in this scope (`.scratch/marketing-pages/spec.md`
  * → "Carried by the tickets, not resolved by them"). Wherever one of these
  * appears in the header or footer it renders as an inert element (a
  * `<span>`, never `<a href="#">`) — see `src/components/site-header.astro`
@@ -12,13 +11,15 @@
  * `.scratch/customer-area/issues/02-magic-link-login.md` gave it a real
  * destination (`/login`) — see `src/content/header.ts`'s `loginLink`.
  *
+ * Termos de uso and Política de privacidade moved out once
+ * `.scratch/legal-pages/issues/01-termos-e-privacidade-pages.md` gave them
+ * routes — see `src/content/legal.ts`.
+ *
  * This file is the one greppable place that lists the full dead set:
  *
  *   grep -rn "deadLinks\." src/
  */
 export const deadLinks = {
-	termosDeUso: 'Termos de uso',
-	politicaDePrivacidade: 'Política de privacidade',
 	contato: 'Contato',
 } as const;
 

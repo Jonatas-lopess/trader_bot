@@ -4,10 +4,11 @@
  *
  * See `docs/agents/content-files.md` for the typed content-file convention
  * this follows, and `src/content/dead-links.ts` for the inert-link set
- * (Termos de uso, Política de privacidade, Contato).
+ * (Contato).
  */
 
 import { deadLinks } from './dead-links';
+import { politicaDePrivacidade, termosDeUso } from './legal';
 
 export type FooterLink = {
 	label: string;
@@ -34,10 +35,11 @@ export const usefulLinks: FooterLink[] = [
 	{ label: 'FAQ', href: '/#faq' },
 ];
 
-// These do NOT have a destination in this scope — see src/content/dead-links.ts.
-export const supportLinks: DeadFooterLink[] = [
-	{ label: deadLinks.termosDeUso, dead: true },
-	{ label: deadLinks.politicaDePrivacidade, dead: true },
+// Termos and Privacidade have routes (src/content/legal.ts); Contato does
+// NOT have a destination in this scope — see src/content/dead-links.ts.
+export const supportLinks: (FooterLink | DeadFooterLink)[] = [
+	{ label: termosDeUso.pageTitle, href: termosDeUso.path },
+	{ label: politicaDePrivacidade.pageTitle, href: politicaDePrivacidade.path },
 	{ label: deadLinks.contato, dead: true },
 ];
 

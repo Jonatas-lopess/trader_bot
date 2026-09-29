@@ -117,9 +117,9 @@ PLANNING §10's 0.1 milestone (see `.scratch/backlog.md`).
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Termos de uso and Política de privacidade pages — structure + placeholder text](.scratch/legal-pages/issues/01-termos-e-privacidade-pages.md) | — | needs-triage |
+| 01 | [Termos de uso and Política de privacidade pages — structure + placeholder text](.scratch/legal-pages/issues/01-termos-e-privacidade-pages.md) | — | done |
 
-Frontier: **01** — unblocked, ready to pick up.
+All tickets done. Placeholder bodies still need real legal text before launch (`grep -rn "launchBlocking(" src/content/legal.ts`).
 
 ## Untracked
 

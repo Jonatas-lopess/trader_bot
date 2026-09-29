@@ -1,0 +1,28 @@
+---
+// Shared body for the legal routes — src/components/legal-page.astro
+//
+// Title, then each section's heading and placeholder body. Content comes
+// from src/content/legal.ts — see docs/agents/content-files.md.
+import BaseLayout from '../layouts/base-layout.astro';
+import type { LegalPage } from '../content/legal';
+
+interface Props {
+	page: LegalPage;
+}
+
+const { page } = Astro.props;
+---
+
+<BaseLayout title={page.pageTitle} description={page.pageDescription}>
+	<article class="content-row gutter-x mx-auto max-w-3xl py-16 sm:py-20">
+		<h1 class="text-heading-1 font-bold text-text-primary">{page.heading}</h1>
+		{
+			page.sections.map((section) => (
+				<section class="mt-10">
+					<h2 class="text-heading-3 font-bold text-text-primary">{section.heading}</h2>
+					<p class="mt-3 text-body text-text-secondary">{section.body.value}</p>
+				</section>
+			))
+		}
+	</article>
+</BaseLayout>

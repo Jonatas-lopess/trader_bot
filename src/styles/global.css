@@ -25,7 +25,7 @@
 	 * Color — dark, confident fintech palette. Navy surfaces, an
 	 * electric-blue brand color, a violet accent for "inteligente"/AI
 	 * framing (brain-cog, chart-spline), and success/danger semantics
-	 * for the plans page's check-check / x-circle rows.
+	 * for check-check / x-circle inclusion rows.
 	 * --------------------------------------------------------------- */
 
 	/* Surfaces, darkest to lightest elevation */
@@ -50,7 +50,7 @@
 	--color-brand-primary-subtle: #16233d; /* tinted chip/badge backgrounds */
 	--color-accent: #8b5cf6; /* secondary accent — gradients, AI-framed icons */
 
-	/* Semantic — plans page inclusion/exclusion rows */
+	/* Semantic — inclusion/exclusion rows */
 	--color-success: #22c55e; /* check-check */
 	--color-success-subtle: #123321;
 	--color-danger: #ef4444; /* x-circle */

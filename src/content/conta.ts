@@ -10,7 +10,7 @@ import { launchBlocking } from '../shared/launch-blocking';
 import type { PurchaseStatus } from '../modules/identity/customers';
 
 export const pageTitle = 'Sua conta';
-export const pageDescription = 'Acompanhe o status da sua Licença e gerencie sua Assinatura.';
+export const pageDescription = 'Acompanhe o status da sua Licença e, no plano Mensal, gerencie sua Assinatura.';
 
 export const heading = 'Sua conta';
 export const robotLabel = 'Robô';

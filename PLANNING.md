@@ -62,7 +62,7 @@ launch. Two independent reasons:
 **Responsive design is derived, not designed.** The Figma file contains two 1440px desktop
 frames and no mobile artboards. Breakpoints and stacking rules are derived from the
 desktop frames and reviewed against real devices. The 4-step row, the testimonial row and
-the plan-card row each collapse to a single column. Brazilian consumer traffic is majority
+the robot-card row each collapse to a single column. Brazilian consumer traffic is majority
 mobile, so this is the larger half of the audience arriving at an underspecified layout —
 tracked as a known risk, not a solved problem.
 

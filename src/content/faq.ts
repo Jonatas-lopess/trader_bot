@@ -1,7 +1,8 @@
 /**
  * FAQ content — heading and five Q&A items for the landing page's
  * `faq-section` band (frame `6:160`,
- * `.scratch/marketing-pages/issues/08-landing-plan-teaser-and-faq.md`).
+ * `.scratch/marketing-pages/issues/08-landing-plan-teaser-and-faq.md`,
+ * updated for the catalog by `.scratch/catalog-pivot/issues/10-copy-and-docs-sweep.md`).
  *
  * See `docs/agents/content-files.md` for the typed-content-file and
  * launch-blocking conventions this follows, consumed by
@@ -26,18 +27,15 @@
  *    pre-tuned configurations and full Portuguese-language tutorials, a
  *    documentation/tutorial deliverable absent from every milestone in
  *    PLANNING.md §10.
- *  - "Posso cancelar a qualquer momento?" — direct rewrite. PLANNING.md §6
- *    records Appmax ships no self-service portal, so any cancellation UI
- *    is this project's own build, and §1 keeps the customer area (where
- *    cancellation lives) in 0.1 scope, not yet built — described modestly
- *    here rather than promising a specific interaction. Plan upgrade/
- *    downgrade is 1.0.0 (§10) and is not mentioned.
- *  - "Quais formas de pagamento vocês aceitam?" — the fifth item (the
- *    ticket names four specific problems out of "five items (`6:165`)");
- *    a factual payment-methods answer, matching PLANNING.md §6 exactly
- *    (card à vista + boleto recurring, Pix one-time only, no
- *    installments in 0.1) — no launchBlocking needed, it ships only what
- *    §6 already commits to.
+ *  - "Posso cancelar a qualquer momento?" — direct rewrite, scoped to the
+ *    Mensal Oferta (catalog-pivot 10): Compra is a single payment and
+ *    Anual does not auto-renew in 0.1 (ADR-0006), so only a Mensal
+ *    Assinatura can be cancelled. PLANNING.md §6 records Appmax ships no
+ *    self-service portal, so the cancel UI is this project's own build
+ *    (customer area, §1).
+ *  - "Quais formas de pagamento vocês aceitam?" — factual, per ADR-0006:
+ *    Compra and Anual accept card, Boleto and Pix (single payment); Mensal
+ *    is card only (recurring). No installments in 0.1.
  *
  *   grep -rn "launchBlocking(" src/content/faq.ts
  */
@@ -92,30 +90,27 @@ export const faqItems: FaqItem[] = [
 	},
 	{
 		question: 'Posso cancelar a qualquer momento?',
-		// Direct rewrite, not launchBlocking — factual-accuracy correction
-		// (same register as ticket 05's step-4 fix in
-		// src/content/how-it-works.ts). PLANNING.md §6: Appmax has no
-		// self-service portal, so cancellation UI is this project's own
-		// build, and §1 keeps the customer area in 0.1 scope. Described
-		// modestly rather than promising a specific interaction ("um
-		// clique") the customer area doesn't yet exist to deliver. No
-		// mention of plan upgrade/downgrade — that is 1.0.0 (§10).
+		// Direct rewrite, not launchBlocking — factual-accuracy correction.
+		// Scoped to Mensal: Compra is one payment for a perpetual Licença and
+		// Anual is one payment for 12 months with no auto-renew in 0.1
+		// (ADR-0006), so neither has anything to cancel. The 7-day
+		// withdrawal is handled in Termos de uso, not here.
 		answer:
-			'Sim. O cancelamento é feito diretamente pela área do cliente, sem precisar abrir ' +
-			'chamado de suporte. Ao cancelar, sua Assinatura deixa de renovar no próximo ciclo e a ' +
-			'Licença ativa permanece válida até a data de expiração já concedida.',
+			'Na Oferta Mensal, sim. O cancelamento é feito diretamente pela área do cliente, ' +
+			'sem precisar abrir chamado de suporte: a Assinatura deixa de renovar no próximo ' +
+			'ciclo e a Licença ativa permanece válida até a data de expiração já concedida. ' +
+			'A Compra e a Oferta Anual são pagamentos únicos, sem renovação automática, então ' +
+			'não há assinatura a cancelar.',
 	},
 	{
 		question: 'Quais formas de pagamento vocês aceitam?',
-		// Matches PLANNING.md §6 exactly: card à vista and boleto can carry
-		// a recurring Assinatura, Pix is one-time only (no recurring Pix on
-		// Appmax or a Brazilian Stripe account), and 0.1 ships no
-		// installment option. No launchBlocking — this states only what §6
-		// already commits to.
+		// Matches ADR-0006: Compra and Anual are single payments (card,
+		// Boleto, Pix); Mensal recurs on card only (no recurring Pix or
+		// Boleto). 0.1 ships no installment option.
 		answer:
-			'Aceitamos cartão de crédito à vista, boleto bancário e Pix. Cartão à vista e boleto ' +
-			'podem manter sua Assinatura recorrente; o Pix está disponível apenas para pagamento ' +
-			'único, sem recorrência automática. Por enquanto, cada cobrança é feita em uma única ' +
-			'vez — não há opção de dividir o valor em várias cobranças.',
+			'Na Compra e na Oferta Anual (pagamento único) aceitamos cartão de crédito à vista, ' +
+			'boleto bancário e Pix. A Oferta Mensal, que é recorrente, aceita apenas cartão de ' +
+			'crédito. Por enquanto, cada cobrança é feita em uma única vez — não há opção de ' +
+			'dividir o valor em várias cobranças.',
 	},
 ];

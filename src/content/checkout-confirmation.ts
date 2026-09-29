@@ -10,7 +10,7 @@ import { launchBlocking } from '../shared/launch-blocking';
 
 export const pageTitle = 'Confirmando seu pagamento';
 export const pageDescription =
-	'Acompanhe a confirmação do pagamento da sua Assinatura do Robô Trader.';
+	'Acompanhe a confirmação do pagamento da sua compra do Robô Trader.';
 
 export const confirmationHeading = 'Confirmando seu pagamento';
 
@@ -33,7 +33,7 @@ export const confirmationMessages: Record<
 		'Recebemos seu Boleto. A confirmação pode levar até 1 dia útil — avisaremos por e-mail assim que o pagamento for confirmado.',
 	active: 'Pagamento confirmado!',
 	past_due:
-		'Houve um problema com a cobrança. Entre em contato com o suporte para regularizar sua Assinatura.',
+		'Houve um problema com a cobrança. Entre em contato com o suporte para regularizar sua cobrança.',
 	canceled: 'Este checkout foi cancelado.',
 	rejected: rejectedMessage.value,
 	refunded: 'Este pagamento foi reembolsado.',

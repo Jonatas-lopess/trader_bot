@@ -1,7 +1,7 @@
 # Robô Trader
 
 Marketing site and customer area for the Robô Trader, an MT5 (MetaTrader 5) Expert
-Advisor. Sells subscriptions, delivers the robot, and lets customers manage their license
+Advisor. Sells a catalog of robots, delivers them, and lets customers manage their license
 — all in one codebase.
 
 The business sells the right to run the robot against a customer's own brokerage account
@@ -9,15 +9,15 @@ The business sells the right to run the robot against a customer's own brokerage
 
 ## What it does (0.1 scope)
 
-- Landing and plans pages (pt-BR only)
+- Landing and `/catalog` pages (pt-BR only)
 - Hosted checkout with card, Boleto and Pix (Appmax)
 - Magic-link authentication (no passwords)
-- Customer area: license status, key/expiry, cancel subscription
-- Robot delivery via a signed, expiring download link (email)
+- Customer area: license status, key/expiry, Corretora account, cancel Mensal subscription
+- Robot delivery via a signed, expiring download link (email), per license
 - Legal pages (placeholder text, pending real copy)
 
-Not in 0.1: in-app binary download, automated license issuance, entitlement enforcement,
-plan upgrade/downgrade, automated NFS-e emission. See `PLANNING.md` §1.
+Not in 0.1: in-app binary download, automated compile/license issuance, entitlement enforcement,
+annual auto-renew, automated NFS-e emission. See `PLANNING.md` §1.
 
 ## Stack
 
@@ -30,8 +30,8 @@ checkout-to-customer-area happy path).
 
 - `PLANNING.md` — technical contract: scope, stack, payments, auth, licensing, compliance.
   Binding until changed there.
-- `CONTEXT.md` — domain vocabulary (Plano, Assinatura, Cliente, Robô, Licença, Chave,
-  Corretora, Boleto, Pix).
+- `CONTEXT.md` — domain vocabulary (Catálogo, Oferta, Compra, Assinatura, Cliente, Robô,
+  Licença, Chave, Corretora, Boleto, Pix).
 - `docs/adr/` — architecture decisions.
 - `TODO.md` — index of tracked work in `.scratch/`.
 
@@ -40,8 +40,8 @@ checkout-to-customer-area happy path).
 Built and done, per `TODO.md`:
 
 - **marketing-pages** — Astro + Cloudflare Workers scaffold, Tailwind v4 design tokens,
-  site shell, hero, video/how-it-works, plans page, plan teaser and FAQ. Ticket 06 (social
-  proof) is deferred: the frame's metrics and testimonials are fabricated placeholders
+  site shell, hero, video/how-it-works, FAQ (the plans page and plan teaser were replaced by
+  `catalog-pivot`). Ticket 06 (social proof) is deferred: the frame's metrics and testimonials are fabricated placeholders
   (PLANNING.md §2) with no real figures to ship yet.
 - **checkout-webhooks** — hosted checkout, webhook (idempotent, compare-and-swap state
   sync, IP filter, payload validation, rate limit), intermediate confirmation page
@@ -50,11 +50,13 @@ Built and done, per `TODO.md`:
   send-failure logging, auto-send on activation.
 - **robot-delivery** — signed, expiring download link (D1 token + R2 binding), email
   dispatch.
-- **sentry-integration** — error reporting wired into the Worker; source-map upload is
-  `ready-for-human` (needs a Sentry auth token in CI first).
+- **sentry-integration** — error reporting wired into the Worker, source maps uploaded on
+  deploy.
+- **legal-pages** — Termos de uso / Política de privacidade (placeholder text).
+- **catalog-pivot** — robot catalog, checkout by robot + offer with server-side price,
+  webhook amount check, per-Licença delivery. See `TODO.md` for what remains.
 
-Not yet built: **legal-pages** (Termos de uso / Política de privacidade — `needs-triage`)
-and **license-server** (automated license issuance, `needs-triage`, blocked on the payload
+Not yet built: **license-server** (automated license issuance, `needs-triage`, blocked on the payload
 decision — see ADR-0004). Deploy to production is blocked on PLANNING.md §12
 prerequisites (Appmax onboarding, Resend domain verification, custom domain) — none of
 these block the build or test-phase work.

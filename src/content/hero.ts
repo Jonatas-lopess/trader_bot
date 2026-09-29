@@ -58,11 +58,11 @@ export const trustRow: HeroTrustItem[] = [
 	{
 		icon: 'badge-percent',
 		// "Zero taxas ocultas" is a pricing claim; it only holds if the
-		// plans page (ticket 07) ships with no surcharge on any payment
+		// catalog page (catalog-pivot 06) ships with no surcharge on any payment
 		// method. .scratch/marketing-pages/issues/04-landing-hero.md item 3.
 		label: launchBlocking(
 			'Zero taxas ocultas',
-			'Pricing claim; holds only if the plans page (ticket 07) ships with no surcharge ' +
+			'Pricing claim; holds only if the catalog page (catalog-pivot 06) ships with no surcharge ' +
 				'on any payment method. .scratch/marketing-pages/issues/04-landing-hero.md item 3; ' +
 				'.scratch/marketing-pages/spec.md → "Carried by the tickets, not resolved by them".',
 		),

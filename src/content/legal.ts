@@ -32,6 +32,15 @@ const placeholderBody = (page: string) =>
 		`Placeholder — ${page} text must come from the owner or a lawyer (PLANNING.md §9, §10 0.1 scope)`,
 	);
 
+// CDC art. 49 (7-day arrependimento) — ADR-0006 "Withdrawal", PLANNING.md §9.
+// Honored in 0.1 by manual refund via Appmax; the Licença is revoked by expiry-to-now
+// (docs/ops/withdrawal-refund.md). Wording below is a placeholder: a lawyer writes the real clause.
+export const withdrawalHeading = 'Direito de arrependimento';
+export const withdrawalBody = launchBlocking(
+	'TODO — cláusula de arrependimento (CDC art. 49, 7 dias, reembolso e revogação da Licença) pendente de redação jurídica.',
+	'Placeholder — CDC art. 49 withdrawal clause must be worded by a lawyer (ADR-0006 Withdrawal, PLANNING.md §9)',
+);
+
 export const termosDeUso: LegalPage = {
 	path: '/termos-de-uso',
 	pageTitle: 'Termos de uso',
@@ -44,6 +53,7 @@ export const termosDeUso: LegalPage = {
 		{ heading: 'Limitação de responsabilidade', body: placeholderBody('Termos de uso') },
 		{ heading: 'Pagamento e renovação', body: placeholderBody('Termos de uso') },
 		{ heading: 'Cancelamento', body: placeholderBody('Termos de uso') },
+		{ heading: withdrawalHeading, body: withdrawalBody },
 		{ heading: 'Alterações destes termos', body: placeholderBody('Termos de uso') },
 		{ heading: 'Foro e legislação aplicável', body: placeholderBody('Termos de uso') },
 	],

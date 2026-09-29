@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deadLinks } from './dead-links';
 import { supportLinks } from './footer';
-import { politicaDePrivacidade, termosDeUso } from './legal';
+import { politicaDePrivacidade, termosDeUso, withdrawalBody, withdrawalHeading } from './legal';
 
 describe('legal pages content', () => {
 	it.each([termosDeUso, politicaDePrivacidade])('$path has sections, all launch-blocked placeholders', (page) => {
@@ -10,6 +10,13 @@ describe('legal pages content', () => {
 			expect(section.body.blocked).toBe(true);
 			expect(section.body.value).toMatch(/^TODO/);
 		}
+	});
+
+	it('termos carries the launch-blocked CDC art. 49 withdrawal clause', () => {
+		const section = termosDeUso.sections.find((s) => s.heading === withdrawalHeading);
+		expect(section?.body).toBe(withdrawalBody);
+		expect(withdrawalBody.blocked).toBe(true);
+		expect(withdrawalBody.reason).toMatch(/art\. 49/);
 	});
 
 	it('footer links both pages; only Contato stays dead', () => {

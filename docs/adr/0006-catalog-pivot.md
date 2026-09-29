@@ -83,7 +83,7 @@ detail pages until a second real Robô exists.
   never auto-renews for any method.
 - Automated compile/issuance per Licença, researched with the license authority.
 - Rental-to-Compra conversion.
-- Whether Appmax supports a yearly recurring interval is unverified (PLANNING §13).
+- Appmax documents a yearly interval (`interval: "year"`); sandbox confirmation pending (PLANNING §13).
 
 ## Consequences
 

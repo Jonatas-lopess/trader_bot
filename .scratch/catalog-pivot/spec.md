@@ -39,6 +39,7 @@ cart; per-Robô detail pages; live check-in enforcement (stays in `license-serve
 ## Open
 
 - Real Robôs, names, prices: placeholders until supplied. Everything ships `launchBlocking`.
-- Appmax: yearly interval support, and the webhook field carrying the charged amount, both
-  unverified (PLANNING §13).
+- Appmax: yearly interval and charged-amount field are now documented (`interval: "year"`,
+  `amounts.sub_total` on `GET /v1/orders/{id}`); both still need a sandbox call (PLANNING §13).
+  Driver endpoints, webhook envelope and status mapping findings are in tickets 02–05.
 - Corretora-account form has no Figma frame; design it from the existing customer-area styles.

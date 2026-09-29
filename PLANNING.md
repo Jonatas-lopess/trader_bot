@@ -485,9 +485,16 @@ on:
   `return_url` redirect only); this file's blanket claim did not. Verify `data.order_id`
   against a real sandbox call before go-live — this is a functional dependency, not just a
   cosmetic one.
-- Whether Appmax supports a yearly recurring interval (needed for Anual auto-renew, 1.0.0)
-  and whether its webhook reports the charged amount in a field we can compare against
-  `purchases.amount_cents` (ADR-0006 amount check)
+- Appmax API facts read from docs.appmax.com.br on 2026-09-29, none yet exercised against a
+  live sandbox: yearly interval is documented (`POST /v1/subscriptions`, `interval`
+  `month`/`year`, `interval_count`, `max_cycles`) but needs a sandbox confirmation; the amount
+  to compare is `amounts.sub_total` on `GET /v1/orders/{id}` (`total_paid` includes
+  `installment_fee`); order and subscription endpoints need merchant credentials and `/v1`
+  paths; cancel is `PATCH /v1/subscriptions/{id}/cancel` and is immediate; webhook payloads
+  wrap ids in `data`. Order statuses and their mapping live in
+  `.scratch/catalog-pivot/issues/04-webhook-amount-check.md`.
+- Subscription base orders may be card **or Pix** per the docs, against §6's "no Pix for
+  recurring". Unresolved: keep Mensal card-only until a sandbox test or Appmax says otherwise.
 - Appmax's published webhook source-IP list — not findable anywhere (docs.appmax.com.br,
   help-center.appmax.com.br, general web search), so `APPMAX_WEBHOOK_IPS` ships unset;
   `src/modules/billing/webhook-hardening.ts` fails closed on that, not open.

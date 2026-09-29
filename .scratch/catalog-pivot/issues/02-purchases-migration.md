@@ -12,3 +12,9 @@ Governing docs: ADR-0006 "Purchase table and status ranking", PLANNING.md §6 Pu
 - [ ] Rigidity ranking test: every lower-ranked event fails to overwrite every higher status
 - [ ] Existing tests updated, not deleted; `pnpm test` and `pnpm run typecheck` pass
 
+
+## Appmax findings (2026-09-29, docs.appmax.com.br)
+
+- Order statuses (pt-BR slugs) map to the ranking in ticket 04's "Status mapping"; `refunded` and `chargeback` are reachable only via `estornado`/`recusado_por_risco` and `chargeback_*`.
+- Order and subscription resources use different status sets (orders `aprovado`…; subscriptions `ACTIVE`/`CANCELLED`). Split `mapAppmaxStatus` into one mapper per resource.
+- `order_id` and `subscription_id` are integers on Appmax's side; store as text but do not assume string in payloads.

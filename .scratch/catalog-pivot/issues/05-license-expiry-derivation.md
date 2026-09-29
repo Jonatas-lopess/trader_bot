@@ -12,3 +12,7 @@ Governing docs: ADR-0006, CONTEXT.md Licença.
 - [ ] Refund after Compra sets expiry to now and cannot be undone by a lower-ranked event
 - [ ] `pnpm test` and `pnpm run typecheck` pass
 
+
+## Appmax findings (2026-09-29, docs.appmax.com.br)
+
+`PATCH /v1/subscriptions/{id}/cancel` (merchant credentials, optional body `{reason}`) is **immediate**: status `CANCELLED`, `canceled_at` set, no further charges, no end-of-period grace. "`canceled` keeps the term already paid" is therefore entirely our rule: derive the expiry from the last successful charge (`charges[].charged_at` from `GET /v1/subscriptions/{id}`) plus one period, not from `canceled_at`. Current driver uses `POST /subscriptions/{id}/cancel`, wrong method and path.

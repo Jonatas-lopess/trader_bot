@@ -51,7 +51,10 @@ async function main() {
 	try {
 		const result = await dispatchDownloadLink(proxy.env, { customerId, origin });
 		if (!result.ok) {
-			console.error(`Could not send download link: ${result.reason}`);
+			console.error(
+				`Could not send download link: ${result.reason}` +
+					(result.reason === 'email_failed' && result.detail ? ` (${result.detail})` : '')
+			);
 			process.exitCode = 1;
 			return;
 		}

@@ -26,7 +26,7 @@ Governing docs: `02-report-caught-failures.md` (the capture site this extends),
 
 **Category:** enhancement
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `SendMagicLinkEmailResult` and `SendDownloadLinkEmailResult` gain a `detail` field
       (or equivalent), populated from Resend's parsed JSON error body on `!response.ok`;
@@ -40,3 +40,7 @@ Governing docs: `02-report-caught-failures.md` (the capture site this extends),
       `Response(null, ...)`) and asserts the detail reaches the log, the Sentry capture's
       extra, and (for the download-link path) the CLI-facing result.
 - [ ] `pnpm test` and `pnpm run typecheck` pass.
+
+## Answer
+
+Done. Both Resend clients return `detail` (`"name: message"` from Resend's JSON error body, falling back to `HTTP <status>` for an empty or non-JSON body, so a 401/403 key problem is distinguishable from a 422 rejected recipient). `issueMagicLink` adds it to the `console.error` line and Sentry `extra.detail`; `dispatchDownloadLink`'s `email_failed` result carries it and `scripts/send-download-link.ts` prints it. Tests cover the JSON-body and non-JSON cases at the `issueMagicLink` seam and the dispatch result.

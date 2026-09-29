@@ -60,20 +60,46 @@ describe('magic-link', () => {
 
 	it('logs visibly when Resend fails, but still mints the token and keeps the generic response contract', async () => {
 		await seedCustomer('cust-ml-send-fail', 'send-fail@example.com');
-		vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(null, { status: 500 }));
+		vi.spyOn(globalThis, 'fetch').mockImplementation(
+			async () =>
+				new Response(JSON.stringify({ name: 'validation_error', message: 'Invalid `to` field.' }), { status: 422 })
+		);
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		await requestMagicLink(env, { email: 'send-fail@example.com', ip: '203.0.113.9', origin: 'https://example.com' });
 
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('cust-ml-send-fail'));
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('validation_error: Invalid `to` field.'));
 		expect(Sentry.captureMessage).toHaveBeenCalledWith(
 			expect.stringContaining('Resend send failed'),
-			expect.objectContaining({ extra: expect.objectContaining({ customer_id: 'cust-ml-send-fail' }) })
+			expect.objectContaining({
+				extra: expect.objectContaining({
+					customer_id: 'cust-ml-send-fail',
+					detail: 'validation_error: Invalid `to` field.',
+				}),
+			})
 		);
 		const { results } = await env.DB.prepare('SELECT * FROM login_tokens WHERE customer_id = ?')
 			.bind('cust-ml-send-fail')
 			.all();
 		expect(results).toHaveLength(1);
+	});
+
+	it('falls back to the HTTP status when Resend fails with a non-JSON body', async () => {
+		await seedCustomer('cust-ml-nonjson', 'nonjson@example.com');
+		vi.spyOn(globalThis, 'fetch').mockImplementation(
+			async () => new Response('<html>Bad Gateway</html>', { status: 401 })
+		);
+		vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await requestMagicLink(env, { email: 'nonjson@example.com', ip: '203.0.113.10', origin: 'https://example.com' });
+
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('Resend send failed'),
+			expect.objectContaining({
+				extra: expect.objectContaining({ customer_id: 'cust-ml-nonjson', detail: 'HTTP 401' }),
+			})
+		);
 	});
 
 	it('redeeming a valid token sets a session and consumes the token', async () => {

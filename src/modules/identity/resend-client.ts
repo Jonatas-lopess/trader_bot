@@ -18,7 +18,23 @@ const FROM_ADDRESS = 'Robô Trader <onboarding@resend.dev>';
 
 type ResendCredentials = Pick<Cloudflare.Env, 'RESEND_API_KEY'>;
 
-export type SendMagicLinkEmailResult = { ok: boolean };
+export type SendMagicLinkEmailResult = { ok: boolean; detail?: string };
+
+/**
+ * Resend's error body is `{ name, message, statusCode }`. Parsed defensively:
+ * an empty or non-JSON body (proxy error page, network edge) falls back to
+ * the HTTP status rather than throwing, so a broken API key (401/403) stays
+ * distinguishable from a rejected recipient (422).
+ */
+async function readRejectionDetail(response: Response): Promise<string> {
+	try {
+		const body = (await response.json()) as { name?: unknown; message?: unknown };
+		const parts = [body.name, body.message].filter((p): p is string => typeof p === 'string' && p !== '');
+		return parts.length > 0 ? parts.join(': ') : `HTTP ${response.status}`;
+	} catch {
+		return `HTTP ${response.status}`;
+	}
+}
 
 export async function sendMagicLinkEmail(
 	env: ResendCredentials,
@@ -38,5 +54,6 @@ export async function sendMagicLinkEmail(
 			text: `Clique no link abaixo para entrar na sua área do cliente. O link expira em 15 minutos e só pode ser usado uma vez.\n\n${params.magicLinkUrl}`,
 		}),
 	});
-	return { ok: response.ok };
+	if (response.ok) return { ok: true };
+	return { ok: false, detail: await readRejectionDetail(response) };
 }

@@ -50,9 +50,12 @@ export async function issueMagicLink(
 	// for the `/login` and webhook callers: the response contract is
 	// unchanged, this is purely for ops visibility (customer-area ticket 06).
 	if (!sent.ok) {
-		console.error(`issueMagicLink: Resend send failed for customer_id=${params.customerId}`);
+		console.error(
+			`issueMagicLink: Resend send failed for customer_id=${params.customerId}` +
+				(sent.detail ? ` (${sent.detail})` : '')
+		);
 		Sentry.captureMessage('issueMagicLink: Resend send failed', {
-			extra: { customer_id: params.customerId, email: params.email },
+			extra: { customer_id: params.customerId, email: params.email, detail: sent.detail },
 		});
 	}
 	return { ok: sent.ok };

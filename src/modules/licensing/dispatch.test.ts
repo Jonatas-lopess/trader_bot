@@ -7,7 +7,9 @@ import { dispatchDownloadLink } from './dispatch';
 // ticket 01.
 function mockResend(response: { ok: boolean } = { ok: true }) {
 	return vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
-		response.ok ? new Response(JSON.stringify({ id: 'resend-test' }), { status: 200 }) : new Response('nope', { status: 500 })
+		response.ok
+			? new Response(JSON.stringify({ id: 'resend-test' }), { status: 200 })
+			: new Response(JSON.stringify({ name: 'validation_error', message: 'Invalid `to` field.' }), { status: 422 })
 	);
 }
 
@@ -64,7 +66,7 @@ describe('dispatchDownloadLink', () => {
 
 		const result = await dispatchDownloadLink(env, { customerId: 'cust-dispatch-2', origin: 'https://example.com' });
 
-		expect(result).toEqual({ ok: false, reason: 'email_failed' });
+		expect(result).toEqual({ ok: false, reason: 'email_failed', detail: 'validation_error: Invalid `to` field.' });
 		const { results } = await env.DB.prepare('SELECT * FROM download_tokens WHERE customer_id = ?')
 			.bind('cust-dispatch-2')
 			.all();

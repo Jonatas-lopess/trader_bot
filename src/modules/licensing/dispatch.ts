@@ -23,7 +23,8 @@ type DispatchEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY'>;
 
 export type DispatchDownloadLinkResult =
 	| { ok: true; email: string; downloadUrl: string }
-	| { ok: false; reason: 'customer_not_found' | 'email_failed' };
+	| { ok: false; reason: 'customer_not_found' }
+	| { ok: false; reason: 'email_failed'; detail?: string };
 
 export async function dispatchDownloadLink(
 	env: DispatchEnv,
@@ -40,7 +41,7 @@ export async function dispatchDownloadLink(
 	const downloadUrl = new URL(`/download/${token}`, params.origin).toString();
 
 	const sent = await sendDownloadLinkEmail(env, { to: email, downloadUrl });
-	if (!sent.ok) return { ok: false, reason: 'email_failed' };
+	if (!sent.ok) return { ok: false, reason: 'email_failed', detail: sent.detail };
 
 	return { ok: true, email, downloadUrl };
 }

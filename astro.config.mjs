@@ -34,7 +34,7 @@ export default defineConfig({
 							org: 'jonatas-lopes',
 							project: 'trader-bot-worker',
 							release: { name: process.env.SENTRY_RELEASE },
-							sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.map'] },
+							sourcemaps: { filesToDeleteAfterUpload: ['dist/client/**/*.map'] },
 							telemetry: false,
 						}),
 					]

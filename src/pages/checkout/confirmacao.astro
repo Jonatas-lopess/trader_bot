@@ -19,6 +19,7 @@ import {
 	pageDescription,
 	pageTitle,
 	pendingTimeoutMessage,
+	pendingTimeoutRetry,
 } from '../../content/checkout-confirmation';
 
 export const prerender = false;
@@ -48,6 +49,14 @@ const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 					>
 						{activeCtaLabel}
 					</span>
+					{/* Shown only once a `pending` wait times out; starts a new checkout, never resumes this row. */}
+					<a
+						id="confirmation-retry"
+						href={pendingTimeoutRetry.href}
+						class="mt-4 hidden text-body font-medium text-brand-primary underline data-[visible]:inline-block"
+					>
+						{pendingTimeoutRetry.label}
+					</a>
 				</div>
 			)
 		}
@@ -60,6 +69,7 @@ const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 		const reference = root.dataset.ref;
 		const messageEl = document.getElementById('confirmation-message');
 		const ctaEl = document.getElementById('confirmation-cta');
+		const retryEl = document.getElementById('confirmation-retry');
 
 		// PLANNING.md §7: ~2s interval, no WebSocket, no Durable Object.
 		const POLL_INTERVAL_MS = 2000;
@@ -83,6 +93,10 @@ const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 			if (messageEl && messages[state]) {
 				const timedOut = state === 'pending' && Date.now() - pollStartedAt >= PENDING_TIMEOUT_MS;
 				messageEl.textContent = timedOut && timeoutMessage ? timeoutMessage : messages[state];
+				if (retryEl) {
+					if (timedOut) retryEl.setAttribute('data-visible', '');
+					else retryEl.removeAttribute('data-visible');
+				}
 			}
 			if (ctaEl) {
 				if (state === 'active') ctaEl.setAttribute('data-visible', '');

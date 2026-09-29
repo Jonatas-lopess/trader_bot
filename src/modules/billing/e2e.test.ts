@@ -119,7 +119,7 @@ describe('checkout-webhooks end to end', () => {
 				return new Response(JSON.stringify({ data: { status: 'aprovado' } }), { status: 200 });
 			}
 			if (url.includes('/subscriptions/sub_concurrent')) {
-				return new Response(JSON.stringify({ data: { status: 'cancelado' } }), { status: 200 });
+				return new Response(JSON.stringify({ data: { status: 'CANCELLED' } }), { status: 200 });
 			}
 			throw new Error(`unexpected fetch: ${url}`);
 		});

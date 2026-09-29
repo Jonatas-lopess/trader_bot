@@ -34,6 +34,11 @@ describe('getPurchaseStatus', () => {
 		expect(await getPurchaseStatus(env, 'ref-active')).toEqual({ ok: true, state: 'active' });
 	});
 
+	it('reports rejected (paid, held for review) as its own state', async () => {
+		await seed({ id: 'ref-rejected', plan_id: 'pro', status: 'rejected', payment_method: 'card' });
+		expect(await getPurchaseStatus(env, 'ref-rejected')).toEqual({ ok: true, state: 'rejected' });
+	});
+
 	it('returns not-found for a reference with no matching row, not a crash', async () => {
 		expect(await getPurchaseStatus(env, 'does-not-exist')).toEqual({ ok: false, status: 404 });
 	});

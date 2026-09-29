@@ -4,6 +4,7 @@
  * Real product copy, ships as drawn (docs/agents/content-files.md).
  */
 
+import { launchBlocking } from '../shared/launch-blocking';
 import type { PurchaseStatus } from '../modules/identity/customers';
 
 export const pageTitle = 'Sua conta';
@@ -17,14 +18,18 @@ export const assinaturaLabel = 'Assinatura';
 // Ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md): the
 // page needs to reflect the Assinatura's own status too, not only the
 // Licença's — most visibly after a successful cancel.
+// Paid but held for manual review (PLANNING.md §6 Price integrity). Never says the Cliente was not charged.
+const rejectedStatusText = launchBlocking(
+	'Em análise',
+	'ADR-0006 / PLANNING.md §6 Price integrity: placeholder wording for a paid-but-rejected purchase; ticket 07 owns the final customer-area copy.'
+);
+
 export const assinaturaStatusTexts: Record<PurchaseStatus, string> = {
 	pending: 'Pendente',
 	active: 'Ativa',
 	past_due: 'Pagamento atrasado',
 	canceled: 'Cancelada',
-	// Interim wording for the ranking's new states (catalog-pivot ticket 02);
-	// tickets 04/07 own the real copy. Never says the Cliente was not charged.
-	rejected: 'Em análise',
+	rejected: rejectedStatusText.value,
 	refunded: 'Reembolsada',
 	chargeback: 'Contestada',
 };

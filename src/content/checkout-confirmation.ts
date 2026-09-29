@@ -1,3 +1,5 @@
+import { launchBlocking } from '../shared/launch-blocking';
+
 /**
  * Copy for the intermediate confirmation page (`/checkout/confirmacao`) —
  * .scratch/checkout-webhooks/issues/05-intermediate-confirmation-page.md,
@@ -11,6 +13,13 @@ export const pageDescription =
 	'Acompanhe a confirmação do pagamento da sua Assinatura do Robô Trader.';
 
 export const confirmationHeading = 'Confirmando seu pagamento';
+
+// PLANNING.md §6 Price integrity: the Cliente *was* charged, so this never says
+// otherwise and never invites a second purchase. Wording is legal/support-facing.
+export const rejectedMessage = launchBlocking(
+	'Recebemos o seu pagamento, mas ele precisa de uma verificação manual antes de liberar a sua Licença. Nossa equipe entrará em contato por e-mail. Não é necessário pagar novamente; se preferir, fale com o suporte.',
+	'ADR-0006 / PLANNING.md §6 Price integrity: placeholder copy for a paid-but-rejected purchase (amount mismatch); needs support-channel and legal wording before launch.'
+);
 
 // Keyed by PurchaseState (src/modules/billing/status.ts) — kept as a
 // literal union here rather than importing that type, so this content file
@@ -26,10 +35,7 @@ export const confirmationMessages: Record<
 	past_due:
 		'Houve um problema com a cobrança. Entre em contato com o suporte para regularizar sua Assinatura.',
 	canceled: 'Este checkout foi cancelado.',
-	// Interim wording for the ranking's new states (catalog-pivot ticket 02);
-	// ticket 04 owns the real `rejected` copy (PLANNING.md §6: payment was
-	// received and is under review, never invites a second purchase).
-	rejected: 'Recebemos seu pagamento e ele está em análise. Entraremos em contato por e-mail.',
+	rejected: rejectedMessage.value,
 	refunded: 'Este pagamento foi reembolsado.',
 	chargeback: 'Este pagamento foi contestado junto ao seu banco.',
 };
@@ -49,4 +55,8 @@ export const missingReferenceMessage =
 // webhook confirming — polling keeps running in the background regardless,
 // this only changes what's on screen while the customer waits.
 export const pendingTimeoutMessage =
-	'Isso está demorando mais que o esperado. Continue nesta página — assim que o pagamento for confirmado, atualizamos automaticamente. Se preferir, entre em contato com o suporte.';
+	'Isso está demorando mais que o esperado. Se o pagamento for confirmado, atualizamos esta página automaticamente. Se você não concluiu o pagamento, pode tentar novamente ou falar com o suporte.';
+
+// A stale `pending` row is inert and never resumed (a cancelled Appmax order or an
+// expired Pix stays `pending`): the retry is a brand-new checkout from the catalog.
+export const pendingTimeoutRetry = { label: 'Tentar novamente', href: '/catalog' } as const;

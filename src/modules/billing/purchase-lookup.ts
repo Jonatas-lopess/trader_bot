@@ -7,6 +7,7 @@
  * construction.
  */
 
+import * as Sentry from '@sentry/cloudflare';
 import type { ProviderId, PurchaseStatus } from './payment-provider';
 
 /**
@@ -46,4 +47,57 @@ export async function findPurchaseIdByProviderRef(
 		.bind(provider, ref.orderId, ref.subscriptionId)
 		.first<{ id: string }>();
 	return row?.id ?? null;
+}
+
+type AmountFacts = { purchaseId: string; expectedCents: number };
+
+export type AmountCheck =
+	| { status: PurchaseStatus; unchecked?: AmountFacts }
+	| { status: 'rejected'; mismatch: AmountFacts & { reportedCents: number } };
+
+/**
+ * Price integrity after payment (ADR-0006, PLANNING.md §6): when the authoritative refetch
+ * says a purchase is paid (`active`), the amount the gateway reports must equal the row's
+ * stored `amount_cents`. Never the live catalog, so repricing between session creation and
+ * payment cannot flag a legitimate payment. A mismatch downgrades the outcome to `rejected`;
+ * the Cliente was charged, so the caller reports it (`reportAmountCheck`) and never provisions.
+ *
+ * `reportedAmountCents === null` (the gateway response carried no amount, a field name still
+ * unverified against a sandbox) activates anyway and is flagged `unchecked`, rather than
+ * rejecting every payment because of an unconfirmed field name.
+ */
+export async function checkReportedAmount(
+	env: LookupEnv,
+	provider: ProviderId,
+	ref: { orderId: string | null; subscriptionId: string | null },
+	authoritative: { status: PurchaseStatus; reportedAmountCents: number | null }
+): Promise<AmountCheck> {
+	if (authoritative.status !== 'active') return { status: authoritative.status };
+
+	const row = await env.DB.prepare(
+		'SELECT id, amount_cents FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+	)
+		.bind(provider, ref.orderId, ref.subscriptionId)
+		.first<{ id: string; amount_cents: number }>();
+	if (row === null) return { status: 'active' };
+
+	const facts = { purchaseId: row.id, expectedCents: row.amount_cents };
+	if (authoritative.reportedAmountCents === null) return { status: 'active', unchecked: facts };
+	if (authoritative.reportedAmountCents === row.amount_cents) return { status: 'active' };
+	return { status: 'rejected', mismatch: { ...facts, reportedCents: authoritative.reportedAmountCents } };
+}
+
+/** Sentry reports for an `AmountCheck`. Call only once the CAS actually applied, so a stale or replayed event does not re-report. */
+export function reportAmountCheck(provider: ProviderId, checked: AmountCheck): void {
+	if ('mismatch' in checked) {
+		const { purchaseId, expectedCents, reportedCents } = checked.mismatch;
+		Sentry.captureMessage('amount mismatch: payment received but reported amount differs from the stored expectation', {
+			level: 'error',
+			extra: { provider, purchase_id: purchaseId, expected_cents: expectedCents, reported_cents: reportedCents },
+		});
+	} else if (checked.unchecked !== undefined) {
+		Sentry.captureMessage('no reported amount on the authoritative response; activated unchecked', {
+			extra: { provider, purchase_id: checked.unchecked.purchaseId, expected_cents: checked.unchecked.expectedCents },
+		});
+	}
 }

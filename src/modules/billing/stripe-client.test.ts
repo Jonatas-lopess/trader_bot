@@ -87,7 +87,7 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: null, subscriptionId: 'sub_123' });
 
-		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com' });
+		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com', reportedAmountCents: null });
 	});
 
 	it('resolves email as null when the customer is unexpanded (an id string, not an object)', async () => {
@@ -97,7 +97,7 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: null, subscriptionId: 'sub_123' });
 
-		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: null });
+		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: null, reportedAmountCents: null });
 	});
 
 	it('resolves a checkout session that has not completed yet as pending', async () => {
@@ -115,7 +115,7 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: 'cs_123', subscriptionId: null });
 
-		expect(result).toEqual({ ok: true, status: 'pending', paymentMethod: null, email: null });
+		expect(result).toEqual({ ok: true, status: 'pending', paymentMethod: null, email: null, reportedAmountCents: null });
 	});
 
 	it('resolves a completed, paid checkout session as active with the buyer email', async () => {
@@ -133,7 +133,56 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: 'cs_456', subscriptionId: null });
 
-		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com' });
+		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com', reportedAmountCents: null });
+	});
+
+	it('reports the session amount_subtotal as the charged amount', async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					status: 'complete',
+					payment_status: 'paid',
+					subscription: null,
+					amount_subtotal: 49900,
+					customer_details: { email: 'buyer@example.com' },
+				}),
+				{ status: 200 }
+			)
+		);
+
+		const result = await fetchAuthoritativeStatus(env, { orderId: 'cs_amt', subscriptionId: null });
+
+		expect(result).toMatchObject({ ok: true, status: 'active', reportedAmountCents: 49900 });
+	});
+
+	it("reports a subscription's first item unit_amount x quantity as the charged amount", async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					status: 'active',
+					customer: { email: 'b@example.com' },
+					items: { data: [{ quantity: 1, price: { unit_amount: 9900 } }] },
+				}),
+				{ status: 200 }
+			)
+		);
+
+		const result = await fetchAuthoritativeStatus(env, { orderId: null, subscriptionId: 'sub_amt' });
+
+		expect(result).toMatchObject({ ok: true, status: 'active', reportedAmountCents: 9900 });
+	});
+
+	it('keeps an expired (never paid) session pending — canceled would outrank a later active', async () => {
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+			new Response(
+				JSON.stringify({ status: 'expired', payment_status: 'unpaid', subscription: null, customer_details: null }),
+				{ status: 200 }
+			)
+		);
+
+		const result = await fetchAuthoritativeStatus(env, { orderId: 'cs_exp', subscriptionId: null });
+
+		expect(result).toMatchObject({ ok: true, status: 'pending' });
 	});
 
 	it('returns ok:false when both ids are missing', async () => {

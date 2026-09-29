@@ -27,6 +27,14 @@
  * hosted-checkout provider supports configuring. The redirect therefore
  * always carries our reference regardless of whether `external_id` turns
  * out to be real.
+ *
+ * Reported amount (ADR-0006 "amount verified after payment"): the order's
+ * `amounts.sub_total` (cents, before `installment_fee`) is what the webhook
+ * compares to `purchases.amount_cents`. Per Appmax's docs (2026-09-29) but
+ * UNVERIFIED against a sandbox call (PLANNING.md §13): confirm `sub_total`
+ * equals the `unit_value` we sent, with shipping and discount at 0. Until then
+ * a response with no such field activates with a Sentry report instead of
+ * rejecting (webhook.ts).
  */
 
 import type { OfferName } from '../../content/catalog';
@@ -118,13 +126,26 @@ export type AppmaxWebhookEvent = {
 	subscriptionId: string | null;
 };
 
-/** Returns `null` for a payload that isn't a recognisable Appmax webhook — ticket 06's payload-shape validation is the hardening layer; this is just enough to not crash on garbage. */
+/** Appmax ids may arrive as numbers; the DB columns hold text. */
+function idFrom(value: unknown): string | null {
+	if (typeof value === 'string' && value !== '') return value;
+	if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+	return null;
+}
+
+/**
+ * Returns `null` for a payload that isn't a recognisable Appmax webhook — ticket 06's
+ * payload-shape validation is the hardening layer; this is just enough to not crash on
+ * garbage. The documented envelope is `{event, event_type, data{order_id, ...}}`
+ * (docs.appmax.com.br/guides/webhooks); a top-level id is still accepted as a fallback.
+ */
 export function parseWebhookPayload(raw: unknown): AppmaxWebhookEvent | null {
 	if (typeof raw !== 'object' || raw === null) return null;
 	const body = raw as Record<string, unknown>;
 	if (typeof body.event !== 'string' || body.event === '') return null;
-	const orderId = typeof body.order_id === 'string' ? body.order_id : null;
-	const subscriptionId = typeof body.subscription_id === 'string' ? body.subscription_id : null;
+	const data = typeof body.data === 'object' && body.data !== null ? (body.data as Record<string, unknown>) : {};
+	const orderId = idFrom(data.order_id) ?? idFrom(body.order_id);
+	const subscriptionId = idFrom(data.subscription_id) ?? idFrom(body.subscription_id);
 	if (orderId === null && subscriptionId === null) return null;
 	return { event: body.event, orderId, subscriptionId };
 }
@@ -148,6 +169,12 @@ export type FetchAuthoritativeStatusResult =
 			// customer-area/issues/01 treats as a visible failure rather than
 			// silently leaving `customers` unpopulated.
 			email: string | null;
+			// `amounts.sub_total` in cents (see header); `null` for a subscription or an
+			// order response that carries none.
+			reportedAmountCents: number | null;
+			// Set when the operator must look at this order (paid, refund requested before
+			// integration): the status stays put, the webhook reports it to Sentry.
+			operatorReview?: string;
 	  }
 	| { ok: false };
 
@@ -166,12 +193,26 @@ export async function fetchAuthoritativeStatus(
 	});
 	if (!response.ok) return { ok: false };
 
-	const body = await response.json<{ data: { status: string; payment_method?: string; email?: string } }>();
+	const body = await response.json<{
+		data: {
+			status: string;
+			payment_method?: string;
+			email?: string;
+			amounts?: { sub_total?: number };
+		};
+	}>();
+	const isSubscription = ref.subscriptionId !== null;
+	const rawStatus = body.data.status.toLowerCase();
+	const subTotal = body.data.amounts?.sub_total;
 	return {
 		ok: true,
-		status: mapAppmaxStatus(body.data.status),
+		status: isSubscription ? mapSubscriptionStatus(rawStatus) : mapOrderStatus(rawStatus),
 		paymentMethod: mapAppmaxPaymentMethod(body.data.payment_method),
 		email: body.data.email ?? null,
+		reportedAmountCents: !isSubscription && typeof subTotal === 'number' ? subTotal : null,
+		...(rawStatus === ORDER_REVIEW_STATUS
+			? { operatorReview: `Appmax order status ${ORDER_REVIEW_STATUS}: paid, refund requested before integration` }
+			: {}),
 	};
 }
 
@@ -198,16 +239,41 @@ export async function cancelSubscription(
 	return { ok: true };
 }
 
-function mapAppmaxStatus(raw: string): AppmaxPurchaseStatus {
-	const normalized = raw.toLowerCase();
-	if (['aprovado', 'pago', 'approved', 'paid', 'active'].includes(normalized)) return 'active';
-	if (['cancelado', 'estornado', 'recusado', 'canceled', 'refused'].includes(normalized)) {
-		return 'canceled';
+const ORDER_REVIEW_STATUS = 'pendente_integracao_em_analise';
+
+/**
+ * Order `status` per docs.appmax.com.br (catalog-pivot ticket 04). `cancelado` (declined
+ * card, expired Pix, panel order without payment) maps to `pending`, never `canceled`:
+ * `canceled` outranks `active`, so it would let a never-paid order overwrite a paid one.
+ * A `pending` write never downgrades a higher-ranked row (STATUS_RIGIDITY). A won dispute
+ * (`chargeback_vencido`) stays `chargeback`; the operator restores it by hand.
+ */
+function mapOrderStatus(status: string): AppmaxPurchaseStatus {
+	switch (status) {
+		case 'aprovado':
+		case 'integrado':
+		case 'pendente_integracao':
+			return 'active';
+		case 'estornado':
+		case 'recusado_por_risco':
+			return 'refunded';
+		case 'chargeback_em_tratativa':
+		case 'chargeback_em_disputa':
+		case 'chargeback_perdido':
+		case 'chargeback_vencido':
+			return 'chargeback';
+		// pendente, autorizado, cancelado, ORDER_REVIEW_STATUS, and anything unrecognised:
+		// don't guess at something more consequential than pending.
+		default:
+			return 'pending';
 	}
-	if (['atrasado', 'past_due', 'overdue'].includes(normalized)) return 'past_due';
-	// Unrecognised value: fall back to `pending` rather than guess at
-	// something more consequential — a compare-and-swap on `pending` never
-	// downgrades an already-more-current row (0002's rigidity ranking).
+}
+
+/** Subscription resource statuses (`ACTIVE`/`CANCELLED`; the full list is unknown). */
+function mapSubscriptionStatus(status: string): AppmaxPurchaseStatus {
+	if (status === 'active') return 'active';
+	if (status === 'cancelled' || status === 'canceled') return 'canceled';
+	if (['past_due', 'overdue', 'atrasado'].includes(status)) return 'past_due';
 	return 'pending';
 }
 

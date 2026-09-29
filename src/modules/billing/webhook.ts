@@ -20,7 +20,9 @@ import { issueMagicLink } from '../identity/magic-link';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
+	checkReportedAmount,
 	findPurchaseIdByProviderRef,
+	reportAmountCheck,
 } from './purchase-lookup';
 
 type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'RESEND_API_KEY'>;
@@ -47,6 +49,11 @@ function buildIdempotencyKey(event: AppmaxWebhookEvent): string {
 	return event.subscriptionId !== null
 		? `${event.event}:${event.subscriptionId}:${event.orderId}`
 		: `${event.event}:${event.orderId}`;
+}
+
+/** Gives an event back to Appmax's retry schedule (4 attempts, 5s timeout, no signature): only a claimed key that ends in a lost event needs releasing. */
+async function releaseIdempotency(env: WebhookEnv, idempotencyKey: string): Promise<void> {
+	await env.DB.prepare('DELETE FROM processed_webhooks WHERE id = ?').bind(idempotencyKey).run();
 }
 
 async function logDelivery(env: WebhookEnv, idempotencyKey: string, rawBody: string): Promise<void> {
@@ -148,7 +155,24 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 		orderId: event.orderId,
 		subscriptionId: event.subscriptionId,
 	});
-	if (!authoritative.ok) return { status: 200 };
+	if (!authoritative.ok) {
+		// A 200 here would make Appmax's retry a "duplicate" and lose the event.
+		await releaseIdempotency(env, idempotencyKey);
+		return { status: 502 };
+	}
+
+	if (authoritative.operatorReview !== undefined) {
+		Sentry.captureMessage(`handleWebhook: ${authoritative.operatorReview}`, {
+			extra: { order_id: event.orderId, subscription_id: event.subscriptionId },
+		});
+	}
+
+	const checked = await checkReportedAmount(
+		env,
+		'appmax',
+		{ orderId: event.orderId, subscriptionId: event.subscriptionId },
+		authoritative
+	);
 
 	// No `status != ?` guard: an authoritative re-fetch that reports the
 	// *same* status as the row already has (e.g. Appmax confirms a Boleto
@@ -164,15 +188,17 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
 	)
 		.bind(
-			authoritative.status,
+			checked.status,
 			authoritative.paymentMethod,
 			event.orderId,
 			event.subscriptionId,
-			STATUS_RIGIDITY[authoritative.status]
+			STATUS_RIGIDITY[checked.status]
 		)
 		.run();
 
-	if (authoritative.status === 'active' && result.meta.changes > 0) {
+	if (result.meta.changes > 0) reportAmountCheck('appmax', checked);
+
+	if (checked.status === 'active' && result.meta.changes > 0) {
 		await onSubscriptionBecameActive(
 			env,
 			{ orderId: event.orderId, subscriptionId: event.subscriptionId },

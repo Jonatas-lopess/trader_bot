@@ -1,6 +1,9 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as Sentry from '@sentry/cloudflare';
 import { handleStripeWebhook } from './stripe-webhook';
+
+vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
 
 const WEBHOOK_SECRET = 'whsec_test_do_not_use_in_production';
 
@@ -31,7 +34,7 @@ function checkoutSessionEvent(id: string, sessionId: string, subscriptionId: str
 	});
 }
 
-function mockStripe(status: { status: string; email?: string }) {
+function mockStripe(status: { status: string; email?: string; amountSubtotal?: number }) {
 	return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
 		const url = typeof input === 'string' ? input : input.toString();
 		if (url.includes('/checkout/sessions/')) {
@@ -39,7 +42,8 @@ function mockStripe(status: { status: string; email?: string }) {
 				JSON.stringify({
 					status: status.status === 'active' ? 'complete' : 'open',
 					payment_status: status.status === 'active' ? 'paid' : 'unpaid',
-					subscription: status.status === 'active' ? 'sub_from_session' : null,
+					subscription: null,
+					amount_subtotal: status.amountSubtotal,
 					customer_details: status.email ? { email: status.email } : null,
 				}),
 				{ status: 200 }
@@ -55,11 +59,24 @@ function mockStripe(status: { status: string; email?: string }) {
 	});
 }
 
-async function seed(row: { id: string; appmax_order_id?: string; appmax_subscription_id?: string; status: string }) {
+async function seed(row: {
+	id: string;
+	appmax_order_id?: string;
+	appmax_subscription_id?: string;
+	status: string;
+	amount_cents?: number;
+}) {
 	await env.DB.prepare(
-		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'monthly', 0, ?, 'stripe', ?, ?)"
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'one_time', ?, ?, 'stripe', ?, ?)"
 	)
-		.bind(row.id, 'starter', row.status, row.appmax_order_id ?? null, row.appmax_subscription_id ?? null)
+		.bind(
+			row.id,
+			'starter',
+			row.amount_cents ?? 0,
+			row.status,
+			row.appmax_order_id ?? null,
+			row.appmax_subscription_id ?? null
+		)
 		.run();
 }
 
@@ -160,5 +177,50 @@ describe('handleStripeWebhook', () => {
 		const payload = 'not json';
 		const result = await handleStripeWebhook(testEnv(), payload, await sign(payload));
 		expect(result).toEqual({ status: 200 });
+	});
+
+	it('activates a payment-mode (one_time) session whose amount_subtotal equals the stored amount', async () => {
+		await seed({ id: 'pay-ok', appmax_order_id: 'cs_pay_ok', status: 'pending', amount_cents: 49900 });
+		mockStripe({ status: 'active', email: 'p@example.com', amountSubtotal: 49900 });
+		const payload = checkoutSessionEvent('evt_pay_ok', 'cs_pay_ok');
+
+		await handleStripeWebhook(testEnv(), payload, await sign(payload));
+
+		expect(await statusOf('pay-ok')).toBe('active');
+	});
+
+	it('lands rejected on an amount mismatch and reports it to Sentry, provisioning nothing', async () => {
+		await seed({ id: 'pay-bad', appmax_order_id: 'cs_pay_bad', status: 'pending', amount_cents: 49900 });
+		mockStripe({ status: 'active', email: 'bad@example.com', amountSubtotal: 100 });
+		const payload = checkoutSessionEvent('evt_pay_bad', 'cs_pay_bad');
+
+		await handleStripeWebhook(testEnv(), payload, await sign(payload));
+
+		expect(await statusOf('pay-bad')).toBe('rejected');
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			expect.stringContaining('amount mismatch'),
+			expect.objectContaining({
+				extra: expect.objectContaining({ purchase_id: 'pay-bad', expected_cents: 49900, reported_cents: 100 }),
+			})
+		);
+		const customer = await env.DB.prepare('SELECT id FROM customers WHERE purchase_id = ?').bind('pay-bad').first();
+		expect(customer).toBeNull();
+	});
+
+	it('answers 5xx and releases the idempotency claim when the refetch fails, so Stripe retries', async () => {
+		await seed({ id: 'pay-retry', appmax_order_id: 'cs_pay_retry', status: 'pending', amount_cents: 500 });
+		const payload = checkoutSessionEvent('evt_pay_retry', 'cs_pay_retry');
+		const signature = await sign(payload);
+		vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('boom', { status: 500 }));
+
+		const first = await handleStripeWebhook(testEnv(), payload, signature);
+		expect(first.status).toBeGreaterThanOrEqual(500);
+
+		vi.restoreAllMocks();
+		mockStripe({ status: 'active', email: 'r@example.com', amountSubtotal: 500 });
+		const second = await handleStripeWebhook(testEnv(), payload, signature);
+
+		expect(second).toEqual({ status: 200 });
+		expect(await statusOf('pay-retry')).toBe('active');
 	});
 });

@@ -88,7 +88,14 @@ export async function createCheckoutSession(
 }
 
 export type FetchAuthoritativeStatusResult =
-	| { ok: true; status: StripePurchaseStatus; paymentMethod: 'card' | null; email: string | null }
+	| {
+			ok: true;
+			status: StripePurchaseStatus;
+			paymentMethod: 'card' | null;
+			email: string | null;
+			/** Subscription: unit price x quantity of its first item. Session: `amount_subtotal`, the price sent as `unit_amount` before any discount or tax. */
+			reportedAmountCents: number | null;
+	  }
 	| { ok: false };
 
 /**
@@ -113,9 +120,16 @@ export async function fetchAuthoritativeStatus(
 			{ headers: authHeaders(env) }
 		);
 		if (!response.ok) return { ok: false };
-		const body = await response.json<{ status: string; customer: { email: string | null } | string }>();
+		const body = await response.json<{
+			status: string;
+			customer: { email: string | null } | string;
+			items?: { data?: { quantity?: number; price?: { unit_amount?: number | null } }[] };
+		}>();
 		const email = typeof body.customer === 'string' ? null : (body.customer?.email ?? null);
-		return { ok: true, status: mapSubscriptionStatus(body.status), paymentMethod: 'card', email };
+		const item = body.items?.data?.[0];
+		const unitAmount = item?.price?.unit_amount;
+		const reportedAmountCents = typeof unitAmount === 'number' ? unitAmount * (item?.quantity ?? 1) : null;
+		return { ok: true, status: mapSubscriptionStatus(body.status), paymentMethod: 'card', email, reportedAmountCents };
 	}
 
 	if (ref.orderId === null) return { ok: false };
@@ -130,6 +144,7 @@ export async function fetchAuthoritativeStatus(
 		status: string;
 		payment_status: string;
 		subscription: string | null;
+		amount_subtotal?: number | null;
 		customer_details: { email: string | null } | null;
 	}>();
 	return {
@@ -137,6 +152,7 @@ export async function fetchAuthoritativeStatus(
 		status: mapSessionStatus(body.status, body.payment_status),
 		paymentMethod: body.payment_status === 'paid' ? 'card' : null,
 		email: body.customer_details?.email ?? null,
+		reportedAmountCents: typeof body.amount_subtotal === 'number' ? body.amount_subtotal : null,
 	};
 }
 
@@ -156,14 +172,16 @@ export async function cancelSubscription(
 function mapSubscriptionStatus(raw: string): StripePurchaseStatus {
 	if (raw === 'active' || raw === 'trialing') return 'active';
 	if (raw === 'past_due' || raw === 'unpaid') return 'past_due';
-	if (raw === 'canceled' || raw === 'incomplete_expired') return 'canceled';
+	if (raw === 'canceled') return 'canceled';
 	// 'incomplete' or anything unrecognised: same "don't guess at something
 	// more consequential than pending" rule as appmax-client.ts's fallback.
 	return 'pending';
 }
 
 function mapSessionStatus(status: string, paymentStatus: string): StripePurchaseStatus {
-	if (status === 'expired') return 'canceled';
+	// An expired session was never paid: `pending`, not `canceled` (which outranks
+	// `active`). A retry is a fresh checkout, never a resumed session.
+	if (status === 'expired') return 'pending';
 	if (status === 'complete' && paymentStatus === 'paid') return 'active';
 	return 'pending';
 }

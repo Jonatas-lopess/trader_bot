@@ -26,7 +26,9 @@ import { fetchAuthoritativeStatus } from './stripe-client';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
+	checkReportedAmount,
 	findPurchaseIdByProviderRef,
+	reportAmountCheck,
 } from './purchase-lookup';
 
 type StripeWebhookEnv = Pick<
@@ -172,7 +174,13 @@ export async function handleStripeWebhook(
 		: { orderId: null, subscriptionId: event.data.object.id };
 
 	const authoritative = await fetchAuthoritativeStatus(env, ref);
-	if (!authoritative.ok) return { status: 200 };
+	if (!authoritative.ok) {
+		// Stripe retries non-2xx deliveries; a 200 would make the retry a "duplicate".
+		await env.DB.prepare('DELETE FROM processed_webhooks WHERE id = ?').bind(idempotencyKey).run();
+		return { status: 502 };
+	}
+
+	const checked = await checkReportedAmount(env, 'stripe', ref, authoritative);
 
 	// `appmax_subscription_id = COALESCE(appmax_subscription_id, ?)`: the
 	// checkout.session.completed row is inserted (checkout.ts) with only
@@ -192,16 +200,18 @@ export async function handleStripeWebhook(
 		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
 	)
 		.bind(
-			authoritative.status,
+			checked.status,
 			authoritative.paymentMethod,
 			ref.subscriptionId,
 			ref.orderId,
 			ref.subscriptionId,
-			STATUS_RIGIDITY[authoritative.status]
+			STATUS_RIGIDITY[checked.status]
 		)
 		.run();
 
-	if (authoritative.status === 'active' && result.meta.changes > 0) {
+	if (result.meta.changes > 0) reportAmountCheck('stripe', checked);
+
+	if (checked.status === 'active' && result.meta.changes > 0) {
 		await onSubscriptionBecameActive(env, ref, authoritative.email);
 	}
 

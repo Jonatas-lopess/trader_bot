@@ -26,7 +26,7 @@ import type { OfferName } from '../../content/catalog';
 
 export type ProviderId = 'appmax' | 'stripe';
 
-/** Ranked lowest to highest; `purchase-lookup.ts`'s `STATUS_RIGIDITY` and migrations/0008 must agree. Gateways currently report only the first four (`rejected`, `refunded`, `chargeback` arrive with catalog-pivot ticket 04). */
+/** Ranked lowest to highest; `purchase-lookup.ts`'s `STATUS_RIGIDITY` and migrations/0008 must agree. `rejected` is set by the webhook amount check; the Appmax mapper reports `refunded` and `chargeback`. */
 export type PurchaseStatus =
 	| 'pending'
 	| 'rejected'
@@ -64,7 +64,14 @@ export type CreateCheckoutSessionResult =
 	| { ok: false; reason: 'provider_auth_failed' | 'provider_unavailable' };
 
 export type FetchAuthoritativeStatusResult =
-	| { ok: true; status: PurchaseStatus; paymentMethod: PaymentMethod | null; email: string | null }
+	| {
+			ok: true;
+			status: PurchaseStatus;
+			paymentMethod: PaymentMethod | null;
+			email: string | null;
+			/** What the gateway says was charged for the item, in cents, before installment fees. `null` when the response carries none; webhooks compare it to `purchases.amount_cents` (ADR-0006). */
+			reportedAmountCents: number | null;
+	  }
 	| { ok: false };
 
 /** Exactly the credentials either driver needs — never the full `Cloudflare.Env`, so callers can pass their own narrower `Pick`. */

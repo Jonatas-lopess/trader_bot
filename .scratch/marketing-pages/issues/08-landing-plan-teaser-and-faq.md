@@ -27,3 +27,9 @@ Answers touching payment must match §6: card à vista and boleto can carry an A
 - [ ] Cancellation answer matches what the customer area will actually do; no upgrade/downgrade promise
 - [ ] Payment answers match PLANNING.md §6 — no parcelamento, no recurring Pix
 - [ ] Copy uses CONTEXT.md vocabulary (Assinatura, Licença, Chave, Plano, Corretora)
+
+## Comments
+
+2026-09-29: Plans page/teaser superseded by the catalog pivot (ADR-0006). `/planos` becomes
+`/catalog`; work tracked in `.scratch/catalog-pivot/issues/06-catalog-page.md` and `10`. The
+Anual toggle, Pix steer and `launchBlocking` markers carry over.

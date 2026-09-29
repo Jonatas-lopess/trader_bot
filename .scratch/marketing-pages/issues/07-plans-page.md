@@ -36,3 +36,9 @@ Checkout is Hosted Checkout (§6) and is not built here. Each CTA targets a chec
 - [ ] No copy claims entitlements are enforced, and nothing defines Robô ativo or Corretora vinculada
 - [ ] Regulatory note renders verbatim
 - [ ] Each CTA navigates to the checkout route (stub acceptable)
+
+## Comments
+
+2026-09-29: Plans page/teaser superseded by the catalog pivot (ADR-0006). `/planos` becomes
+`/catalog`; work tracked in `.scratch/catalog-pivot/issues/06-catalog-page.md` and `10`. The
+Anual toggle, Pix steer and `launchBlocking` markers carry over.

@@ -2,6 +2,8 @@
 
 Status: ready-for-agent
 
+> **2026-09-29, ADR-0006:** Planos are gone. §Entitlement enforcement (robô count) is void; one Licença = one Robô = one Corretora account, collected after payment in the customer area. The binary is now compiled per Licença (manual in 0.1), which changes "the compiled `.ex5` stays one program" below. Read ADR-0006 before ticket 01/02.
+
 A license-verification protocol between this server and the MT5 Expert Advisor (Robô) it
 already delivers: the Robô checks in at init and hourly with `login + nonce`, the server
 answers with a signed `{login, nonce, validade, payload}`, and the Robô refuses new entries

@@ -1,4 +1,4 @@
-# 06: Collect Corretora account number at checkout and bind it per license
+# 06 (REWRITTEN by catalog-pivot): Collect Corretora account number at checkout and bind it per license
 
 **What to build:** a checkout/provisioning-time field for the Cliente's brokerage account
 number, stored per license, so ticket 07 has something to verify against.
@@ -26,3 +26,12 @@ many accounts a license can bind, only that one can be recorded).
       (same type/format ticket 07 gets from `AccountInfoInteger(ACCOUNT_LOGIN)`, an integer,
       not a string that needs parsing on the hot verify path).
 - [ ] `pnpm test` and `pnpm run typecheck` pass.
+
+**Status:** superseded
+
+## Comments
+
+2026-09-29: ADR-0006 decided the open question above: the account is collected **after payment,
+in the customer area**, per Licença (`licenses.corretora_account`, integer, set once), not at
+checkout. Built in `.scratch/catalog-pivot/issues/07-customer-area-license-states.md`. The
+collection point is done there; ticket 07 here can rely on the column existing.

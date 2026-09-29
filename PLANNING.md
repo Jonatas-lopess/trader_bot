@@ -3,33 +3,39 @@
 Technical contract for the Robô Trader sales site. Records the macro decisions taken
 before implementation, what was deliberately deferred, and what is still open.
 
+**Catalog pivot (ADR-0006).** The site sells a Catálogo of Robôs, not Planos. Read
+ADR-0006 first; where this file still says "plan" it means the pivot has not reached that
+sentence yet, and ADR-0006 wins.
+
 Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
 ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
 
-Last updated: 2026-09-24
+Last updated: 2026-09-29 (catalog pivot, ADR-0006)
 
 ---
 
 ## 1. Scope
 
-A marketing site that sells the Robô Trader (an MT5 Expert Advisor) plus a small
+A marketing site that sells a Catálogo of Robôs (each an MT5 Expert Advisor) plus a small
 authenticated customer area, in one codebase.
 
 **In scope for 0.1**
 
-- Landing page and plans page, both from the Figma wireframes
-- Checkout, payment confirmation, subscription lifecycle
+- Landing page and `/catalog` page (replaces `/planos`), from the Figma wireframes
+- Checkout by `robot_id` + Oferta (Compra, Anual, Mensal), payment confirmation, purchase lifecycle
 - Magic-link authentication
-- Customer area: license status, key/expiry, cancel subscription
-- Email delivery of the robot via a signed, expiring download link
+- Customer area: Licença status, expiry, Corretora account entry, cancel Assinatura
+- Email delivery of the Licença's compiled robot via a signed, expiring download link
 - Legal pages (structure and placeholder text)
 
 **Explicitly out of scope for 0.1**
 
 - In-app download of the binary (1.0.0)
-- Automated license issuance (1.0.0)
-- Entitlement enforcement (1.0.0)
-- Plan upgrade and downgrade (1.0.0)
+- Automated license issuance and per-Licença compile (1.0.0, researched together)
+- Live Corretora-account enforcement at check-in (1.0.0)
+- Rental-to-Compra conversion (1.0.0)
+- Annual auto-renew and its reminder email (1.0.0)
+- Cart / multi-Robô checkout
 - Automated NFS-e emission (1.0.0; manual issuance in 0.1 — see §9)
 - Any locale other than pt-BR
 - Paid-traffic tracking pixels and consent management
@@ -113,15 +119,15 @@ src/
 ├── pages/          Astro routes (presentation)
 ├── components/
 ├── modules/
-│   ├── billing/    plans, subscriptions, payment provider, webhooks, dunning, cancellation
+│   ├── billing/    catalog offers, purchases, payment provider, webhooks, dunning, cancellation
 │   ├── identity/   customers, magic-link tokens, sessions
-│   └── licensing/  keys, expiry, entitlements, binary storage, download tokens, dispatch
+│   └── licensing/  licenses, expiry, Corretora account binding, binary storage, download tokens, dispatch
 └── shared/         ids, dates, environment bindings, D1 client
 ```
 
 Tactical patterns get introduced where an invariant demands them, not upfront. The first
-genuine candidate is Licensing enforcing "N robôs ativos simultâneos" — which does not
-exist yet (§11).
+genuine candidate is Licensing deriving Licença expiry from purchase status (ADR-0006) —
+one function, never edited by hand independently of the purchase.
 
 ---
 
@@ -147,19 +153,22 @@ exist yet (§11).
 Chosen over Stripe and Pagar.me. Rationale and trade-offs in ADR-0003 (supersedes
 ADR-0001).
 
-**Methods.** Card à vista (recurring), Boleto (recurring), Pix (one-time only).
+**Methods per Oferta** (ADR-0006). Compra and Anual: card, Boleto, Pix. Mensal: card only.
+Earlier drafts listed Boleto as recurring on Appmax; that is dropped — recurring Boleto would
+mean dunning around a one-business-day confirmation lag, and one-time Boleto already covers
+Boleto buyers. Checkout hides Pix and Boleto when Mensal is chosen.
 
 **Pix is not available for recurring billing** on Appmax, Pagar.me or a Brazilian Stripe
 account. Appmax does not appear among providers with a shipped merchant-side Pix
 Automático API. Stripe shipped Pix Automático but its documentation states it is
 unavailable for accounts in Brazil. This is a rails limitation, not a vendor one.
 
-**Annual plans are a single charge, steered toward Pix.** Appmax's published rates: card à
+**The Anual Oferta is a single charge, steered toward Pix.** Appmax's published rates: card à
 vista 3.49% + R$0.99 flat (4.99% below R$100k monthly revenue), Pix 0.99%, boleto a flat
 R$3.49 (not a percentage). Settlement is D+30 by default; D+1 advance costs an extra 1.49%.
 Pix is markedly cheaper per transaction and, unlike card, is not sitting on a 30-day
-settlement — the pricing page should make Pix the obvious annual choice. These figures
-replace the Pagar.me quotes previously here and still need re-verification against the live
+settlement — the catalog page should make Pix the obvious annual choice. Anual does not auto-renew in
+0.1 (ADR-0006); card auto-renew and its reminder email are 1.0.0. These figures replace the Pagar.me quotes previously here and still need re-verification against the live
 Appmax contract before launch (§13).
 
 **No parcelamento in 0.1, by choice rather than gateway limit.** Unlike Pagar.me, Appmax
@@ -186,6 +195,27 @@ against the Figma design. Revisit with conversion data, not before.
 - **Chargeback handling.** Appmax mediates chargebacks directly (unlike Pagar.me, which
   routes disputes through the acquirer) but charges 15% of the recovered amount on a
   successful active-collection recovery.
+
+### Price integrity (ADR-0006)
+
+- **Before payment (blocks tampering).** Checkout accepts only `robot_id` + `offer` from the
+  client. The price comes from `src/content/catalog.ts`; unknown `robot_id` or `offer` is
+  rejected and no session is created. The catalog is bundled into the Worker, with no runtime
+  write path.
+- **Stored expectation.** `amount_cents` is written on the purchase row at session creation.
+- **After payment (cannot block).** The webhook compares the amount the gateway reports
+  against the stored `amount_cents`, never the live catalog. Mismatch moves the purchase to
+  `rejected`, reports to Sentry (purchase id, expected, reported), and the confirmation page
+  says payment was received and is under review. The Cliente *was* charged: copy never says
+  otherwise and never suggests buying again. Operator resolves manually in 0.1 (flip to
+  `active` after review, or refund in Appmax). Copy is `launchBlocking`.
+
+### Purchase status ranking
+
+`purchases.status` is rank-ordered: `pending` < `rejected` < `active` < `past_due` <
+`canceled` < `refunded` < `chargeback`. The compare-and-swap below applies unchanged: a
+lower-ranked event never overwrites a higher one. Chargeback ranks above refund because it is
+adversarial and cannot be un-disputed.
 
 ### Checkout and webhook implementation
 
@@ -234,7 +264,7 @@ check inside the write, so each step is one atomic statement instead of two.
    where `id` is the composite key above and `PRIMARY KEY`. A `UNIQUE` constraint
    violation *is* the "already processed" signal — no `SELECT` first.
 2. **Status transition as one compare-and-swap `UPDATE`.** No `SELECT` beforehand either:
-   `UPDATE plans SET status = ? WHERE subscription_id = ? AND <CASE-based rigidity of
+   `UPDATE purchases SET status = ? WHERE subscription_id = ? AND <CASE-based rigidity of
    current status> <= <rigidity of new status>`, rigidity expressed inline via `CASE` in
    the `WHERE` clause. Read `meta.changes` on the result to know whether it applied. This
    also drops the projeto_ebd RPC's separate race-tie re-resolution step — there's nothing
@@ -271,23 +301,41 @@ breaks for boleto customers and must not be written that way.
 
 ## 8. Licensing and delivery
 
-**Today the robot is an MT5 Expert Advisor licensed by expiry date and issued manually.**
+**Today each Robô is an MT5 Expert Advisor licensed by expiry date and issued manually.**
 There is no license server and no per-customer key.
+
+**One Licença = one Robô = one Corretora account (ADR-0006).** The Planos' entitlement counts
+("N robôs ativos", "N corretoras") are gone, so there is nothing left to count or enforce
+by number.
+
+**Per-Licença compiled binary.** The Corretora account is baked into the binary, so each
+Licença is compiled separately. Licença status: `awaiting_account` → `preparing` → `active`.
+
+1. Payment confirms; the Licença row is created `awaiting_account`.
+2. The customer area shows an explicit banner and form: enter the Corretora account. Download
+   is disabled until set. Set once by the Cliente; only the operator can change it in 0.1.
+3. Status becomes `preparing`. The operator compiles from `robots/<slug>/` in R2 (source,
+   never served) and uploads `licenses/<license_id>.ex5`.
+4. Status becomes `active`; the signed download link is emailed.
+
+Automated compile is 1.0.0, researched alongside license-authority automation.
 
 Consequences, stated rather than hidden:
 
-- **Plan entitlements are unenforceable.** The plans sell "1 / 3 / robôs ilimitados
-  simultâneos" and "1 / 3 / corretoras ilimitadas". Nothing in the system can count or cap
-  either, and a single buyer can share the binary freely. This is an accepted 0.1 trade-off.
-- **Issuance has a human in it.** The customer area shows *status* — "licença sendo
-  preparada" → "ativa até DD/MM" — and must not promise an instant key.
+- **Sharing the binary is limited by the baked-in account** but not eliminated until live
+  check-in verification (`license-server`) ships.
+- **Issuance has a human in it.** The customer area shows *status* and must not promise an
+  instant key.
+- **Expiry follows purchase status** through one derivation function. A Compra's Licença is
+  perpetual (far-future `expires_at`); `canceled` keeps the paid term, `refunded` and
+  `chargeback` set expiry to now.
 
 **Delivery.** The robot is emailed as a signed, expiring download link, never as an
 attachment. Executable attachments are blocked outright by Gmail, Outlook and most
 corporate filters, including inside a `.zip`. A password-protected archive is worse — that
 pattern is what marks a sender as malware.
 
-**Link mechanics.** An opaque token is stored in D1 with a 24–48h TTL and a `used_at`
+**Link mechanics.** An opaque token is stored in D1 with a 24–48h TTL, a `license_id` and a `used_at`
 column (`DECISIONS_temp.md` §4). The
 Worker redeems the token and streams the file from the R2 binding. R2 presigned URLs were
 rejected: they cannot be used with custom domains (S3 endpoint only) and have no
@@ -300,7 +348,7 @@ single-use mode, expiry only. R2 egress is free, so re-issuing links costs nothi
 Selling software as a service from a Brazilian CNPJ carries an ISS obligation — the STF
 settled the tax nature of software licensing in 2021 (ADI 1945, ADI 5659), and LC 116/2003
 covers it. MEI is exempt from issuing to a *pessoa física* buyer but not to a PJ buyer, and
-MEI's R$81k annual ceiling is crossed at roughly 70 Starter customers.
+MEI's R$81k annual ceiling is crossed at roughly 70 customers at the lowest-priced Oferta (placeholder until catalog prices are set).
 
 Acquirers report card volume to the Receita Federal. Revenue arriving through the payment
 provider is visible whether or not notas are issued.
@@ -308,6 +356,11 @@ provider is visible whether or not notas are issued.
 0.1 issues notas manually through the municipal portal; automation via a dedicated issuer
 is deferred. **ISS rules and rates are municipal — confirm specifics with the contador.**
 Nothing in this document is tax advice.
+
+**Withdrawal.** CDC art. 49 gives a 7-day *arrependimento* on online sales, and Compra is
+perpetual. Honored in 0.1 by manual refund through the Appmax dashboard; the Licença is
+revoked by setting its expiry to now. Termos de uso carries the clause (placeholder text,
+real wording from a lawyer).
 
 **Legal pages** (Termos de uso, Política de privacidade) ship with structure and
 placeholder text carrying TODOs. Real text comes from you or a lawyer. Generated legal copy
@@ -319,21 +372,22 @@ is a liability for a product in this category, not a shortcut.
 
 **0.1**
 
-- Landing page and plans page, responsive
-- Hosted Checkout, webhook → provisional account → active
+- Landing page and `/catalog` page, responsive
+- Hosted Checkout by `robot_id` + Oferta, webhook → provisional account → active, with amount check
 - Intermediate confirmation page, including the boleto branch
 - Magic-link login
-- Customer area: license status, key/expiry, cancel
-- Email with signed download link
+- Customer area: Licença status, Corretora account entry, expiry, cancel Assinatura
+- Email with signed download link to the per-Licença binary (compiled manually)
 - Legal pages with placeholder text
 - Manual NFS-e process documented
 
 **1.0.0**
 
 - In-app download in the customer area
-- Automated license issuance (license authority)
-- Entitlement enforcement
-- Plan upgrade and downgrade
+- Automated license issuance and per-Licença compile (license authority)
+- Live Corretora-account enforcement at check-in
+- Rental-to-Compra conversion
+- Annual auto-renew (card) with its reminder email, 15 days before renewal
 - Automated NFS-e emission
 - Parcelamento, if demand appears
 - Custom checkout, if conversion data justifies it
@@ -344,10 +398,12 @@ is a liability for a product in this category, not a shortcut.
 
 Recorded deliberately. Not to be resolved by assumption during implementation.
 
-**License model.** The site will become the license authority that mints per-customer keys,
-possibly bound to a brokerage account number. Deferred; decided when the customer area is
-built. Note that binding to a brokerage account requires *collecting* that account number,
-which no current wireframe does.
+**License model.** Partly decided (ADR-0006): one Licença = one Robô = one Corretora account,
+account collected in the customer area after payment. Still open: the site becoming the
+license authority that mints per-Licença keys and compiles automatically (1.0.0, research
+needed), and how live check-in verification interacts with a manually compiled binary.
+Nothing in the catalog wireframes collects the account number; the customer-area form is new
+UI with no Figma frame.
 
 **Download-link tool.** Shape agreed (Worker + D1 token + R2 binding). Link lifetime
 decided: 24–48h TTL, never a permanent/public link (`DECISIONS_temp.md` §4). Remaining
@@ -429,6 +485,9 @@ on:
   `return_url` redirect only); this file's blanket claim did not. Verify `data.order_id`
   against a real sandbox call before go-live — this is a functional dependency, not just a
   cosmetic one.
+- Whether Appmax supports a yearly recurring interval (needed for Anual auto-renew, 1.0.0)
+  and whether its webhook reports the charged amount in a field we can compare against
+  `purchases.amount_cents` (ADR-0006 amount check)
 - Appmax's published webhook source-IP list — not findable anywhere (docs.appmax.com.br,
   help-center.appmax.com.br, general web search), so `APPMAX_WEBHOOK_IPS` ships unset;
   `src/modules/billing/webhook-hardening.ts` fails closed on that, not open.

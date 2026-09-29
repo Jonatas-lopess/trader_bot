@@ -1,36 +1,51 @@
 # Robô Trader
 
-Sells and delivers the Robô Trader: an automated trading program that a Cliente installs
-and runs against their own Corretora. The business sells the right to run it; it never
-holds or moves anyone's money.
+Sells and delivers Robôs: automated trading programs that a Cliente installs and runs
+against their own Corretora. The business sells the right to run them; it never holds or
+moves anyone's money.
 
 ## Language
 
 ### Commercial
 
-**Plano**:
-A named commercial offer — Starter, Pro, Enterprise — pairing a price with a set of
-entitlements.
-_Avoid_: pacote, tier, produto
+**Catálogo**:
+The list of Robôs on sale, each with its Ofertas and prices. First-party only: every Robô in
+it is ours, there are no third-party sellers.
+_Avoid_: loja, marketplace, vitrine, planos
+
+**Oferta**:
+One way to acquire a Robô: **Compra** (one payment, perpetual Licença), **Anual** (one
+payment, 12-month Licença) or **Mensal** (recurring card charge, Licença renewed by each
+payment). A Robô lists up to three. Compra is the main offer; Anual and Mensal are the
+time-bounded side options.
+_Avoid_: plano, pacote, tier, produto
+
+**Compra**:
+The one-time Oferta: a single payment for a perpetual Licença of one Robô.
+_Avoid_: venda, pedido, assinatura
 
 **Assinatura**:
-A Cliente's recurring agreement to pay for a Plano. Governs money and renewal, nothing else.
+A Cliente's recurring agreement to pay for the Mensal Oferta of one Robô. Governs money and
+renewal, nothing else. Compra and Anual are not Assinaturas.
 _Avoid_: contrato, licença, plano
 
 **Cliente**:
-A person who holds or has held an Assinatura.
+A person who holds or has held a Compra, an Anual or an Assinatura.
 _Avoid_: usuário, comprador, conta
 
 ### Product
 
 **Robô**:
-The trading program sold to Clientes. One program, not a family of them.
+A trading program in the Catálogo, identified by a slug. Each Robô has its own binary and its
+own Ofertas.
 _Avoid_: bot, software, produto, algoritmo
 
 **Licença**:
-The right to run the Robô, bounded by an expiry date. Distinct from Assinatura: an
-Assinatura can be paid before a Licença is issued, and a Licença can outlive a cancelled
-Assinatura until its expiry date passes.
+The right to run one Robô, bounded by an expiry date and bound to one Corretora account. A
+Compra's Licença is perpetual: its expiry is a far-future date, so it still ends early on
+refund or chargeback. Distinct from Assinatura: a Mensal payment can be made before a Licença
+is issued, and a Licença can outlive a cancelled Assinatura until its expiry date passes. One
+active Licença per Cliente per Robô.
 _Avoid_: assinatura, chave, permissão
 
 **Chave**:
@@ -55,26 +70,20 @@ _Avoid_: transferência
 
 ---
 
+## Resolved by the catalog pivot
+
+Both terms below were open under the Plano model (`"1 / 3 / robôs ativos"`,
+"Corretora vinculada"). ADR-0006 removed the entitlement axes they counted, so nothing is left
+to count: one Licença binds one Robô and one Corretora account. Kept here so old tickets that
+mention them can be read.
+
+**Robô ativo** and **Corretora vinculada**:
+No longer terms. Superseded by the Licença definition above.
+
 ## Open terms
 
 Terms in active use that are not yet defined. Left undefined on purpose — inventing a
 definition here would commit us to a model we have not chosen.
-
-**Robô ativo**:
-Used by every Plano to express an entitlement — "1 / 3 / robôs ativos simultâneos". It is
-not yet decided whether this counts running instances, configurations, or Corretora
-connections. The three readings are different products. Resolve before Licenças are issued
-automatically, because the chosen reading is what has to be counted.
-
-**Corretora vinculada**:
-Sold as a separate entitlement axis from Robô ativo. Whether the two are genuinely
-independent, or whether one Robô ativo implies exactly one Corretora vinculada, is still
-undecided as a *counting* question. Partially resolved as a *verification* question by
-`.scratch/license-server/spec.md`'s §Corretora binding: once an account is bound to a
-license (collected at purchase), the Robô must be actually connected to that account
-(`AccountInfoInteger(ACCOUNT_LOGIN)`, read live, never from local config) or the check-in
-fails — but how many accounts one license may bind, and how that interacts with the Robô
-ativo cap, remains open.
 
 **Chave vs. Corretora API credential**:
 Chave (above) is the credential that lets an installed Robô run. The landing page's "como

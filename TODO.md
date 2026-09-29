@@ -86,8 +86,8 @@ has no native asymmetric primitive, confirmed against its own docs).
 | 02 | [Per-license secret/payload schema + verify endpoint](.scratch/license-server/issues/02-schema-and-verify-endpoint.md) | 01 | needs-triage |
 | 03 | [Provision per-license secret/payload and deliver alongside the binary](.scratch/license-server/issues/03-provisioning-and-delivery.md) | 01, 02 | needs-triage |
 | 04 | [MQL5 check-in client — verify, fail-closed with tolerance](.scratch/license-server/issues/04-mql5-checkin-client.md) | 02 | needs-triage |
-| 05 | [Enforce N robôs ativos simultâneos via check-in instance tracking](.scratch/license-server/issues/05-robo-count-entitlement.md) | 01, 02 | needs-triage |
-| 06 | [Collect Corretora account number at checkout and bind it per license](.scratch/license-server/issues/06-corretora-account-checkout.md) | — | needs-triage |
+| 05 | [Enforce N robôs ativos simultâneos via check-in instance tracking](.scratch/license-server/issues/05-robo-count-entitlement.md) | 01, 02 | wontfix (ADR-0006) |
+| 06 | [Collect Corretora account number at checkout and bind it per license](.scratch/license-server/issues/06-corretora-account-checkout.md) | — | superseded by catalog-pivot 07 |
 | 07 | [Verify the live-connected Corretora account against the bound one at check-in](.scratch/license-server/issues/07-corretora-live-verification.md) | 02, 04, 06 | needs-triage |
 
 Frontier: **01** — the payload-content decision blocks everything else in this effort; resolve it first.
@@ -119,6 +119,28 @@ PLANNING §10's 0.1 milestone (see `.scratch/backlog.md`).
 | 01 | [Termos de uso and Política de privacidade pages — structure + placeholder text](.scratch/legal-pages/issues/01-termos-e-privacidade-pages.md) | — | done |
 
 All tickets done. Placeholder bodies still need real legal text before launch (`grep -rn "launchBlocking(" src/content/legal.ts`).
+
+## catalog-pivot
+
+Spec: [.scratch/catalog-pivot/spec.md](.scratch/catalog-pivot/spec.md) — status `ready-for-agent`.
+Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT, PLANNING, ADR) done.
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Catalog content file and server-side price lookup](.scratch/catalog-pivot/issues/01-catalog-content-file.md) | — | ready-for-agent |
+| 02 | [Migration 0008: purchases, licenses, download_tokens](.scratch/catalog-pivot/issues/02-purchases-migration.md) | 01 | ready-for-agent |
+| 03 | [Checkout by robot_id + offer](.scratch/catalog-pivot/issues/03-checkout-by-robot-and-offer.md) | 01, 02 | ready-for-agent |
+| 04 | [Webhook amount check and the rejected state](.scratch/catalog-pivot/issues/04-webhook-amount-check.md) | 02, 03 | ready-for-agent |
+| 05 | [Derive Licença expiry from purchase status](.scratch/catalog-pivot/issues/05-license-expiry-derivation.md) | 02 | ready-for-agent |
+| 06 | [/catalog page replaces /planos](.scratch/catalog-pivot/issues/06-catalog-page.md) | 01 | ready-for-agent |
+| 07 | [Customer area: Licença states and Corretora account form](.scratch/catalog-pivot/issues/07-customer-area-license-states.md) | 02, 05 | ready-for-agent |
+| 08 | [Per-Licença delivery](.scratch/catalog-pivot/issues/08-per-license-delivery.md) | 02, 07 | ready-for-agent |
+| 09 | [Termos de uso: 7-day withdrawal clause](.scratch/catalog-pivot/issues/09-termos-withdrawal-clause.md) | — | ready-for-agent |
+| 10 | [Copy and docs sweep for leftover Plano language](.scratch/catalog-pivot/issues/10-copy-and-docs-sweep.md) | 06 | ready-for-agent |
+| 11 | [Research: automated compile/issuance and annual auto-renew](.scratch/catalog-pivot/issues/11-research-automation.md) | — | deferred (1.0.0) |
+| 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | ready-for-agent |
+
+Frontier: **01**, **09**. Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 
 ## Untracked
 

@@ -1,4 +1,4 @@
-# 05: Enforce N robôs ativos simultâneos via check-in instance tracking
+# 05 (SUPERSEDED, wontfix): Enforce N robôs ativos simultâneos via check-in instance tracking
 
 **What to build:** the plan-cap check on the verify endpoint — an instance id sent alongside
 `login + nonce`, a `last_seen_at`-based active-instance count per license, and a reject
@@ -38,3 +38,11 @@ is explicitly not part of it, per spec.md).
       slot for a new one; an already-active instance always renews even when the count is at
       or over cap (simulating a downgrade); unlimited plan never rejects for count.
 - [ ] `pnpm test` and `pnpm run typecheck` pass.
+
+**Status:** wontfix
+
+## Comments
+
+2026-09-29: Superseded by ADR-0006. Planos and their "N robôs ativos" cap are gone; one Licença
+binds one Robô and one Corretora account, so there is no count to enforce. Instance tracking
+may return as anti-sharing (not entitlement) inside ticket 07 if wanted; decide there.

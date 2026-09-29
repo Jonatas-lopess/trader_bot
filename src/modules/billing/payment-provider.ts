@@ -22,6 +22,8 @@
  *     `src/content/plans.ts`, not fetched from either provider.
  */
 
+import type { OfferName } from '../../content/catalog';
+
 export type ProviderId = 'appmax' | 'stripe';
 
 /** Ranked lowest to highest; `purchase-lookup.ts`'s `STATUS_RIGIDITY` and migrations/0008 must agree. Gateways currently report only the first four (`rejected`, `refunded`, `chargeback` arrive with catalog-pivot ticket 04). */
@@ -35,10 +37,23 @@ export type PurchaseStatus =
 	| 'chargeback';
 export type PaymentMethod = 'card' | 'boleto' | 'pix';
 
+/**
+ * Methods each Oferta accepts (ADR-0006, PLANNING.md §6): Compra and Anual are a single
+ * charge, so card/Boleto/Pix all work; Mensal is recurring, so card only. Checkout derives
+ * this from the Oferta and hands it to the driver, which must not offer anything else.
+ */
+export function paymentMethodsFor(offer: OfferName): PaymentMethod[] {
+	return offer === 'monthly' ? ['card'] : ['card', 'boleto', 'pix'];
+}
+
 export type CreateCheckoutSessionParams = {
 	reference: string;
-	planId: string;
+	robotId: string;
+	offer: OfferName;
+	/** Charged as one payment for `one_time`/`annual`, recurring monthly for `monthly`. */
 	amountCents: number;
+	/** From `paymentMethodsFor(offer)`; a driver that cannot honour a method (Stripe test driver: card only) offers the intersection. */
+	allowedMethods: PaymentMethod[];
 	returnUrl: string;
 	/** Where an abandoned checkout goes back to. Appmax's hosted checkout has no such concept; Stripe's driver uses it as `cancel_url`, distinct from `returnUrl` so a cancelled checkout doesn't land on the same confirmation page a successful payer sees. */
 	cancelUrl: string;

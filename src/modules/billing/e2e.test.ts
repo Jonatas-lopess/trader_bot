@@ -44,7 +44,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const checkout = await createCheckoutSession(env, { planId: 'starter', origin: 'https://example.com' });
+		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'monthly', origin: 'https://example.com' });
 		expect(checkout.ok).toBe(true);
 
 		const reference = new URL(capturedReturnUrl).searchParams.get('ref');
@@ -79,7 +79,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const checkout = await createCheckoutSession(env, { planId: 'starter', origin: 'https://example.com' });
+		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'monthly', origin: 'https://example.com' });
 		expect(checkout.ok).toBe(true);
 		const reference = new URL(capturedReturnUrl).searchParams.get('ref');
 

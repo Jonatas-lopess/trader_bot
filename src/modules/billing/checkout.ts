@@ -1,39 +1,72 @@
 /**
- * `/checkout?plan=<id>` (spec.md's "Checkout session creation"): resolves
- * the Plano, writes the provisional D1 row (User Story 14 — no Cliente
- * identity, PLANNING.md §7), and returns the URL to redirect the Cliente
- * to. `src/pages/checkout.ts` is the thin Astro adapter around this.
+ * `/checkout?robot=<slug>&offer=<offer>` (catalog-pivot ticket 03, ADR-0006
+ * "Server-side price"): resolves the price from the catalog, writes the
+ * provisional D1 row (User Story 14 — no Cliente identity, PLANNING.md §7),
+ * and returns the URL to redirect the Cliente to. `src/pages/checkout.ts` is
+ * the thin Astro adapter around this.
+ *
+ * The client supplies only `robotId` + `offer`. Nothing else it sends is read,
+ * so a tampered price cannot reach the gateway or the `amount_cents` the
+ * webhook later compares against (PLANNING.md §6 "Price integrity").
  */
 
-import { plans, type PlanId } from '../../content/plans';
+import { lookupOffer, type OfferName } from '../../content/catalog';
+import { getCustomerEmail } from '../identity/customers';
 import { selectProvider } from './factory';
+import { paymentMethodsFor } from './payment-provider';
 
 export type CheckoutSessionResult =
 	| { ok: true; redirectUrl: string }
 	| { ok: false; status: 400; message: string }
+	| { ok: false; status: 409; message: string }
 	| { ok: false; status: 502; message: string };
-
-const planIds = new Set<PlanId>(plans.map((plan) => plan.id));
-
-function isPlanId(value: string | null): value is PlanId {
-	return value !== null && planIds.has(value as PlanId);
-}
 
 type CheckoutEnv = Pick<
 	Cloudflare.Env,
 	'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'STRIPE_SECRET_KEY' | 'PAYMENT_PROVIDER'
 >;
 
+/**
+ * One active Licença per Cliente per Robô (ADR-0006). Only `active` purchases
+ * count: a `pending` row from an abandoned or declined attempt must never block
+ * a new checkout. A purchase is tied to a Cliente by email, since each
+ * provisioning writes its own `customers` row (migrations/0008).
+ */
+async function hasActivePurchase(env: Pick<Cloudflare.Env, 'DB'>, customerId: string, robotId: string): Promise<boolean> {
+	const email = await getCustomerEmail(env, customerId);
+	if (email === null) return false;
+	const row = await env.DB.prepare(
+		"SELECT 1 FROM purchases p JOIN customers c ON c.purchase_id = p.id WHERE c.email = ? AND p.robot_id = ? AND p.status = 'active' LIMIT 1"
+	)
+		.bind(email, robotId)
+		.first();
+	return row !== null;
+}
+
 export async function createCheckoutSession(
 	env: CheckoutEnv,
-	params: { planId: string | null; origin: string }
-): Promise<CheckoutSessionResult> {
-	if (!isPlanId(params.planId)) {
-		return { ok: false, status: 400, message: 'Unknown or missing plan.' };
+	params: {
+		robotId: string | null;
+		offer: string | null;
+		origin: string;
+		/** The authenticated Cliente, when the request carries a session; guests are checked at provisioning instead (PLANNING §7). */
+		customerId?: string | null;
 	}
-	// Annual is out of scope (spec.md's Out of Scope — no annual price set
-	// anywhere yet, src/content/plans.ts); always the monthly price.
-	const plan = plans.find((candidate) => candidate.id === params.planId)!;
+): Promise<CheckoutSessionResult> {
+	const priced =
+		params.robotId === null || params.offer === null ? null : lookupOffer(params.robotId, params.offer);
+	if (priced === null || priced.kind !== 'found') {
+		return { ok: false, status: 400, message: 'Unknown or missing robot or offer.' };
+	}
+	const { robotId } = params as { robotId: string };
+	// `found` proves `offer` is one of the robot's own OfferName keys.
+	const offer = params.offer as OfferName;
+	const amountCents = priced.amountCents;
+
+	if (params.customerId && (await hasActivePurchase(env, params.customerId, robotId))) {
+		return { ok: false, status: 409, message: 'You already have an active license for this robot.' };
+	}
+
 	const reference = crypto.randomUUID();
 	const returnUrl = new URL(`/checkout/confirmacao?ref=${reference}`, params.origin).toString();
 	// Back to where the Cliente started, not the success confirmation page
@@ -44,8 +77,10 @@ export async function createCheckoutSession(
 	const provider = selectProvider(env);
 	const session = await provider.createCheckoutSession(env, {
 		reference,
-		planId: plan.id,
-		amountCents: Math.round(plan.price.monthly * 100),
+		robotId,
+		offer,
+		amountCents,
+		allowedMethods: paymentMethodsFor(offer),
 		returnUrl,
 		cancelUrl,
 	});
@@ -64,15 +99,12 @@ export async function createCheckoutSession(
 	// `provider` records which gateway's ids those two columns hold
 	// (docs/adr/0005-stripe-test-driver.md) — defaults to `appmax` in the
 	// schema, written explicitly here so a Stripe test session is never
-	// mistaken for one.
-	// Interim bridge until catalog-pivot ticket 03 replaces the Plano lookup
-	// with `robot_id` + `offer` from src/content/catalog.ts: the plan id
-	// stands in for `robot_id` and the monthly price for the amount (ticket 04's
-	// amount check must not ship before this bridge is gone).
+	// mistaken for one. `amount_cents` is the price we asked the gateway to
+	// charge; the webhook compares the gateway's reported amount against it.
 	await env.DB.prepare(
-		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, 'monthly', ?, ?, ?, ?)"
+		'INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
 	)
-		.bind(reference, plan.id, Math.round(plan.price.monthly * 100), 'pending', provider.id, session.providerOrderId)
+		.bind(reference, robotId, offer, amountCents, 'pending', provider.id, session.providerOrderId)
 		.run();
 
 	return { ok: true, redirectUrl: session.checkoutUrl };

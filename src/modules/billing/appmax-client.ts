@@ -29,7 +29,8 @@
  * out to be real.
  */
 
-import type { IPaymentProvider, PurchaseStatus } from './payment-provider';
+import type { OfferName } from '../../content/catalog';
+import type { IPaymentProvider, PaymentMethod, PurchaseStatus } from './payment-provider';
 
 const APPMAX_AUTH_URL = 'https://auth.sandboxappmax.com.br/oauth2/token';
 const APPMAX_API_BASE_URL = 'https://api.sandboxappmax.com.br';
@@ -41,8 +42,10 @@ export type AppmaxPaymentMethod = 'card' | 'boleto' | 'pix';
 
 type CreateHostedCheckoutSessionParams = {
 	reference: string;
-	planId: string;
+	robotId: string;
+	offer: OfferName;
 	amountCents: number;
+	allowedMethods: PaymentMethod[];
 	returnUrl: string;
 };
 
@@ -82,8 +85,15 @@ export async function createHostedCheckoutSession(
 		body: JSON.stringify({
 			external_id: params.reference,
 			amount: params.amountCents,
+			// UNVERIFIED field names (this file's header): `payment_methods` restricts
+			// the hosted page to what the Oferta allows (Mensal card-only), `recurring`
+			// marks Mensal. The docs say Mensal is really an order followed by
+			// `POST /v1/subscriptions` (catalog-pivot 03 "Appmax findings") — to be
+			// settled against the sandbox.
+			payment_methods: params.allowedMethods,
+			recurring: params.offer === 'monthly',
 			return_url: params.returnUrl,
-			metadata: { plan_id: params.planId },
+			metadata: { robot_id: params.robotId, offer: params.offer },
 		}),
 	});
 	if (!response.ok) return { ok: false, reason: 'appmax_unavailable' };

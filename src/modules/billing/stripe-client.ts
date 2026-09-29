@@ -14,6 +14,7 @@
  * this driver exists to work around not having yet) — card only.
  */
 
+import type { OfferName } from '../../content/catalog';
 import type { IPaymentProvider, PurchaseStatus } from './payment-provider';
 
 type StripeCredentials = Pick<Cloudflare.Env, 'STRIPE_SECRET_KEY'>;
@@ -24,7 +25,8 @@ export type StripePurchaseStatus = PurchaseStatus;
 
 type CreateCheckoutSessionParams = {
 	reference: string;
-	planId: string;
+	robotId: string;
+	offer: OfferName;
 	amountCents: number;
 	returnUrl: string;
 	cancelUrl: string;
@@ -46,19 +48,25 @@ export async function createCheckoutSession(
 	env: StripeCredentials,
 	params: CreateCheckoutSessionParams
 ): Promise<CreateCheckoutSessionResult> {
+	// `monthly` is the only recurring Oferta; `one_time` and `annual` are a single
+	// charge (ADR-0006). Card only for every Oferta — this driver never offers
+	// Boleto/Pix (see the file header), which also satisfies Mensal's card-only rule.
+	const recurring = params.offer === 'monthly';
 	const body = new URLSearchParams({
-		mode: 'subscription',
+		mode: recurring ? 'subscription' : 'payment',
 		client_reference_id: params.reference,
 		success_url: params.returnUrl,
 		cancel_url: params.cancelUrl,
 		'line_items[0][quantity]': '1',
 		'line_items[0][price_data][currency]': 'brl',
 		'line_items[0][price_data][unit_amount]': String(params.amountCents),
-		'line_items[0][price_data][recurring][interval]': 'month',
-		'line_items[0][price_data][product_data][name]': `Robô Trader — ${params.planId}`,
+		'line_items[0][price_data][product_data][name]': `Robô Trader — ${params.robotId}`,
+		'payment_method_types[]': 'card',
 		'metadata[reference]': params.reference,
-		'metadata[plan_id]': params.planId,
+		'metadata[robot_id]': params.robotId,
+		'metadata[offer]': params.offer,
 	});
+	if (recurring) body.set('line_items[0][price_data][recurring][interval]', 'month');
 
 	let response: Response;
 	try {
@@ -166,7 +174,8 @@ export const stripeProvider: IPaymentProvider = {
 	async createCheckoutSession(env, params) {
 		const result = await createCheckoutSession(env, {
 			reference: params.reference,
-			planId: params.planId,
+			robotId: params.robotId,
+			offer: params.offer,
 			amountCents: params.amountCents,
 			returnUrl: params.returnUrl,
 			cancelUrl: params.cancelUrl,

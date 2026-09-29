@@ -25,7 +25,8 @@ describe('createCheckoutSession', () => {
 
 		const result = await createCheckoutSession(env, {
 			reference: 'ref-1',
-			planId: 'starter',
+			robotId: 'robo-exemplo-a',
+			offer: 'monthly',
 			amountCents: 4990,
 			returnUrl: 'https://example.com/checkout/confirmacao?ref=ref-1',
 			cancelUrl: 'https://example.com/checkout/confirmacao?ref=ref-1',
@@ -43,7 +44,8 @@ describe('createCheckoutSession', () => {
 
 		const result = await createCheckoutSession(env, {
 			reference: 'ref-2',
-			planId: 'pro',
+			robotId: 'robo-exemplo-a',
+			offer: 'monthly',
 			amountCents: 9990,
 			returnUrl: 'https://example.com/x',
 			cancelUrl: 'https://example.com/x',
@@ -57,7 +59,8 @@ describe('createCheckoutSession', () => {
 
 		const result = await createCheckoutSession(env, {
 			reference: 'ref-3',
-			planId: 'pro',
+			robotId: 'robo-exemplo-a',
+			offer: 'monthly',
 			amountCents: 9990,
 			returnUrl: 'https://example.com/x',
 			cancelUrl: 'https://example.com/x',
@@ -180,7 +183,9 @@ describe('stripeProvider adapter', () => {
 
 		const result = await stripeProvider.createCheckoutSession(providerEnv, {
 			reference: 'ref-adapter',
-			planId: 'starter',
+			robotId: 'robo-exemplo-a',
+			offer: 'monthly',
+			allowedMethods: ['card'],
 			amountCents: 4990,
 			returnUrl: 'https://example.com/x',
 			cancelUrl: 'https://example.com/',
@@ -198,7 +203,9 @@ describe('stripeProvider adapter', () => {
 
 		const result = await stripeProvider.createCheckoutSession(providerEnv, {
 			reference: 'ref-fail',
-			planId: 'starter',
+			robotId: 'robo-exemplo-a',
+			offer: 'monthly',
+			allowedMethods: ['card'],
 			amountCents: 4990,
 			returnUrl: 'https://example.com/x',
 			cancelUrl: 'https://example.com/',

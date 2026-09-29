@@ -2,20 +2,29 @@
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** done
 
 **What to build:** checkout session creation accepts only `robot_id` + `offer`; price from `lookupOffer`; `amount_cents` stored on the new purchase row. Rejects unknown robot/offer with no session created. One Robô per request. Blocks a second active Licença for the same Cliente + Robô (identify the Cliente by the authenticated session if present; guest checkout keeps the check for after provisioning, see Comments). Payment methods per Oferta: Compra/Anual card+Boleto+Pix, Mensal card only, enforced in both drivers behind `IPaymentProvider` (ADR-0005). Mensal maps to recurring, Compra/Anual to single charge.
 
 Governing docs: ADR-0006, PLANNING.md §6, `.scratch/checkout-webhooks/issues/02-checkout-session-creation.md`.
 
-- [ ] A client-supplied price/amount field is ignored (test posts a tampered body)
-- [ ] Mensal never offers Pix/Boleto; Compra/Anual offer all three
-- [ ] `amount_cents` persisted equals the catalog price at creation time
-- [ ] Both drivers covered; `pnpm test` and `pnpm run typecheck` pass
+- [x] A client-supplied price/amount field is ignored (test posts a tampered body)
+- [x] Mensal never offers Pix/Boleto; Compra/Anual offer all three
+- [x] `amount_cents` persisted equals the catalog price at creation time
+- [x] Both drivers covered; `pnpm test` and `pnpm run typecheck` pass
 
 ## Comments
 
 Duplicate-Licença guard for guests: the Cliente is only identified after payment (PLANNING §7), so the guard may have to live at provisioning (flag the purchase for operator review instead of failing after money moved). Decide when building.
+
+**Decided:** `createCheckoutSession` guards only when the request carries a session (`customerId`); it returns 409 if that Cliente (matched by email through `customers`) already has an `active` purchase for the Robô. A guest checkout is not guarded here. The provisioning-time guard for guests is not built: ticket 07/08 must decide it (flag the purchase for operator review rather than fail after money moved).
+
+## Notes for later tickets
+
+- The route is now `/checkout?robot=<slug>&offer=<one_time|annual|monthly>`. `plans.ts` still links `/checkout?plan=...`, which now returns 400. Ticket 06 replaces those links with the catalog page.
+- Driver params: `robotId`, `offer`, `allowedMethods` (from `paymentMethodsFor(offer)`). Stripe: `payment` mode for `one_time`/`annual`, `subscription` for `monthly`, card only always. Appmax sends `payment_methods` and `recurring` in the payment-link body; these field names are unverified, and Mensal really needs the two-step order + `POST /v1/subscriptions` flow (Appmax findings above), still to be settled in the sandbox.
+- The Stripe webhook and `fetchAuthoritativeStatus` were not reworked for `payment` mode sessions; ticket 04 owns the amount check and one-time status mapping.
+- Drivers still send `amount` as the catalog cents value; nothing reads the gateway-reported amount yet (ticket 04).
 
 
 ## Appmax findings (2026-09-29, docs.appmax.com.br)

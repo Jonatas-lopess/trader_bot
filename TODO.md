@@ -122,7 +122,7 @@ All tickets done. Placeholder bodies still need real legal text before launch (`
 
 ## catalog-pivot
 
-Spec: [.scratch/catalog-pivot/spec.md](.scratch/catalog-pivot/spec.md) — status `ready-for-agent`.
+Spec: [.scratch/catalog-pivot/spec.md](.scratch/catalog-pivot/spec.md) — status `done` (11 stays deferred to 1.0.0; Appmax sandbox checks are pre-go-live gates, PLANNING §13).
 Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT, PLANNING, ADR) done.
 
 | # | Ticket | Blocked by | Status |
@@ -138,10 +138,10 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 | 09 | [Termos de uso: 7-day withdrawal clause](.scratch/catalog-pivot/issues/09-termos-withdrawal-clause.md) | — | done |
 | 10 | [Copy and docs sweep for leftover Plano language](.scratch/catalog-pivot/issues/10-copy-and-docs-sweep.md) | 06 | done |
 | 11 | [Research: automated compile/issuance and annual auto-renew](.scratch/catalog-pivot/issues/11-research-automation.md) | — | deferred (1.0.0) |
-| 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | ready-for-agent |
+| 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | done |
 | 13 | [Persist fiscal data on the purchase for NFS-e](.scratch/catalog-pivot/issues/13-fiscal-data-for-nfse.md) | 02, 04 | done |
 
-Frontier: **12**. Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
+Frontier: none (11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 
 ## Untracked
 

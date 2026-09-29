@@ -1,6 +1,6 @@
 # catalog-pivot
 
-Status: ready-for-agent
+Status: done
 
 Pivot from Planos (Starter/Pro/Enterprise) to a Catálogo of Robôs. Decisions were settled in a
 grilling session on 2026-09-29 and recorded in [ADR-0006](../../docs/adr/0006-catalog-pivot.md);

@@ -145,4 +145,4 @@ Frontier: none (11 deferred). Supersedes `marketing-pages` 07/08 and `license-se
 
 ## Untracked
 
-[.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work and the external prerequisites.
+[.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work, the external prerequisites, and the "Open before go-live (catalog-pivot)" list: Appmax sandbox checks, owner decisions, launch-blocking copy.

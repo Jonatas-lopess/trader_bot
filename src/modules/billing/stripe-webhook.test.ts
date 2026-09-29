@@ -44,7 +44,9 @@ function mockStripe(status: { status: string; email?: string; amountSubtotal?: n
 					payment_status: status.status === 'active' ? 'paid' : 'unpaid',
 					subscription: null,
 					amount_subtotal: status.amountSubtotal,
-					customer_details: status.email ? { email: status.email } : null,
+					customer_details: status.email
+						? { email: status.email, name: 'Test Buyer', tax_ids: [{ type: 'br_cpf', value: '12345678909' }] }
+						: null,
 				}),
 				{ status: 200 }
 			);

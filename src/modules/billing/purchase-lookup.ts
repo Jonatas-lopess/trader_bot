@@ -34,6 +34,9 @@ export const STATUS_RIGIDITY_CASE_SQL = `CASE status ${(
 	.map(([status, rank]) => `WHEN '${status}' THEN ${rank}`)
 	.join(' ')} END`;
 
+/** First time the purchase lands `active`, for the manual NFS-e (ticket 13); one `?` = the new status. */
+export const PAID_AT_SQL = `CASE WHEN ? = 'active' THEN COALESCE(paid_at, strftime('%Y-%m-%dT%H:%M:%fZ', 'now')) ELSE paid_at END`;
+
 type LookupEnv = Pick<Cloudflare.Env, 'DB'>;
 
 /** `provider`-scoped so a Stripe id can never cross-match an Appmax row or vice versa (defense-in-depth; the two gateways' id formats don't collide in practice). */
@@ -115,4 +118,26 @@ export function reportAmountCheck(provider: ProviderId, checked: AmountCheck): v
 			extra: { provider, purchase_id: checked.unchecked.purchaseId, expected_cents: checked.unchecked.expectedCents },
 		});
 	}
+}
+
+/**
+ * Ticket 13: an `active` purchase with no buyer document cannot be invoiced from D1 alone.
+ * Money already moved, so this only reports, with the purchase id and provider, never the
+ * name or document (LGPD). Reads the stored column after the CAS, so a later event whose
+ * refetch carries no customer (a subscription renewal) does not re-report once it is filled.
+ */
+export async function reportMissingBuyerDocument(
+	env: LookupEnv,
+	provider: ProviderId,
+	ref: { orderId: string | null; subscriptionId: string | null }
+): Promise<void> {
+	const row = await env.DB.prepare(
+		'SELECT id, buyer_document FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+	)
+		.bind(provider, ref.orderId, ref.subscriptionId)
+		.first<{ id: string; buyer_document: string | null }>();
+	if (row === null || row.buyer_document !== null) return;
+	Sentry.captureMessage('no buyer document on the authoritative response; NFS-e needs it entered by hand', {
+		extra: { provider, purchase_id: row.id },
+	});
 }

@@ -26,6 +26,8 @@ import {
 	findPurchaseByProviderRef,
 	findPurchaseIdByProviderRef,
 	reportAmountCheck,
+	reportMissingBuyerDocument,
+	PAID_AT_SQL,
 } from './purchase-lookup';
 
 type WebhookEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'RESEND_API_KEY'>;
@@ -186,13 +188,20 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	// land independent of whether status itself changed.
 	const casStatement = env.DB.prepare(
 		`UPDATE purchases
-		 SET status = ?, payment_method = COALESCE(?, payment_method), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+		 SET status = ?, payment_method = COALESCE(?, payment_method),
+			     buyer_name = COALESCE(buyer_name, ?),
+			     buyer_document = COALESCE(buyer_document, ?),
+			     paid_at = ${PAID_AT_SQL},
+			     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		 WHERE provider = 'appmax'
 		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
 		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
 	).bind(
 		checked.status,
 		authoritative.paymentMethod,
+		authoritative.buyer.name,
+		authoritative.buyer.document,
+		checked.status,
 		event.orderId,
 		event.subscriptionId,
 		STATUS_RIGIDITY[checked.status]
@@ -219,6 +228,10 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	if (result.meta.changes > 0) reportAmountCheck('appmax', checked);
 
 	if (checked.status === 'active' && result.meta.changes > 0) {
+		// A subscription response carries no customer, so only an order refetch can know the document.
+		if (event.subscriptionId === null) {
+			await reportMissingBuyerDocument(env, 'appmax', { orderId: event.orderId, subscriptionId: null });
+		}
 		await onSubscriptionBecameActive(
 			env,
 			{ orderId: event.orderId, subscriptionId: event.subscriptionId },

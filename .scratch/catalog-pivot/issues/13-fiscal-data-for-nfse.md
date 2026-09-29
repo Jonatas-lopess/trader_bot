@@ -2,17 +2,29 @@
 
 **Blocked by:** 02, 04
 
-**Status:** ready-for-agent
+**Status:** done
 
 **What to build:** so the operator can issue each manual NFS-e (`docs/ops/nfse.md`) from D1 alone, persist the buyer's name and CPF/CNPJ on the purchase and make the nota value unambiguous. Add `buyer_name` and `buyer_document` (digits only, nullable) to `purchases`, written in the same compare-and-swap path that ticket 04 uses after the authoritative order refetch (`GET /v1/orders/{order_id}` returns `customer.name`, `customer.email`, `customer.document_number`). Never read them from the webhook payload. If the refetch returns no document, leave it null, keep the purchase moving (money already moved) and report to Sentry with the purchase id only (no document, no name). Stripe driver: fill from the test fixture so both drivers stay covered. `amount_cents` stays the nota basis (`amounts.sub_total`, price of the service, not `total_paid` with `installment_fee`); state that in the schema comment. Add to `docs/ops/nfse.md` a copy-paste SQL query listing confirmed purchases with name, document, `amount_cents`, offer, paid date and a nullable `nfse_issued_at` (new column, set manually after issuing) so unissued notas are a `WHERE nfse_issued_at IS NULL`.
 
 Governing docs: PLANNING.md §9, `docs/ops/nfse.md` "Data needed per nota", ticket 04 "Reported-amount field", CONTEXT.md.
 
-- [ ] Appmax refetch fixture with a customer document persists `buyer_name`/`buyer_document` (digits only)
-- [ ] Fixture without a document leaves both null, purchase still reaches `active`, Sentry event carries no PII
-- [ ] Payload-supplied document/name is ignored (tampered webhook test)
-- [ ] `nfse.md` query runs against the vitest D1 and returns the expected rows
-- [ ] `pnpm test` and `pnpm run typecheck` pass
+- [x] Appmax refetch fixture with a customer document persists `buyer_name`/`buyer_document` (digits only)
+- [x] Fixture without a document leaves both null, purchase still reaches `active`, Sentry event carries no PII
+- [x] Payload-supplied document/name is ignored (tampered webhook test)
+- [x] `nfse.md` query runs against the vitest D1 and returns the expected rows
+- [x] `pnpm test` and `pnpm run typecheck` pass
+
+## Decisions / Notes
+
+- Migration `0010` adds `buyer_name`, `buyer_document`, `nfse_issued_at` and also `paid_at` (set once, first time the purchase lands `active`): the ticket's query needs a paid date and `updated_at` moves on every later event.
+- Written in the webhook CAS as `COALESCE(column, ?)`: first stored value wins, so a later event can neither erase nor overwrite the data a nota was issued from.
+- Mensal (subscription) purchases never carry a document from the subscription refetch (no customer object), and are not reported as missing; the operator query shows NULL and the document is entered by hand. Alphanumeric CNPJ (2026) is treated as absent for the same reason. Stripe checkout now sets `tax_id_collection`. Read only from the refetch: Appmax `data.customer.{name,document_number}` (order responses only; a subscription response has no customer), Stripe test driver `customer_details.{name,tax_ids[br_cpf|br_cnpj]}`.
+- A document that is not 11 (CPF) or 14 (CNPJ) digits after stripping is stored as null, not as junk on a nota.
+- Missing document on an `active` purchase: Sentry message with `provider` and `purchase_id` only (`reportMissingBuyerDocument`). It reads the stored column, so a renewal event without a customer does not re-report once filled.
+- `email` also falls back to `data.customer.email`.
+- The `nfse.md` query is tested by extracting its ```sql block from the runbook, so doc and test cannot drift. It includes `past_due`/`canceled` (paid once) and excludes `refunded`/`chargeback` pending the contador.
+- Not done: the Política de privacidade placeholder still does not list name/CPF-CNPJ as collected data (`src/content/legal.ts`, "Dados coletados"); left for the real legal text pass.
+- Still gated on the sandbox: `customer.document_number` non-null per payment method through the real flow (PLANNING §13).
 
 ## Comments
 

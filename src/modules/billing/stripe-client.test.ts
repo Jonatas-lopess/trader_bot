@@ -87,7 +87,7 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: null, subscriptionId: 'sub_123' });
 
-		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com', reportedAmountCents: null });
+		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com', buyer: { name: null, document: null }, reportedAmountCents: null });
 	});
 
 	it('resolves email as null when the customer is unexpanded (an id string, not an object)', async () => {
@@ -97,7 +97,7 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: null, subscriptionId: 'sub_123' });
 
-		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: null, reportedAmountCents: null });
+		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: null, buyer: { name: null, document: null }, reportedAmountCents: null });
 	});
 
 	it('resolves a checkout session that has not completed yet as pending', async () => {
@@ -115,7 +115,7 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: 'cs_123', subscriptionId: null });
 
-		expect(result).toEqual({ ok: true, status: 'pending', paymentMethod: null, email: null, reportedAmountCents: null });
+		expect(result).toEqual({ ok: true, status: 'pending', paymentMethod: null, email: null, buyer: { name: null, document: null }, reportedAmountCents: null });
 	});
 
 	it('resolves a completed, paid checkout session as active with the buyer email', async () => {
@@ -133,7 +133,7 @@ describe('fetchAuthoritativeStatus', () => {
 
 		const result = await fetchAuthoritativeStatus(env, { orderId: 'cs_456', subscriptionId: null });
 
-		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com', reportedAmountCents: null });
+		expect(result).toEqual({ ok: true, status: 'active', paymentMethod: 'card', email: 'buyer@example.com', buyer: { name: null, document: null }, reportedAmountCents: null });
 	});
 
 	it('reports the session amount_subtotal as the charged amount', async () => {

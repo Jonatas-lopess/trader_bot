@@ -32,6 +32,8 @@ import {
 	findPurchaseByProviderRef,
 	findPurchaseIdByProviderRef,
 	reportAmountCheck,
+	reportMissingBuyerDocument,
+	PAID_AT_SQL,
 } from './purchase-lookup';
 
 type StripeWebhookEnv = Pick<
@@ -198,6 +200,9 @@ export async function handleStripeWebhook(
 		 SET status = ?,
 		     payment_method = COALESCE(?, payment_method),
 		     appmax_subscription_id = COALESCE(appmax_subscription_id, ?),
+		     buyer_name = COALESCE(buyer_name, ?),
+		     buyer_document = COALESCE(buyer_document, ?),
+		     paid_at = ${PAID_AT_SQL},
 		     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		 WHERE provider = 'stripe'
 		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
@@ -206,6 +211,9 @@ export async function handleStripeWebhook(
 		checked.status,
 		authoritative.paymentMethod,
 		ref.subscriptionId,
+		authoritative.buyer.name,
+		authoritative.buyer.document,
+		checked.status,
 		ref.orderId,
 		ref.subscriptionId,
 		STATUS_RIGIDITY[checked.status]
@@ -228,6 +236,8 @@ export async function handleStripeWebhook(
 	if (result.meta.changes > 0) reportAmountCheck('stripe', checked);
 
 	if (checked.status === 'active' && result.meta.changes > 0) {
+		// Only the session refetch carries customer_details; a subscription refetch cannot know the document.
+		if (ref.subscriptionId === null) await reportMissingBuyerDocument(env, 'stripe', ref);
 		await onSubscriptionBecameActive(env, ref, authoritative.email);
 	}
 

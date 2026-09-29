@@ -38,7 +38,14 @@
  */
 
 import type { OfferName } from '../../content/catalog';
-import type { IPaymentProvider, PaymentMethod, PurchaseStatus } from './payment-provider';
+import {
+	normalizeBuyerDocument,
+	normalizeBuyerName,
+	type BuyerFiscalData,
+	type IPaymentProvider,
+	type PaymentMethod,
+	type PurchaseStatus,
+} from './payment-provider';
 
 const APPMAX_AUTH_URL = 'https://auth.sandboxappmax.com.br/oauth2/token';
 const APPMAX_API_BASE_URL = 'https://api.sandboxappmax.com.br';
@@ -169,6 +176,10 @@ export type FetchAuthoritativeStatusResult =
 			// customer-area/issues/01 treats as a visible failure rather than
 			// silently leaving `customers` unpopulated.
 			email: string | null;
+			// `customer.name` / `customer.document_number` of the order response (ticket 13,
+			// NFS-e); never from the webhook payload. Both `null` for a subscription response,
+			// which carries no customer.
+			buyer: BuyerFiscalData;
 			// `amounts.sub_total` in cents (see header); `null` for a subscription or an
 			// order response that carries none.
 			reportedAmountCents: number | null;
@@ -198,6 +209,7 @@ export async function fetchAuthoritativeStatus(
 			status: string;
 			payment_method?: string;
 			email?: string;
+			customer?: { name?: string | null; email?: string | null; document_number?: string | null };
 			amounts?: { sub_total?: number };
 		};
 	}>();
@@ -208,7 +220,11 @@ export async function fetchAuthoritativeStatus(
 		ok: true,
 		status: isSubscription ? mapSubscriptionStatus(rawStatus) : mapOrderStatus(rawStatus),
 		paymentMethod: mapAppmaxPaymentMethod(body.data.payment_method),
-		email: body.data.email ?? null,
+		email: body.data.email ?? body.data.customer?.email ?? null,
+		buyer: {
+			name: isSubscription ? null : normalizeBuyerName(body.data.customer?.name),
+			document: isSubscription ? null : normalizeBuyerDocument(body.data.customer?.document_number),
+		},
 		reportedAmountCents: !isSubscription && typeof subTotal === 'number' ? subTotal : null,
 		...(rawStatus === ORDER_REVIEW_STATUS
 			? { operatorReview: `Appmax order status ${ORDER_REVIEW_STATUS}: paid, refund requested before integration` }

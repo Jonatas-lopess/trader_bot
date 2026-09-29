@@ -15,7 +15,13 @@
  */
 
 import type { OfferName } from '../../content/catalog';
-import type { IPaymentProvider, PurchaseStatus } from './payment-provider';
+import {
+	normalizeBuyerDocument,
+	normalizeBuyerName,
+	type BuyerFiscalData,
+	type IPaymentProvider,
+	type PurchaseStatus,
+} from './payment-provider';
 
 type StripeCredentials = Pick<Cloudflare.Env, 'STRIPE_SECRET_KEY'>;
 
@@ -62,6 +68,8 @@ export async function createCheckoutSession(
 		'line_items[0][price_data][unit_amount]': String(params.amountCents),
 		'line_items[0][price_data][product_data][name]': `Robô Trader — ${params.robotId}`,
 		'payment_method_types[]': 'card',
+		// Without this `customer_details.tax_ids` stays empty and no Stripe purchase carries a buyer document (ticket 13).
+		'tax_id_collection[enabled]': 'true',
 		'metadata[reference]': params.reference,
 		'metadata[robot_id]': params.robotId,
 		'metadata[offer]': params.offer,
@@ -93,6 +101,8 @@ export type FetchAuthoritativeStatusResult =
 			status: StripePurchaseStatus;
 			paymentMethod: 'card' | null;
 			email: string | null;
+			/** Name from the customer; document from `customer_details.tax_ids` (`br_cpf`/`br_cnpj`) on the session path only. Test driver, ticket 13. */
+			buyer: BuyerFiscalData;
 			/** Subscription: unit price x quantity of its first item. Session: `amount_subtotal`, the price sent as `unit_amount` before any discount or tax. */
 			reportedAmountCents: number | null;
 	  }
@@ -122,14 +132,22 @@ export async function fetchAuthoritativeStatus(
 		if (!response.ok) return { ok: false };
 		const body = await response.json<{
 			status: string;
-			customer: { email: string | null } | string;
+			customer: { email: string | null; name?: string | null } | string;
 			items?: { data?: { quantity?: number; price?: { unit_amount?: number | null } }[] };
 		}>();
 		const email = typeof body.customer === 'string' ? null : (body.customer?.email ?? null);
 		const item = body.items?.data?.[0];
 		const unitAmount = item?.price?.unit_amount;
 		const reportedAmountCents = typeof unitAmount === 'number' ? unitAmount * (item?.quantity ?? 1) : null;
-		return { ok: true, status: mapSubscriptionStatus(body.status), paymentMethod: 'card', email, reportedAmountCents };
+		const name = typeof body.customer === 'string' ? null : normalizeBuyerName(body.customer?.name);
+		return {
+			ok: true,
+			status: mapSubscriptionStatus(body.status),
+			paymentMethod: 'card',
+			email,
+			buyer: { name, document: null },
+			reportedAmountCents,
+		};
 	}
 
 	if (ref.orderId === null) return { ok: false };
@@ -145,13 +163,23 @@ export async function fetchAuthoritativeStatus(
 		payment_status: string;
 		subscription: string | null;
 		amount_subtotal?: number | null;
-		customer_details: { email: string | null } | null;
+		customer_details: {
+			email: string | null;
+			name?: string | null;
+			tax_ids?: { type?: string; value?: string }[];
+		} | null;
 	}>();
 	return {
 		ok: true,
 		status: mapSessionStatus(body.status, body.payment_status),
 		paymentMethod: body.payment_status === 'paid' ? 'card' : null,
 		email: body.customer_details?.email ?? null,
+		buyer: {
+			name: normalizeBuyerName(body.customer_details?.name),
+			document: normalizeBuyerDocument(
+				body.customer_details?.tax_ids?.find((t) => t.type === 'br_cpf' || t.type === 'br_cnpj')?.value
+			),
+		},
 		reportedAmountCents: typeof body.amount_subtotal === 'number' ? body.amount_subtotal : null,
 	};
 }

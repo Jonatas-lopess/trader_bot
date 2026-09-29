@@ -63,12 +63,16 @@ export type CreateCheckoutSessionResult =
 	| { ok: true; checkoutUrl: string; providerOrderId: string | null }
 	| { ok: false; reason: 'provider_auth_failed' | 'provider_unavailable' };
 
+export type BuyerFiscalData = { name: string | null; document: string | null };
+
 export type FetchAuthoritativeStatusResult =
 	| {
 			ok: true;
 			status: PurchaseStatus;
 			paymentMethod: PaymentMethod | null;
 			email: string | null;
+			/** From the authoritative refetch only, for the manual NFS-e (ticket 13). `document` is digits only (CPF 11 / CNPJ 14) or `null`. Personal data: never log. */
+			buyer: BuyerFiscalData;
 			/** What the gateway says was charged for the item, in cents, before installment fees. `null` when the response carries none; webhooks compare it to `purchases.amount_cents` (ADR-0006). */
 			reportedAmountCents: number | null;
 	  }
@@ -93,3 +97,17 @@ export type IPaymentProvider = {
 	): Promise<FetchAuthoritativeStatusResult>;
 	cancelSubscription(env: PaymentProviderEnv, providerSubscriptionId: string): Promise<{ ok: true } | { ok: false }>;
 };
+
+/** Strips a CPF/CNPJ to digits; anything that is not 11 (CPF) or 14 (CNPJ) digits is treated as absent rather than persisted into a nota. */
+export function normalizeBuyerDocument(raw: unknown): string | null {
+	if (typeof raw !== 'string') return null;
+	// Alphanumeric CNPJ (2026) has letters; stripping them could store a wrong number, so treat it as absent for manual entry.
+	if (/[a-z]/i.test(raw)) return null;
+	const digits = raw.replace(/\D/g, '');
+	return digits.length === 11 || digits.length === 14 ? digits : null;
+}
+
+/** A trimmed non-empty name, or `null`. */
+export function normalizeBuyerName(raw: unknown): string | null {
+	return typeof raw === 'string' && raw.trim() !== '' ? raw.trim() : null;
+}

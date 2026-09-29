@@ -18,6 +18,8 @@ function mockAppmax(status: { status: string; paymentMethod?: string; email?: st
 						status: status.status,
 						payment_method: status.paymentMethod,
 						email: status.email,
+						// A document keeps ticket 13's missing-document Sentry report out of these tests' assertions.
+						customer: { name: 'Test Buyer', document_number: '123.456.789-09' },
 						amounts: status.subTotal === undefined ? undefined : { sub_total: status.subTotal, installment_fee: 999 },
 					},
 				}),

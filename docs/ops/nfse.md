@@ -9,7 +9,7 @@ with the contador before relying on it (PLANNING.md §9).
 
 ## When to issue
 
-One nota per successful Assinatura charge (initial or renewal) — a payment Appmax reports
+One nota per confirmed payment (a Compra, an Anual, or each Mensal charge) — a payment Appmax reports
 as confirmed. Trigger point: `TODO — confirm with contador` (options: same day as the
 webhook lands the Assinatura in `active`, or batched at a fixed point in the billing cycle —
 municipal portals commonly expect a `competência` date, which may push toward batching
@@ -17,15 +17,42 @@ rather than per-event issuance).
 
 ## Data needed per nota
 
-Pull from the D1 `customers`/`subscriptions` tables (`modules/identity`,
-`modules/billing`) and the matching Appmax payment record:
+Everything comes from D1 (`purchases`, ticket catalog-pivot 13), written by the webhook
+from the authoritative order refetch, never from the webhook payload. Run it with
+`wrangler d1 execute <db> --remote --command "<query>"`:
 
-- Cliente name and CPF/CNPJ
-- Plano and price charged (the actual charged amount, not list price — check for any
-  discount/coupon applied)
-- Payment date / `competência` date
+```sql
+SELECT id AS purchase_id,
+       buyer_name,
+       buyer_document,
+       amount_cents,
+       offer,
+       robot_id,
+       paid_at,
+       nfse_issued_at
+FROM purchases
+WHERE status IN ('active', 'past_due', 'canceled')
+  AND paid_at IS NOT NULL
+  AND nfse_issued_at IS NULL
+ORDER BY paid_at;
+```
+
+- `buyer_name` and `buyer_document` (CPF 11 or CNPJ 14 digits, digits only). A `NULL`
+  `buyer_document` means the gateway returned none (Sentry: "no buyer document on the
+  authoritative response", purchase id only). Get it from the Appmax order screen or from
+  the Cliente by email, then `UPDATE purchases SET buyer_document = '<digits>' WHERE id = '<purchase_id>'`.
+- `amount_cents` is the nota basis: the price of the service (Appmax `amounts.sub_total`),
+  not `total_paid`, which includes the card installment fee. `TODO — confirm with contador`
+  that the nota is issued on the service price alone. It is the amount charged unless a
+  discount/coupon applied, which the amount check would have rejected.
+- `offer` (`one_time`, `annual`, `monthly`) and `robot_id`: what was sold.
+- `paid_at` is the first time the purchase landed `active`; use it as the payment /
+  `competência` date. Refunded and chargeback purchases are excluded on purpose:
+  `TODO — confirm with contador` whether a nota already issued for one must be cancelled.
 - Service description — `TODO — confirm the exact wording the contador wants on the nota`
   (municipal portals usually require a specific activity code + description, not free text)
+
+The document is personal data (LGPD): do not paste it into chat, tickets or logs.
 
 ## Steps
 
@@ -35,9 +62,9 @@ Pull from the D1 `customers`/`subscriptions` tables (`modules/identity`,
 3. Enter/confirm the ISS rate. `TODO — confirm with contador`: rate is municipal
    (PLANNING.md §9) and not yet recorded anywhere in this repo.
 4. Issue the nota, save the resulting PDF/XML.
-5. Record what was issued — `TODO — confirm with contador`: whether the municipal portal is
-   the system of record, or whether ops should also log issuance somewhere in this repo
-   (e.g. a column on the subscription row) for reconciliation against Appmax volume.
+5. Record what was issued: `UPDATE purchases SET nfse_issued_at = '<YYYY-MM-DD>' WHERE id = '<purchase_id>'`,
+   so the query above shows only unissued notas. `TODO — confirm with contador` whether the
+   municipal portal is the system of record too.
 
 ## MEI ceiling watch
 

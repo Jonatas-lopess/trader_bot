@@ -22,7 +22,7 @@ describe('resolveAccountView', () => {
 		expect(result).toEqual({ ok: false });
 	});
 
-	it('resolves the Robô name and "preparing" license for an authenticated Cliente with no licenses row', async () => {
+	it('resolves the Robô name and "none" license for an authenticated Cliente with no licenses row', async () => {
 		await seedAccount({ purchaseId: 'sub-account-1', customerId: 'cust-account-1', planId: 'robo-exemplo-a' });
 		const { cookieValue } = await createSession(env, 'cust-account-1');
 
@@ -31,7 +31,7 @@ describe('resolveAccountView', () => {
 		expect(result).toEqual({
 			ok: true,
 			robotName: 'Robô Exemplo A',
-			license: { status: 'preparing', expiresAt: null },
+			license: { status: 'none' },
 			subscriptionStatus: 'active',
 		});
 	});

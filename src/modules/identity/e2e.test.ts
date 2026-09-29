@@ -107,13 +107,13 @@ describe('customer-area end to end: login to cancel', () => {
 		if (!redeemed.ok) throw new Error('expected redeem to succeed');
 
 		// 3. The customer area resolves Robô + Licença from the session cookie
-		// alone (ticket 03) — no `licenses` row seeded, so it's "preparing".
+		// alone (ticket 03) — the activation webhook created the row, so it's "awaiting_account".
 		const accountRequest = requestWithSessionCookie(redeemed.cookieValue);
 		const view = await resolveAccountView(env, accountRequest);
 		expect(view).toMatchObject({
 			ok: true,
 			robotName: 'Robô Exemplo A',
-			license: { status: 'preparing', expiresAt: null },
+			license: { status: 'awaiting_account' },
 			subscriptionStatus: 'active',
 		});
 

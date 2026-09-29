@@ -20,6 +20,7 @@
  */
 
 import { provisionCustomer } from '../identity/customers';
+import { reportDuplicateLicense } from '../licensing/duplicate-license';
 import { issueMagicLink } from '../identity/magic-link';
 import { timingSafeEqual } from '../identity/session';
 import { licenseSyncStatement } from '../licensing/license-expiry';
@@ -141,6 +142,7 @@ async function onSubscriptionBecameActive(
 	const customer = await provisionCustomer(env, { purchaseId, email });
 	if (!customer.created) return;
 
+	await reportDuplicateLicense(env, { purchaseId, email });
 	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
 }
 

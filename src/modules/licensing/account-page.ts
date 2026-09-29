@@ -37,7 +37,7 @@ export async function resolveAccountView(env: AccountPageEnv, request: Request):
 	if (account === null) return { ok: false };
 
 	const robot = catalog.find((candidate) => candidate.slug === account.robotId);
-	const license = await getLicenseStatus(env, account.purchaseId);
+	const license = await getLicenseStatus(env, account.purchaseId, account.status);
 
 	return {
 		ok: true,

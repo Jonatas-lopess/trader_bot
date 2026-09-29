@@ -15,10 +15,17 @@ import {
 	cancelConfirmMessage,
 	cancelLabel,
 	heading,
-	licenseActiveText,
+	corretoraAccountHint,
+	corretoraAccountLabel,
+	corretoraBannerBody,
+	corretoraBannerHeading,
+	corretoraConfirmMessage,
+	corretoraNoticeTexts,
+	corretoraSubmitLabel,
 	licenseLabel,
-	licensePreparingText,
+	licenseStatusText,
 	logoutLabel,
+	rejectedNoticeText,
 	pageDescription,
 	pageTitle,
 	robotLabel,
@@ -29,14 +36,57 @@ export const prerender = false;
 const view = await resolveAccountView(env, Astro.request);
 if (!view.ok) return Astro.redirect('/login');
 
-const licenseText =
-	view.license.status === 'active' ? licenseActiveText(view.license.expiresAt) : licensePreparingText;
+const licenseText = licenseStatusText(view.license);
+const noticeParam = Astro.url.searchParams.get('corretora');
+const notice =
+	noticeParam !== null && noticeParam in corretoraNoticeTexts
+		? corretoraNoticeTexts[noticeParam as keyof typeof corretoraNoticeTexts]
+		: null;
 const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
 	<section class="content-row gutter-x flex flex-col gap-6 py-20">
 		<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+
+		{notice !== null && <p class="text-body text-text-secondary" role="status">{notice}</p>}
+
+		{
+			view.subscriptionStatus === 'rejected' && (
+				<p class="text-body text-text-primary" role="status">
+					{rejectedNoticeText.value}
+				</p>
+			)
+		}
+
+		{
+			view.license.status === 'awaiting_account' && (
+				<section class="flex flex-col gap-4 rounded-md border border-border-subtle p-6" id="corretora-banner">
+					<h2 class="text-heading-3 font-bold text-text-primary">{corretoraBannerHeading}</h2>
+					<p class="text-body text-text-secondary">{corretoraBannerBody}</p>
+					<form method="POST" action="/conta/corretora" id="corretora-form" class="flex max-w-sm flex-col gap-4">
+						<label class="flex flex-col gap-2">
+							<span class="text-body-sm text-text-secondary">{corretoraAccountLabel}</span>
+							<input
+								type="text"
+								name="corretora_account"
+								inputmode="numeric"
+								pattern="[1-9][0-9]{0,11}"
+								required
+								class="rounded-md border border-border-subtle px-4 py-2 text-body text-text-primary"
+							/>
+							<span class="text-body-sm text-text-secondary">{corretoraAccountHint}</span>
+						</label>
+						<button
+							type="submit"
+							class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+						>
+							{corretoraSubmitLabel}
+						</button>
+					</form>
+				</section>
+			)
+		}
 
 		<dl class="flex flex-col gap-4">
 			<div>
@@ -74,11 +124,17 @@ const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 	</section>
 </BaseLayout>
 
-<script define:vars={{ cancelConfirmMessage }}>
+<script define:vars={{ cancelConfirmMessage, corretoraConfirmMessage }}>
 	// One click plus one confirmation (User Story 10) — a native confirm()
 	// dialog is the friction step before the cancel action fires.
 	const cancelForm = document.getElementById('cancel-form');
 	cancelForm?.addEventListener('submit', (event) => {
 		if (!window.confirm(cancelConfirmMessage)) event.preventDefault();
+	});
+
+	// The account number is write-once, so confirm before sending it.
+	const corretoraForm = document.getElementById('corretora-form');
+	corretoraForm?.addEventListener('submit', (event) => {
+		if (!window.confirm(corretoraConfirmMessage)) event.preventDefault();
 	});
 </script>

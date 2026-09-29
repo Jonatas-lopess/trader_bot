@@ -109,6 +109,15 @@ describe('licenseSyncStatement', () => {
 		expect(await expiryOf('exp-refund')).toBe(later.toISOString());
 	});
 
+	it('does not move expiry forward when a refund is redelivered', async () => {
+		await seedPurchase('exp-redeliver', 'one_time', 'active');
+		await apply('exp-redeliver', 'one_time', 'active', NOW);
+		await env.DB.prepare("UPDATE purchases SET status = 'refunded' WHERE id = 'exp-redeliver'").run();
+		await apply('exp-redeliver', 'one_time', 'refunded', NOW);
+		await apply('exp-redeliver', 'one_time', 'refunded', new Date('2026-03-20T00:00:00.000Z'));
+		expect(await expiryOf('exp-redeliver')).toBe(NOW_ISO);
+	});
+
 	it('cannot be undone by a lower-ranked event: the guard skips the write once the purchase outranks it', async () => {
 		await seedPurchase('exp-undo', 'one_time', 'active');
 		await apply('exp-undo', 'one_time', 'active', NOW);

@@ -58,6 +58,9 @@ export function deriveLicenseExpiry(params: { offer: OfferName; status: Purchase
 type LicensingEnv = Pick<Cloudflare.Env, 'DB'>;
 
 /**
+ * `end_now` only ever moves expiry earlier (`expires_at > now`), so a redelivered refund or
+ * chargeback (the CAS allows equal rank) cannot push it forward again.
+ *
  * The D1 statement that applies `deriveLicenseExpiry` to the Licença, for `DB.batch([...])`
  * right after the purchase status compare-and-swap so both commit together. It is guarded by
  * `purchases.status = <this status>`: when the CAS was blocked (a stale `active` arriving after
@@ -78,9 +81,10 @@ export function licenseSyncStatement(
 	const touched = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now')";
 
 	if (change.kind === 'end_now') {
-		return env.DB.prepare(`UPDATE licenses SET expires_at = ?, updated_at = ${touched} WHERE purchase_id = ? AND ${guard}`).bind(
+		return env.DB.prepare(`UPDATE licenses SET expires_at = ?, updated_at = ${touched} WHERE purchase_id = ? AND expires_at > ? AND ${guard}`).bind(
 			change.at,
 			params.purchaseId,
+			change.at,
 			params.purchaseId,
 			params.status
 		);

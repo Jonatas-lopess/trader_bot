@@ -1,0 +1,100 @@
+---
+// Robô card — src/components/robot-card.astro
+//
+// One card per Robô on `/catalog` (.scratch/catalog-pivot/issues/06-catalog-page.md).
+// Compra is the main CTA; Anual and Mensal are secondary buttons. A coming-soon
+// Robô shows no buy buttons. Every buy link carries only `robot` + `offer`;
+// the price is looked up server-side at checkout (ADR-0006).
+//
+// Content comes from src/content/catalog-page.ts — see docs/agents/content-files.md.
+import {
+	annualPixNote,
+	annualSavingsBadge,
+	comingSoonLabel,
+	corretorasLabel,
+	strategyTypeLabel,
+	type CatalogCard,
+} from '../content/catalog-page';
+
+type Props = {
+	card: CatalogCard;
+};
+
+const { card } = Astro.props;
+const main = card.offers.find((o) => o.offer === 'one_time');
+const secondary = card.offers.filter((o) => o.offer !== 'one_time');
+---
+
+<div
+	class="mx-auto flex w-full max-w-md flex-col rounded-lg border border-border-subtle bg-surface-raised card-p-sm md:mx-0 md:max-w-none"
+>
+	<div class="flex items-start justify-between gap-3">
+		<h2 class="text-heading-3 font-bold text-text-primary">{card.name}</h2>
+		{
+			card.status === 'coming-soon' && (
+				<span class="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-sunken px-3 py-1 text-caption font-medium text-text-secondary">
+					{comingSoonLabel}
+				</span>
+			)
+		}
+	</div>
+
+	<p class="mt-3 text-body-sm text-text-secondary">{card.shortDescription}</p>
+
+	<dl class="mt-4 flex flex-col gap-2 text-body-sm">
+		<div class="flex gap-2">
+			<dt class="text-text-tertiary">{strategyTypeLabel}:</dt>
+			<dd class="text-text-secondary">{card.strategyType}</dd>
+		</div>
+		<div class="flex gap-2">
+			<dt class="text-text-tertiary">{corretorasLabel}:</dt>
+			<dd class="text-text-secondary">{card.corretoras.join(', ')}</dd>
+		</div>
+	</dl>
+
+	{
+		main && (
+			<div class="mt-6">
+				<div class="flex items-baseline gap-2">
+					<span class="text-heading-2 font-bold text-text-primary">{main.priceText}</span>
+				</div>
+				<p class="mt-1 text-caption text-text-tertiary">{main.caption}</p>
+				<a
+					href={main.href}
+					class="button-h-lg mt-4 inline-flex w-full items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+				>
+					{main.label}
+				</a>
+			</div>
+		)
+	}
+
+	{
+		secondary.length > 0 && (
+			<ul class="mt-4 flex flex-col gap-3">
+				{secondary.map((offer) => (
+					<li class="flex flex-col gap-1">
+						<a
+							href={offer.href}
+							class="button-h-sm inline-flex items-center justify-between gap-3 rounded-md border border-border-subtle bg-surface-sunken px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+						>
+							<span class="flex items-center gap-2">
+								{offer.label}
+								{offer.offer === 'annual' && (
+									<span class="badge-h badge-px inline-flex items-center rounded-full border border-border-subtle bg-brand-primary-subtle text-caption font-medium text-brand-primary">
+										{annualSavingsBadge.value}
+									</span>
+								)}
+							</span>
+							<span>{offer.priceText}</span>
+						</a>
+						<span class="text-caption text-text-tertiary">
+							{offer.caption}
+							{offer.offer === 'annual' && ` · ${annualPixNote.value}`}
+						</span>
+					</li>
+				))}
+			</ul>
+		)
+	}
+</div>

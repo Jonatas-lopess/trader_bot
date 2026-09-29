@@ -31,7 +31,7 @@ export const supportLinksHeading = 'Suporte & Termos';
 // These three DO have destinations in this scope — link them.
 export const usefulLinks: FooterLink[] = [
 	{ label: 'Como funciona', href: '/#como-funciona' },
-	{ label: 'Planos & Preços', href: '/planos' },
+	{ label: 'Catálogo & Preços', href: '/catalog' },
 	{ label: 'FAQ', href: '/#faq' },
 ];
 

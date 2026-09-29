@@ -15,6 +15,8 @@ const sentryUpload = Boolean(process.env.SENTRY_AUTH_TOKEN);
 // https://astro.build/config
 export default defineConfig({
 	output: 'static',
+	// /planos was replaced by /catalog (catalog-pivot 06, ADR-0006).
+	redirects: { '/planos': '/catalog' },
 	adapter: cloudflare({
 		imageService: 'passthrough',
 	}),

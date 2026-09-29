@@ -25,10 +25,10 @@ export const heading = 'Configuração rápida em 4 passos';
 export const steps: HowItWorksStep[] = [
 	{
 		number: '01',
-		title: 'Escolha seu plano',
+		title: 'Escolha seu Robô',
 		description:
-			'Compare os Planos disponíveis e escolha o que combina com o seu volume de ' +
-			'operações.',
+			'Compare os Robôs do catálogo e escolha o que combina com a sua estratégia ' +
+			'e a forma de contratar.',
 	},
 	{
 		number: '02',

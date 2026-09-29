@@ -48,7 +48,7 @@ export const confirmationMessages: Record<
 export const activeCtaLabel = 'Entrar na área do cliente';
 
 export const missingReferenceMessage =
-	'Não encontramos esse checkout. Volte à página de planos e tente novamente.';
+	'Não encontramos esse checkout. Volte ao catálogo e tente novamente.';
 
 // Shown in place of confirmationMessages.pending once polling has run past
 // PENDING_TIMEOUT_MS (src/pages/checkout/confirmacao.astro) without the

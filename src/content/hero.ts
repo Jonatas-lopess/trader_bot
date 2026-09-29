@@ -49,8 +49,8 @@ export const supportingParagraph =
 	'estiver, sem precisar ficar grudado na tela.';
 
 export const ctas: HeroCta[] = [
-	{ label: 'Começar Agora', href: '/planos' },
-	{ label: 'Ver Planos', href: '/planos' },
+	{ label: 'Começar Agora', href: '/catalog' },
+	{ label: 'Ver Catálogo', href: '/catalog' },
 ];
 
 export const trustRow: HeroTrustItem[] = [

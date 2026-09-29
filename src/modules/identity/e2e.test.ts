@@ -70,12 +70,12 @@ describe('customer-area end to end: login to cancel', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('happy path: webhook confirms → customers row exists → login → /conta shows plano+licença → cancel flips status', async () => {
+	it('happy path: webhook confirms → customers row exists → login → /conta shows robô+licença → cancel flips status', async () => {
 		await seedPendingSubscription({
 			id: 'sub-e2e-happy',
 			appmaxOrderId: 'ord_e2e_happy',
 			appmaxSubscriptionId: 'asub_e2e_happy',
-			planId: 'pro',
+			planId: 'robo-exemplo-a',
 		});
 		mockOutboundFetch((url) => {
 			if (url.includes('/orders/ord_e2e_happy')) {
@@ -106,13 +106,13 @@ describe('customer-area end to end: login to cancel', () => {
 		expect(redeemed.ok).toBe(true);
 		if (!redeemed.ok) throw new Error('expected redeem to succeed');
 
-		// 3. The customer area resolves Plano + Licença from the session cookie
+		// 3. The customer area resolves Robô + Licença from the session cookie
 		// alone (ticket 03) — no `licenses` row seeded, so it's "preparing".
 		const accountRequest = requestWithSessionCookie(redeemed.cookieValue);
 		const view = await resolveAccountView(env, accountRequest);
 		expect(view).toMatchObject({
 			ok: true,
-			planName: 'Pro',
+			robotName: 'Robô Exemplo A',
 			license: { status: 'preparing', expiresAt: null },
 			subscriptionStatus: 'active',
 		});

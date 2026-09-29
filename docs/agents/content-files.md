@@ -33,10 +33,11 @@ import { things } from '../content/<section>';
 **First real example:** `src/content/header.ts` and `src/content/footer.ts`, consumed by
 `src/components/site-header.astro` and `src/components/site-footer.astro`.
 
-One content file per section (`header.ts`, `footer.ts`, `hero.ts`, `plans.ts`, ...). Facts
-shared across pages — e.g. plan prices used by both the plans page (ticket 07) and the
-landing teaser (ticket 08) — live in the file owned by the ticket that introduces them and
-are imported by the other, never duplicated into a second file.
+One content file per section (`header.ts`, `footer.ts`, `hero.ts`, `catalog.ts`, ...). Facts
+shared across pages — e.g. Robô names and prices used by both the `/catalog` page and the
+landing teaser — live in the file owned by the ticket that introduces them (`catalog.ts`,
+read through `catalog-page.ts`) and are imported by the other, never duplicated into a
+second file.
 
 ## The launch-blocking marker
 

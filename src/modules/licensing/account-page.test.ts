@@ -22,24 +22,24 @@ describe('resolveAccountView', () => {
 		expect(result).toEqual({ ok: false });
 	});
 
-	it('resolves the Plano name and "preparing" license for an authenticated Cliente with no licenses row', async () => {
-		await seedAccount({ purchaseId: 'sub-account-1', customerId: 'cust-account-1', planId: 'pro' });
+	it('resolves the Robô name and "preparing" license for an authenticated Cliente with no licenses row', async () => {
+		await seedAccount({ purchaseId: 'sub-account-1', customerId: 'cust-account-1', planId: 'robo-exemplo-a' });
 		const { cookieValue } = await createSession(env, 'cust-account-1');
 
 		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
 
 		expect(result).toEqual({
 			ok: true,
-			planName: 'Pro',
+			robotName: 'Robô Exemplo A',
 			license: { status: 'preparing', expiresAt: null },
 			subscriptionStatus: 'active',
 		});
 	});
 
 	it('resolves the "active" license once expires_at is set', async () => {
-		await seedAccount({ purchaseId: 'sub-account-2', customerId: 'cust-account-2', planId: 'starter' });
+		await seedAccount({ purchaseId: 'sub-account-2', customerId: 'cust-account-2', planId: 'robo-exemplo-b' });
 		await env.DB.prepare('INSERT INTO licenses (purchase_id, robot_id, status, expires_at) VALUES (?, ?, ?, ?)')
-			.bind('sub-account-2', 'starter', 'active', '2027-06-20T00:00:00.000Z')
+			.bind('sub-account-2', 'robo-exemplo-b', 'active', '2027-06-20T00:00:00.000Z')
 			.run();
 		const { cookieValue } = await createSession(env, 'cust-account-2');
 
@@ -47,7 +47,7 @@ describe('resolveAccountView', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			planName: 'Starter',
+			robotName: 'Robô Exemplo B',
 			license: { status: 'active', expiresAt: '2027-06-20T00:00:00.000Z' },
 			subscriptionStatus: 'active',
 		});

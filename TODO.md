@@ -132,7 +132,7 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 | 03 | [Checkout by robot_id + offer](.scratch/catalog-pivot/issues/03-checkout-by-robot-and-offer.md) | 01, 02 | done |
 | 04 | [Webhook amount check and the rejected state](.scratch/catalog-pivot/issues/04-webhook-amount-check.md) | 02, 03 | done |
 | 05 | [Derive Licença expiry from purchase status](.scratch/catalog-pivot/issues/05-license-expiry-derivation.md) | 02 | done |
-| 06 | [/catalog page replaces /planos](.scratch/catalog-pivot/issues/06-catalog-page.md) | 01 | ready-for-agent |
+| 06 | [/catalog page replaces /planos](.scratch/catalog-pivot/issues/06-catalog-page.md) | 01 | done |
 | 07 | [Customer area: Licença states and Corretora account form](.scratch/catalog-pivot/issues/07-customer-area-license-states.md) | 02, 05 | ready-for-agent |
 | 08 | [Per-Licença delivery](.scratch/catalog-pivot/issues/08-per-license-delivery.md) | 02, 07 | ready-for-agent |
 | 09 | [Termos de uso: 7-day withdrawal clause](.scratch/catalog-pivot/issues/09-termos-withdrawal-clause.md) | — | ready-for-agent |
@@ -141,7 +141,7 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 | 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | ready-for-agent |
 | 13 | [Persist fiscal data on the purchase for NFS-e](.scratch/catalog-pivot/issues/13-fiscal-data-for-nfse.md) | 02, 04 | ready-for-agent |
 
-Frontier: **06**, **07**, **09**. Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
+Frontier: **07**, **09**. Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 
 ## Untracked
 

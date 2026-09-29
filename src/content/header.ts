@@ -23,11 +23,11 @@ export const brand = {
 } as const;
 
 // Anchors point at routes/in-page sections that don't exist yet — built by
-// tickets 04 (hero, /#como-funciona), 07 (/planos) and 08 (/#faq). Linking
+// tickets 04 (hero, /#como-funciona), catalog-pivot 06 (/catalog) and 08 (/#faq). Linking
 // ahead of the section is deliberate, not a bug (ticket 03 scope note).
 export const primaryNav: NavLink[] = [
 	{ label: 'Como funciona', href: '/#como-funciona' },
-	{ label: 'Planos', href: '/planos' },
+	{ label: 'Catálogo', href: '/catalog' },
 	{ label: 'FAQ', href: '/#faq' },
 ];
 
@@ -40,5 +40,5 @@ export const loginLink: NavLink = {
 
 export const ctaLink: NavLink = {
 	label: 'Comprar agora',
-	href: '/planos',
+	href: '/catalog',
 };

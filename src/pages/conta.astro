@@ -1,7 +1,7 @@
 ---
 // /conta — the protected customer-area page.
 //
-// .scratch/customer-area/issues/03-license-status-page.md (Plano/Licença
+// .scratch/customer-area/issues/03-license-status-page.md (Robô/Licença
 // display) and 04-cancel-subscription.md (Assinatura status + cancel
 // action). Unauthenticated visits redirect to /login (User Story 13); the
 // actual session-check guard is ticket 02's `requireSession` (cookie-only,
@@ -21,7 +21,7 @@ import {
 	logoutLabel,
 	pageDescription,
 	pageTitle,
-	planLabel,
+	robotLabel,
 } from '../content/conta';
 
 export const prerender = false;
@@ -40,8 +40,8 @@ const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 
 		<dl class="flex flex-col gap-4">
 			<div>
-				<dt class="text-body-sm text-text-secondary">{planLabel}</dt>
-				<dd class="text-body-lg text-text-primary">{view.planName}</dd>
+				<dt class="text-body-sm text-text-secondary">{robotLabel}</dt>
+				<dd class="text-body-lg text-text-primary">{view.robotName}</dd>
 			</div>
 			<div>
 				<dt class="text-body-sm text-text-secondary">{licenseLabel}</dt>

@@ -69,7 +69,7 @@ export async function getCustomerEmail(env: CustomersEnv, customerId: string): P
 export type { PurchaseStatus };
 
 /**
- * The Assinatura + Plano a logged-in Cliente owns — .scratch/customer-area/issues/03-license-status-page.md.
+ * The Compra + Robô a logged-in Cliente owns — .scratch/customer-area/issues/03-license-status-page.md.
  * Single subscription per customer in 0.1 (spec.md's Implementation
  * Decisions), so one JOIN is enough; no attempt to handle a second
  * Assinatura under the same Cliente. `status`/`appmaxSubscriptionId` added

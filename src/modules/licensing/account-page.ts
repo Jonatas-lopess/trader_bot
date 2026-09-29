@@ -7,7 +7,8 @@
  * `src/modules/billing/status.ts`).
  */
 
-import { plans } from '../../content/plans';
+import { catalog } from '../../content/catalog';
+import { unwrapLaunchBlocking } from '../../shared/launch-blocking';
 import { getCustomerAccount, type PurchaseStatus } from '../identity/customers';
 import { requireSession } from '../identity/session';
 import { getLicenseStatus, type LicenseStatus } from './license-status';
@@ -17,7 +18,7 @@ type AccountPageEnv = Pick<Cloudflare.Env, 'DB' | 'SESSION_SECRET'>;
 export type AccountView =
 	| {
 			ok: true;
-			planName: string;
+			robotName: string;
 			license: LicenseStatus;
 			// Added by ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md):
 			// the page needs the Assinatura's own status to reflect a cancel and
@@ -35,12 +36,12 @@ export async function resolveAccountView(env: AccountPageEnv, request: Request):
 	const account = await getCustomerAccount(env, session.customerId);
 	if (account === null) return { ok: false };
 
-	const plan = plans.find((candidate) => candidate.id === account.robotId);
+	const robot = catalog.find((candidate) => candidate.slug === account.robotId);
 	const license = await getLicenseStatus(env, account.purchaseId);
 
 	return {
 		ok: true,
-		planName: plan?.name ?? account.robotId,
+		robotName: robot ? unwrapLaunchBlocking(robot.name) : account.robotId,
 		license,
 		subscriptionStatus: account.status,
 	};

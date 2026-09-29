@@ -12,7 +12,7 @@ export const pageTitle = 'Sua conta';
 export const pageDescription = 'Acompanhe o status da sua Licença e gerencie sua Assinatura.';
 
 export const heading = 'Sua conta';
-export const planLabel = 'Plano';
+export const robotLabel = 'Robô';
 export const licenseLabel = 'Licença';
 export const assinaturaLabel = 'Assinatura';
 

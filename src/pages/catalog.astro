@@ -1,0 +1,25 @@
+---
+// Catalog route — src/pages/catalog.astro
+//
+// Replaces `/planos` (.scratch/catalog-pivot/issues/06-catalog-page.md,
+// ADR-0006); `/planos` redirects here (astro.config.mjs). Title band, one card
+// per Robô, and the regulatory note, wrapped in the site shell. Content comes
+// from src/content/catalog-page.ts — see docs/agents/content-files.md.
+import BaseLayout from '../layouts/base-layout.astro';
+import RobotCard from '../components/robot-card.astro';
+import { catalogCards, pageDescription, pageHeading, pageTitle, regulatoryNote } from '../content/catalog-page';
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+	<section class="content-row gutter-x py-16 text-center sm:py-20">
+		<h1 class="text-heading-1 font-bold text-text-primary">{pageHeading}</h1>
+	</section>
+
+	<section class="content-row gutter-x grid grid-cols-1 gap-6 pb-20 md:grid-cols-2 lg:grid-cols-3">
+		{catalogCards.map((card) => <RobotCard card={card} />)}
+	</section>
+
+	<section class="content-row gutter-x pb-20">
+		<p class="mx-auto max-w-3xl text-center text-caption text-text-tertiary">{regulatoryNote}</p>
+	</section>
+</BaseLayout>

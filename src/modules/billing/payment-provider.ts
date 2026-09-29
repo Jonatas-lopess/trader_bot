@@ -18,8 +18,8 @@
  *     stripe-webhook.ts for Stripe), same split as before this seam existed.
  *   - A billing-portal / plan-listing surface. Both gateways' own
  *     self-service portals are explicitly not used (PLANNING.md §6, "A
- *     customer self-service portal. Cancellation UI is ours.") — plans are
- *     `src/content/plans.ts`, not fetched from either provider.
+ *     customer self-service portal. Cancellation UI is ours.") — prices are
+ *     `src/content/catalog.ts`, not fetched from either provider.
  */
 
 import type { OfferName } from '../../content/catalog';

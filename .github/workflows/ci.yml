@@ -65,8 +65,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Uploads source maps to Sentry when SENTRY_AUTH_TOKEN is set (astro.config.mjs,
+      # sentry-integration/issues/06). Secret on the "dev" Environment; SENTRY_ORG and
+      # SENTRY_PROJECT are Environment variables. Unset token = build skips the upload.
       - name: Build
         run: pnpm run build
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_RELEASE: ${{ github.sha }}
 
       - name: Apply D1 migrations
         uses: cloudflare/wrangler-action@v3
@@ -98,9 +106,12 @@ jobs:
           # SENTRY_ENVIRONMENT follows the same pattern, tagging captured
           # events with which deploy they came from
           # (src/shared/sentry-environment.ts, sentry-integration/issues/07).
+          # SENTRY_RELEASE is the commit SHA, matching the release the build step
+          # uploaded source maps under (@sentry/cloudflare reads it off the env).
+          #
           # Unset is fine either way — sentry.server.config.ts falls back to
           # 'unconfigured' rather than Sentry's own 'production' default, so
           # setting this "dev" Environment variable (e.g. to
           # `workers-dev-test`) only sharpens the dashboard label, it isn't
           # required for the test-phase deploy to stop reading as production.
-          command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}${{ vars.SENTRY_ENVIRONMENT && format(' --var SENTRY_ENVIRONMENT:{0}', vars.SENTRY_ENVIRONMENT) || '' }}
+          command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}${{ vars.SENTRY_ENVIRONMENT && format(' --var SENTRY_ENVIRONMENT:{0}', vars.SENTRY_ENVIRONMENT) || '' }} --var SENTRY_RELEASE:${{ github.sha }}

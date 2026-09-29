@@ -103,11 +103,11 @@ No spec.md — small enough to skip straight to tickets.
 | 03 | [Report webhook-hardening's security-relevant rejections](.scratch/sentry-integration/issues/03-report-webhook-hardening-rejections.md) | 01 | done |
 | 04 | [Source-map upload and a correct `environment` tag](.scratch/sentry-integration/issues/04-sourcemaps-and-environment-tag.md) | 01 | split — see 06, 07 |
 | 05 | [Identify and report remaining friction points](.scratch/sentry-integration/issues/05-audit-remaining-friction-points.md) | 01 | phase 1 done — see ticket |
-| 06 | [Source-map upload on deploy](.scratch/sentry-integration/issues/06-sourcemap-upload.md) | 01 | ready-for-human |
+| 06 | [Source-map upload on deploy](.scratch/sentry-integration/issues/06-sourcemap-upload.md) | 01 | wiring done — human setup pending |
 | 07 | [Correct `environment` tag on captured events](.scratch/sentry-integration/issues/07-environment-tag.md) | 01 | done |
 | 08 | [Surface Resend's rejection reason in the send-failure logs](.scratch/sentry-integration/issues/08-resend-rejection-detail.md) | — | done |
 
-Frontier: **06** — needs a human to create a Sentry auth token and add it to CI first. **08** is done.
+Frontier: **06** — code wiring is done; a human still needs to create the Sentry auth token and add it (plus `SENTRY_ORG`/`SENTRY_PROJECT`) to the "dev" Environment — steps in the ticket's Answer.
 
 ## legal-pages
 

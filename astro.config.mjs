@@ -31,8 +31,8 @@ export default defineConfig({
 				? [
 						sentryVitePlugin({
 							authToken: process.env.SENTRY_AUTH_TOKEN,
-							org: process.env.SENTRY_ORG,
-							project: process.env.SENTRY_PROJECT,
+							org: 'jonatas-lopes',
+							project: 'trader-bot-worker',
 							release: { name: process.env.SENTRY_RELEASE },
 							sourcemaps: { filesToDeleteAfterUpload: ['dist/**/*.map'] },
 							telemetry: false,

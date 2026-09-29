@@ -32,18 +32,18 @@ job, local) are unchanged:
 
 - `astro.config.mjs`: `@sentry/vite-plugin` + `build.sourcemap` only when the token is set;
   release name = `SENTRY_RELEASE`; maps deleted from `dist/` after upload.
-- `.github/workflows/ci.yml`: deploy job's Build step gets the token/org/project/release;
+- `.github/workflows/ci.yml`: deploy job's Build step gets the token and release;
   the Deploy step passes `--var SENTRY_RELEASE:<sha>` (`@sentry/cloudflare` reads it off the
   env, so events carry the release the maps were uploaded under).
 - `pnpm-workspace.yaml`: `@sentry/cli: true` in `allowBuilds` (its install script fetches the
   upload binary).
 
-**Human steps remaining (nothing uploads until these are done):**
+**Human steps remaining (nothing uploads from CI until this is done):**
 
-1. Sentry → Settings → Auth Tokens: create a token with `project:releases` (plus
-   `org:read`) scope.
-2. GitHub → Settings → Environments → **dev**: add secret `SENTRY_AUTH_TOKEN`, and variables
-   `SENTRY_ORG` and `SENTRY_PROJECT` (the slugs from the Sentry URL).
+1. Token: already created via `npx @sentry/wizard -i sourcemaps` (local copy in the gitignored
+   `.env.sentry-build-plugin`). Org `jonatas-lopes` / project `trader-bot-worker` are
+   hardcoded in `astro.config.mjs` (slugs, not secret).
+2. GitHub → Settings → Environments → **dev**: add secret `SENTRY_AUTH_TOKEN` (same value).
 3. Push to main; trigger an error on the workers.dev route and confirm the stack trace shows
    original `file:line` instead of `Module.GET(debug-sentry_*.mjs)`.
 

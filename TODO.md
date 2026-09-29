@@ -107,7 +107,7 @@ No spec.md — small enough to skip straight to tickets.
 | 07 | [Correct `environment` tag on captured events](.scratch/sentry-integration/issues/07-environment-tag.md) | 01 | done |
 | 08 | [Surface Resend's rejection reason in the send-failure logs](.scratch/sentry-integration/issues/08-resend-rejection-detail.md) | — | done |
 
-Frontier: **06** — code wiring is done; a human still needs to create the Sentry auth token and add it (plus `SENTRY_ORG`/`SENTRY_PROJECT`) to the "dev" Environment — steps in the ticket's Answer.
+Frontier: **06** — code wiring is done; a human still needs to create the Sentry auth token and add it to the "dev" Environment as `SENTRY_AUTH_TOKEN` — steps in the ticket's Answer.
 
 ## legal-pages
 

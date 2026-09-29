@@ -66,14 +66,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Uploads source maps to Sentry when SENTRY_AUTH_TOKEN is set (astro.config.mjs,
-      # sentry-integration/issues/06). Secret on the "dev" Environment; SENTRY_ORG and
-      # SENTRY_PROJECT are Environment variables. Unset token = build skips the upload.
+      # sentry-integration/issues/06). Secret on the "dev" Environment; org/project
+      # slugs are hardcoded in astro.config.mjs. Unset token = build skips the upload.
       - name: Build
         run: pnpm run build
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
           SENTRY_RELEASE: ${{ github.sha }}
 
       - name: Apply D1 migrations

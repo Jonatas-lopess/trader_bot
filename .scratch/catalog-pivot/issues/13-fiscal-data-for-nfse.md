@@ -26,3 +26,5 @@ Governing docs: PLANNING.md §9, `docs/ops/nfse.md` "Data needed per nota", tick
 **Open, contador:** nota basis (`sub_total` vs `total_paid`), issuance trigger, service description. Already listed in `nfse.md`; this ticket does not resolve them.
 
 **Privacy:** the document is personal data (LGPD). Política de privacidade placeholder should list it as collected; never log it.
+
+**Docs-only findings, no sandbox access yet (2026-09-29):** Pix requires `payment_data.pix.document_number` (`POST /v1/payments/pix`, CPF or CNPJ) and card requires `holder_document_number`, so the native API flow collects a document for those methods; Boleto page not read. This narrows, but does not remove, the "document may be absent" case, which now only applies to the hosted `payment-links` flow. Building this ticket does not need the sandbox (the Stripe driver covers it). Checking that `customer.document_number` is non-null for every payment method through the real flow is a pre-go-live gate, tracked in PLANNING §13.

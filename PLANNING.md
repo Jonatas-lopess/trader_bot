@@ -493,6 +493,13 @@ on:
   paths; cancel is `PATCH /v1/subscriptions/{id}/cancel` and is immediate; webhook payloads
   wrap ids in `data`. Order statuses and their mapping live in
   `.scratch/catalog-pivot/issues/04-webhook-amount-check.md`.
+- Buyer CPF/CNPJ for NFS-e (`.scratch/catalog-pivot/issues/13-fiscal-data-for-nfse.md`), read
+  from docs.appmax.com.br on 2026-09-29, not sandbox-verified: `GET /v1/orders/{id}` returns
+  `customer.name`, `customer.email` and `customer.document_number`; `document_number` is
+  optional on customer creation, but card (`holder_document_number`) and Pix
+  (`payment_data.pix.document_number`) payments require one (Boleto not read). Unknown:
+  whether the hosted `payment-links` flow collects it for every method and whether it lands on
+  `customer.document_number` in the refetch. Confirm on a sandbox call before go-live.
 - Subscription base orders may be card **or Pix** per the docs, against §6's "no Pix for
   recurring". Unresolved: keep Mensal card-only until a sandbox test or Appmax says otherwise.
 - Appmax's published webhook source-IP list — not findable anywhere (docs.appmax.com.br,

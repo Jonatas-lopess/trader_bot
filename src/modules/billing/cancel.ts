@@ -9,8 +9,8 @@
  * `webhook.ts` uses against `subscriptions.status` (User Story 12) — one
  * atomic statement, no prior `SELECT`, so this write path and the webhook's
  * share one state-transition rule instead of two that could disagree.
- * Never touches `licenses`: Assinatura and Licença are independent
- * lifecycles (User Story 11, CONTEXT.md).
+ * Never touches `licenses`: `canceled` keeps the term already paid, which
+ * `deriveLicenseExpiry` (licensing/license-expiry.ts) encodes as no change.
  */
 
 import { providerById } from './factory';

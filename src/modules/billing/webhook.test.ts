@@ -45,13 +45,15 @@ async function seed(row: {
 	appmax_subscription_id?: string;
 	status: string;
 	amount_cents?: number;
+	offer?: string;
 }) {
 	await env.DB.prepare(
-		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, 'monthly', ?, ?, ?, ?)"
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id, appmax_subscription_id) VALUES (?, ?, ?, ?, ?, ?, ?)"
 	)
 		.bind(
 			row.id,
 			'starter',
+			row.offer ?? 'monthly',
 			row.amount_cents ?? 0,
 			row.status,
 			row.appmax_order_id ?? null,
@@ -295,6 +297,55 @@ describe('handleWebhook', () => {
 				expect.stringContaining('no reported amount'),
 				expect.objectContaining({ extra: expect.objectContaining({ purchase_id: 'amt-null' }) })
 			);
+		});
+	});
+
+	describe('Licença expiry (license-expiry.ts)', () => {
+		async function expiryOf(id: string): Promise<string | null> {
+			const row = await env.DB.prepare('SELECT expires_at FROM licenses WHERE purchase_id = ?')
+				.bind(id)
+				.first<{ expires_at: string | null }>();
+			return row === null ? null : row.expires_at;
+		}
+
+		it('creates the Licença with the lifetime sentinel when a Compra activates', async () => {
+			await seed({ id: 'lic-onetime', appmax_order_id: 'ord_lic_onetime', status: 'pending', offer: 'one_time' });
+			mockAppmax({ status: 'aprovado' });
+
+			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_lic_onetime' }));
+
+			expect(await expiryOf('lic-onetime')).toBe('9999-12-31T23:59:59.000Z');
+		});
+
+		it('sets expiry to now on refund, and a later stale active event cannot undo it', async () => {
+			await seed({ id: 'lic-refund', appmax_order_id: 'ord_lic_refund', status: 'pending', offer: 'one_time' });
+			mockAppmax({ status: 'aprovado' });
+			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_lic_refund' }));
+			vi.restoreAllMocks();
+
+			const before = Date.now();
+			mockAppmax({ status: 'estornado' });
+			await handleWebhook(env, JSON.stringify({ event: 'order.refunded', order_id: 'ord_lic_refund' }));
+			const refundedExpiry = await expiryOf('lic-refund');
+			expect(new Date(refundedExpiry!).getTime()).toBeGreaterThanOrEqual(before);
+			expect(new Date(refundedExpiry!).getTime()).toBeLessThanOrEqual(Date.now());
+			vi.restoreAllMocks();
+
+			mockAppmax({ status: 'aprovado' });
+			await handleWebhook(env, JSON.stringify({ event: 'order.paid.delayed', order_id: 'ord_lic_refund' }));
+
+			expect(await statusOf('lic-refund')).toBe('refunded');
+			expect(await expiryOf('lic-refund')).toBe(refundedExpiry);
+		});
+
+		it('creates no Licença when the payment is rejected by the amount check', async () => {
+			await seed({ id: 'lic-rejected', appmax_order_id: 'ord_lic_rejected', status: 'pending', offer: 'one_time', amount_cents: 1000 });
+			mockAppmax({ status: 'aprovado', subTotal: 999 });
+
+			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_lic_rejected' }));
+
+			expect(await statusOf('lic-rejected')).toBe('rejected');
+			expect(await expiryOf('lic-rejected')).toBeNull();
 		});
 	});
 

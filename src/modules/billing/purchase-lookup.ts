@@ -8,6 +8,7 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
+import type { OfferName } from '../../content/catalog';
 import type { ProviderId, PurchaseStatus } from './payment-provider';
 
 /**
@@ -47,6 +48,20 @@ export async function findPurchaseIdByProviderRef(
 		.bind(provider, ref.orderId, ref.subscriptionId)
 		.first<{ id: string }>();
 	return row?.id ?? null;
+}
+
+/** Immutable purchase facts the Licença sync needs (`licenseSyncStatement`), looked up before the status CAS so both can share one `DB.batch`. */
+export async function findPurchaseByProviderRef(
+	env: LookupEnv,
+	provider: ProviderId,
+	ref: { orderId: string | null; subscriptionId: string | null }
+): Promise<{ id: string; robotId: string; offer: OfferName } | null> {
+	const row = await env.DB.prepare(
+		'SELECT id, robot_id, offer FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+	)
+		.bind(provider, ref.orderId, ref.subscriptionId)
+		.first<{ id: string; robot_id: string; offer: OfferName }>();
+	return row === null ? null : { id: row.id, robotId: row.robot_id, offer: row.offer };
 }
 
 type AmountFacts = { purchaseId: string; expectedCents: number };

@@ -22,11 +22,13 @@
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
 import { timingSafeEqual } from '../identity/session';
+import { licenseSyncStatement } from '../licensing/license-expiry';
 import { fetchAuthoritativeStatus } from './stripe-client';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
 	checkReportedAmount,
+	findPurchaseByProviderRef,
 	findPurchaseIdByProviderRef,
 	reportAmountCheck,
 } from './purchase-lookup';
@@ -189,7 +191,7 @@ export async function handleStripeWebhook(
 	// must be persisted or every later event keyed by subscription id alone
 	// (customer.subscription.updated/.deleted) can never match this row
 	// again, and cancel.ts's gateway cancel call can never be dispatched.
-	const result = await env.DB.prepare(
+	const casStatement = env.DB.prepare(
 		`UPDATE purchases
 		 SET status = ?,
 		     payment_method = COALESCE(?, payment_method),
@@ -198,16 +200,28 @@ export async function handleStripeWebhook(
 		 WHERE provider = 'stripe'
 		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
 		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
-	)
-		.bind(
-			checked.status,
-			authoritative.paymentMethod,
-			ref.subscriptionId,
-			ref.orderId,
-			ref.subscriptionId,
-			STATUS_RIGIDITY[checked.status]
-		)
-		.run();
+	).bind(
+		checked.status,
+		authoritative.paymentMethod,
+		ref.subscriptionId,
+		ref.orderId,
+		ref.subscriptionId,
+		STATUS_RIGIDITY[checked.status]
+	);
+
+	// Licença expiry derived from the new status in the same batch (license-expiry.ts).
+	const purchase = await findPurchaseByProviderRef(env, 'stripe', ref);
+	const syncStatement =
+		purchase === null
+			? null
+			: licenseSyncStatement(env, {
+					purchaseId: purchase.id,
+					robotId: purchase.robotId,
+					offer: purchase.offer,
+					status: checked.status,
+					now: new Date(),
+				});
+	const [result] = await env.DB.batch(syncStatement === null ? [casStatement] : [casStatement, syncStatement]);
 
 	if (result.meta.changes > 0) reportAmountCheck('stripe', checked);
 

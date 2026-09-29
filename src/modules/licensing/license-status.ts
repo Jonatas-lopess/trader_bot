@@ -15,10 +15,12 @@ export type LicenseStatus =
 	| { status: 'active'; expiresAt: string };
 
 export async function getLicenseStatus(env: LicensingEnv, purchaseId: string): Promise<LicenseStatus> {
-	const row = await env.DB.prepare('SELECT expires_at FROM licenses WHERE purchase_id = ?')
+	const row = await env.DB.prepare('SELECT status, expires_at FROM licenses WHERE purchase_id = ?')
 		.bind(purchaseId)
-		.first<{ expires_at: string | null }>();
+		.first<{ status: string; expires_at: string | null }>();
 
-	if (row === null || row.expires_at === null) return { status: 'preparing', expiresAt: null };
+	// The webhook now creates the row (with its derived expiry) on activation, while the
+	// binary is still to be prepared, so an expiry alone no longer means "active".
+	if (row === null || row.status !== 'active' || row.expires_at === null) return { status: 'preparing', expiresAt: null };
 	return { status: 'active', expiresAt: row.expires_at };
 }

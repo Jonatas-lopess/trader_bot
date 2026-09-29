@@ -4,6 +4,7 @@
  * Real product copy, ships as drawn (docs/agents/content-files.md).
  */
 
+import { LIFETIME_EXPIRY } from '../modules/licensing/license-expiry';
 import { launchBlocking } from '../shared/launch-blocking';
 import type { PurchaseStatus } from '../modules/identity/customers';
 
@@ -34,11 +35,13 @@ export const assinaturaStatusTexts: Record<PurchaseStatus, string> = {
 	chargeback: 'Contestada',
 };
 
+export const licenseLifetimeText = 'Vitalícia';
 export const licensePreparingText = 'Sendo preparada';
 
 // pt-BR DD/MM, no year — spec.md's Implementation Decisions is literal:
 // "ativa até DD/MM".
 export function licenseActiveText(expiresAt: string): string {
+	if (expiresAt === LIFETIME_EXPIRY) return licenseLifetimeText;
 	const date = new Date(expiresAt);
 	const day = String(date.getUTCDate()).padStart(2, '0');
 	const month = String(date.getUTCMonth() + 1).padStart(2, '0');

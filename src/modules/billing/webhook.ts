@@ -17,10 +17,12 @@ import * as Sentry from '@sentry/cloudflare';
 import { fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
+import { licenseSyncStatement } from '../licensing/license-expiry';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
 	checkReportedAmount,
+	findPurchaseByProviderRef,
 	findPurchaseIdByProviderRef,
 	reportAmountCheck,
 } from './purchase-lookup';
@@ -180,21 +182,37 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	// before) must still be allowed to apply — the rigidity check alone
 	// (`<=`, not `<`) already makes this safe, and payment_method needs to
 	// land independent of whether status itself changed.
-	const result = await env.DB.prepare(
+	const casStatement = env.DB.prepare(
 		`UPDATE purchases
 		 SET status = ?, payment_method = COALESCE(?, payment_method), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 		 WHERE provider = 'appmax'
 		   AND (appmax_order_id = ? OR appmax_subscription_id = ?)
 		   AND ${STATUS_RIGIDITY_CASE_SQL} <= ?`
-	)
-		.bind(
-			checked.status,
-			authoritative.paymentMethod,
-			event.orderId,
-			event.subscriptionId,
-			STATUS_RIGIDITY[checked.status]
-		)
-		.run();
+	).bind(
+		checked.status,
+		authoritative.paymentMethod,
+		event.orderId,
+		event.subscriptionId,
+		STATUS_RIGIDITY[checked.status]
+	);
+
+	// Licença expiry is derived from the new status in the same batch (one transaction), so
+	// no path edits `licenses.expires_at` on its own (license-expiry.ts).
+	const purchase = await findPurchaseByProviderRef(env, 'appmax', {
+		orderId: event.orderId,
+		subscriptionId: event.subscriptionId,
+	});
+	const syncStatement =
+		purchase === null
+			? null
+			: licenseSyncStatement(env, {
+					purchaseId: purchase.id,
+					robotId: purchase.robotId,
+					offer: purchase.offer,
+					status: checked.status,
+					now: new Date(),
+				});
+	const [result] = await env.DB.batch(syncStatement === null ? [casStatement] : [casStatement, syncStatement]);
 
 	if (result.meta.changes > 0) reportAmountCheck('appmax', checked);
 

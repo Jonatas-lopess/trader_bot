@@ -15,7 +15,7 @@ available wherever that upload runs.
 
 **Blocked by:** 01 (done — the wrapper this ticket's dashboard evidence came from)
 
-**Status:** wiring done, awaiting human setup (see Answer)
+**Status:** done — `SENTRY_AUTH_TOKEN` set on the "dev" Environment, CI upload confirmed working
 
 **Why this needs a human, not just an agent:** creating the Sentry auth token requires
 signing into the Sentry dashboard (Settings → Auth Tokens, `project:releases` scope) —
@@ -31,7 +31,9 @@ Build-side wiring is in, gated on `SENTRY_AUTH_TOKEN` so builds without it (CI's
 job, local) are unchanged:
 
 - `astro.config.mjs`: `@sentry/vite-plugin` + `build.sourcemap` only when the token is set;
-  release name = `SENTRY_RELEASE`; maps deleted from `dist/` after upload.
+  release name = `SENTRY_RELEASE`; only `dist/client` maps are deleted after upload (they
+  would be served as public static assets). Server maps stay: `entry.mjs` references
+  `entry.mjs.map` and `wrangler deploy` rejects a dangling reference.
 - `.github/workflows/ci.yml`: deploy job's Build step gets the token and release;
   the Deploy step passes `--var SENTRY_RELEASE:<sha>` (`@sentry/cloudflare` reads it off the
   env, so events carry the release the maps were uploaded under).

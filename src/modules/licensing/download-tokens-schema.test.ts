@@ -9,8 +9,8 @@ import { ROBOT_BINARY_BYTES, ROBOT_BINARY_CONTENT_TYPE, ROBOT_BINARY_KEY } from 
 // (.scratch/robot-delivery/issues/01-download-token-schema-r2-scaffold.md).
 describe('download_tokens D1 schema + R2 fixture scaffold', () => {
 	it('round-trips a download_tokens row', async () => {
-		await env.DB.prepare('INSERT INTO download_tokens (token, customer_id, expires_at) VALUES (?, ?, ?)')
-			.bind('tok_schema_1', 'cust_schema_1', '2027-01-01T00:00:00.000Z')
+		await env.DB.prepare('INSERT INTO download_tokens (token, customer_id, license_id, expires_at) VALUES (?, ?, ?, ?)')
+			.bind('tok_schema_1', 'cust_schema_1', 'lic_schema_1', '2027-01-01T00:00:00.000Z')
 			.run();
 
 		const row = await env.DB.prepare('SELECT * FROM download_tokens WHERE token = ?')
@@ -21,9 +21,17 @@ describe('download_tokens D1 schema + R2 fixture scaffold', () => {
 			token: 'tok_schema_1',
 			customer_id: 'cust_schema_1',
 			expires_at: '2027-01-01T00:00:00.000Z',
-			license_id: null,
+			license_id: 'lic_schema_1',
 			used_at: null,
 		});
+	});
+
+	it('rejects a row with no license_id — minting is per-Licença', async () => {
+		await expect(
+			env.DB.prepare('INSERT INTO download_tokens (token, customer_id, expires_at) VALUES (?, ?, ?)')
+				.bind('tok_schema_2', 'cust_schema_2', '2027-01-01T00:00:00.000Z')
+				.run()
+		).rejects.toThrow();
 	});
 
 	it('the test R2 bucket has the dummy robot-binary fixture seeded', async () => {

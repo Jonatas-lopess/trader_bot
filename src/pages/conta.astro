@@ -104,7 +104,7 @@ const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 		</dl>
 
 		{
-			view.subscriptionStatus !== 'canceled' && (
+			view.canCancel && (
 				<form method="POST" action="/conta/cancelar" id="cancel-form" class="mt-4">
 					<button
 						type="submit"

@@ -38,3 +38,16 @@ export async function getLicenseStatus(
 	if (new Date(row.expires_at) <= now) return { status: 'expired', expiresAt: row.expires_at };
 	return { status: 'active', expiresAt: row.expires_at };
 }
+
+/**
+ * Same state as `getLicenseStatus`, resolved from the Licença id alone (`license_id` =
+ * `purchase_id`): mint and redeem only hold the id, not the purchase status. A missing
+ * purchase reads as `none`.
+ */
+export async function getLicenseStatusById(env: LicensingEnv, licenseId: string, now: Date = new Date()): Promise<LicenseStatus> {
+	const purchase = await env.DB.prepare('SELECT status FROM purchases WHERE id = ?')
+		.bind(licenseId)
+		.first<{ status: PurchaseStatus }>();
+	if (purchase === null) return { status: 'none' };
+	return getLicenseStatus(env, licenseId, purchase.status, now);
+}

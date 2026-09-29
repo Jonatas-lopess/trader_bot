@@ -19,22 +19,30 @@ type DownloadTokensEnv = Pick<Cloudflare.Env, 'DB'>;
 
 export async function mintDownloadToken(
 	env: DownloadTokensEnv,
-	params: { customerId: string }
+	params: { customerId: string; licenseId: string }
 ): Promise<{ token: string; expiresAt: string }> {
 	const token = crypto.randomUUID();
 	const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
-	await env.DB.prepare('INSERT INTO download_tokens (token, customer_id, expires_at) VALUES (?, ?, ?)')
-		.bind(token, params.customerId, expiresAt)
+	await env.DB.prepare('INSERT INTO download_tokens (token, customer_id, license_id, expires_at) VALUES (?, ?, ?, ?)')
+		.bind(token, params.customerId, params.licenseId, expiresAt)
 		.run();
 	return { token, expiresAt };
 }
 
-export type RedeemDownloadTokenResult = { ok: true } | { ok: false };
+export type RedeemDownloadTokenResult = { ok: true; licenseId: string } | { ok: false };
 
+/**
+ * Says only that the token is live and which Licença it is for. Whether that Licença is
+ * still deliverable (refunded, expired) is `resolveDownload`'s check, so a token minted
+ * while active stops working once the Licença is revoked.
+ */
 export async function redeemDownloadToken(env: DownloadTokensEnv, token: string): Promise<RedeemDownloadTokenResult> {
-	const result = await env.DB.prepare('UPDATE download_tokens SET used_at = ? WHERE token = ? AND expires_at > ?')
-		.bind(new Date().toISOString(), token, new Date().toISOString())
-		.run();
-	if (result.meta.changes === 0) return { ok: false };
-	return { ok: true };
+	const now = new Date().toISOString();
+	const row = await env.DB.prepare(
+		'UPDATE download_tokens SET used_at = ? WHERE token = ? AND expires_at > ? RETURNING license_id'
+	)
+		.bind(now, token, now)
+		.first<{ license_id: string }>();
+	if (row === null) return { ok: false };
+	return { ok: true, licenseId: row.license_id };
 }

@@ -19,6 +19,8 @@ export type AccountView =
 	| {
 			ok: true;
 			robotName: string;
+			// Only a Mensal has a recurring Assinatura to cancel; Compra and Anual are one payment.
+			canCancel: boolean;
 			license: LicenseStatus;
 			// Added by ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md):
 			// the page needs the Assinatura's own status to reflect a cancel and
@@ -41,6 +43,7 @@ export async function resolveAccountView(env: AccountPageEnv, request: Request):
 
 	return {
 		ok: true,
+		canCancel: account.offer === 'monthly' && (account.status === 'active' || account.status === 'past_due'),
 		robotName: robot ? unwrapLaunchBlocking(robot.name) : account.robotId,
 		license,
 		subscriptionStatus: account.status,

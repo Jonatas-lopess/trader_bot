@@ -1,10 +1,10 @@
 /**
- * Ops-run CLI: mints a download token for a Cliente and emails the link —
+ * Ops-run CLI: mints a download token for an active Licença and emails the link —
  * .scratch/robot-delivery/issues/02-mint-dispatch-redeem.md. No admin HTTP
  * route, no auto-trigger off the webhook (PLANNING.md §8 — "issuance has a
  * human in it", same shape as manual license issuance).
  *
- * Usage: pnpm run send-download-link -- --customer-id=<id> [--origin=<url>]
+ * Usage: pnpm run send-download-link -- --license-id=<id> [--origin=<url>]
  *
  * Runs outside the Workers runtime via Wrangler's `getPlatformProxy` (the
  * `wrangler` package, already a devDependency) to obtain the same local
@@ -32,9 +32,9 @@ function parseArg(argv: string[], name: string): string | null {
 
 async function main() {
 	const argv = process.argv.slice(2);
-	const customerId = parseArg(argv, 'customer-id');
-	if (customerId === null || customerId === '') {
-		console.error('Usage: pnpm run send-download-link -- --customer-id=<id> [--origin=<url>]');
+	const licenseId = parseArg(argv, 'license-id');
+	if (licenseId === null || licenseId === '') {
+		console.error('Usage: pnpm run send-download-link -- --license-id=<id> [--origin=<url>]');
 		process.exitCode = 1;
 		return;
 	}
@@ -49,7 +49,7 @@ async function main() {
 		configPath: new URL('../wrangler.jsonc', import.meta.url).pathname,
 	});
 	try {
-		const result = await dispatchDownloadLink(proxy.env, { customerId, origin });
+		const result = await dispatchDownloadLink(proxy.env, { licenseId, origin });
 		if (!result.ok) {
 			console.error(
 				`Could not send download link: ${result.reason}` +

@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ROBOT_BINARY_BYTES } from '../../../test/robot-binary-fixture';
+import { seedLicense } from '../../../test/license-seed';
 import { dispatchDownloadLink } from './dispatch';
 import { mintDownloadToken } from './download-tokens';
 import { resolveDownload } from './download';
@@ -22,16 +23,6 @@ function mockResend() {
 	);
 }
 
-async function seedCustomer(id: string, email: string): Promise<void> {
-	const purchaseId = `sub-${id}`;
-	await env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)")
-		.bind(purchaseId, 'starter', 'active')
-		.run();
-	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
-		.bind(id, purchaseId, email)
-		.run();
-}
-
 function tokenFromDownloadUrl(downloadUrl: string): string {
 	const match = /\/download\/([^/?#]+)/.exec(downloadUrl);
 	if (match === null) throw new Error(`could not extract a token from ${downloadUrl}`);
@@ -44,10 +35,10 @@ describe('robot-delivery end to end: mint to download', () => {
 	});
 
 	it('happy path: mint the link, capture it from the mocked Resend call, GET it, bytes match the fixture', async () => {
-		await seedCustomer('cust-e2e-happy', 'e2e-happy@example.com');
+		await seedLicense('lic-e2e-happy', { email: 'e2e-happy@example.com' });
 		const fetchSpy = mockResend();
 
-		const dispatch = await dispatchDownloadLink(env, { customerId: 'cust-e2e-happy', origin: 'https://example.com' });
+		const dispatch = await dispatchDownloadLink(env, { licenseId: 'lic-e2e-happy', origin: 'https://example.com' });
 		expect(dispatch.ok).toBe(true);
 		if (!dispatch.ok) throw new Error('expected dispatch to succeed');
 
@@ -66,10 +57,10 @@ describe('robot-delivery end to end: mint to download', () => {
 	});
 
 	it('reuse: the same link redeemed a second time before expiry succeeds again', async () => {
-		await seedCustomer('cust-e2e-reuse', 'e2e-reuse@example.com');
+		await seedLicense('lic-e2e-reuse');
 		mockResend();
 
-		const dispatch = await dispatchDownloadLink(env, { customerId: 'cust-e2e-reuse', origin: 'https://example.com' });
+		const dispatch = await dispatchDownloadLink(env, { licenseId: 'lic-e2e-reuse', origin: 'https://example.com' });
 		if (!dispatch.ok) throw new Error('expected dispatch to succeed');
 		const token = tokenFromDownloadUrl(dispatch.downloadUrl);
 
@@ -87,7 +78,8 @@ describe('robot-delivery end to end: mint to download', () => {
 	});
 
 	it('expiry: a token past its expires_at is rejected by GET /download/:token', async () => {
-		const { token } = await mintDownloadToken(env, { customerId: 'cust-e2e-expired' });
+		await seedLicense('lic-e2e-expired');
+		const { token } = await mintDownloadToken(env, { customerId: 'cust-lic-e2e-expired', licenseId: 'lic-e2e-expired' });
 		await env.DB.prepare('UPDATE download_tokens SET expires_at = ? WHERE token = ?')
 			.bind(new Date(Date.now() - 1000).toISOString(), token)
 			.run();
@@ -98,7 +90,8 @@ describe('robot-delivery end to end: mint to download', () => {
 	});
 
 	it('unknown token: a token never minted gets the identical error response as the expired case', async () => {
-		const expiredToken = (await mintDownloadToken(env, { customerId: 'cust-e2e-compare' })).token;
+		await seedLicense('lic-e2e-compare');
+		const expiredToken = (await mintDownloadToken(env, { customerId: 'cust-lic-e2e-compare', licenseId: 'lic-e2e-compare' })).token;
 		await env.DB.prepare('UPDATE download_tokens SET expires_at = ? WHERE token = ?')
 			.bind(new Date(Date.now() - 1000).toISOString(), expiredToken)
 			.run();
@@ -108,5 +101,18 @@ describe('robot-delivery end to end: mint to download', () => {
 
 		expect(unknownResult).toEqual(expiredResult);
 		expect(unknownResult).toEqual({ ok: false, status: 404 });
+	});
+
+	it('refund: a link minted while active stops working after the purchase is refunded', async () => {
+		await seedLicense('lic-e2e-refund');
+		mockResend();
+		const dispatch = await dispatchDownloadLink(env, { licenseId: 'lic-e2e-refund', origin: 'https://example.com' });
+		if (!dispatch.ok) throw new Error('expected dispatch to succeed');
+		const token = tokenFromDownloadUrl(dispatch.downloadUrl);
+		expect((await resolveDownload(env, token)).ok).toBe(true);
+
+		await env.DB.prepare("UPDATE purchases SET status = 'refunded' WHERE id = ?").bind('lic-e2e-refund').run();
+
+		expect(await resolveDownload(env, token)).toEqual({ ok: false, status: 404 });
 	});
 });

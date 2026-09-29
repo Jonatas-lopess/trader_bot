@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { seedLicense } from '../../../test/license-seed';
 import { dispatchDownloadLink } from './dispatch';
 
 // Only the outbound Resend `fetch` is mocked (spec.md's Testing Decisions,
@@ -13,32 +14,22 @@ function mockResend(response: { ok: boolean } = { ok: true }) {
 	);
 }
 
-async function seedCustomer(id: string, email: string): Promise<void> {
-	const purchaseId = `sub-${id}`;
-	await env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)")
-		.bind(purchaseId, 'starter', 'active')
-		.run();
-	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
-		.bind(id, purchaseId, email)
-		.run();
-}
-
 describe('dispatchDownloadLink', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
 
 	it('mints a token, writes it to download_tokens, and emails the download link', async () => {
-		await seedCustomer('cust-dispatch-1', 'dispatch1@example.com');
+		await seedLicense('lic-dispatch-1', { email: 'dispatch1@example.com' });
 		const fetchSpy = mockResend();
 
-		const result = await dispatchDownloadLink(env, { customerId: 'cust-dispatch-1', origin: 'https://example.com' });
+		const result = await dispatchDownloadLink(env, { licenseId: 'lic-dispatch-1', origin: 'https://example.com' });
 
 		expect(result).toMatchObject({ ok: true, email: 'dispatch1@example.com' });
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 
 		const { results } = await env.DB.prepare('SELECT * FROM download_tokens WHERE customer_id = ?')
-			.bind('cust-dispatch-1')
+			.bind('cust-lic-dispatch-1')
 			.all();
 		expect(results).toHaveLength(1);
 
@@ -51,24 +42,62 @@ describe('dispatchDownloadLink', () => {
 		expect(String(init.body)).toContain(result.downloadUrl);
 	});
 
-	it('returns a not-found reason and sends no email for an unknown customer id', async () => {
+	it.each(['awaiting_account', 'preparing'] as const)(
+		'refuses to mint for a %s Licença and sends no email',
+		async (licenseStatus) => {
+			await seedLicense(`lic-dispatch-${licenseStatus}`, { licenseStatus });
+			const fetchSpy = mockResend();
+
+			const result = await dispatchDownloadLink(env, { licenseId: `lic-dispatch-${licenseStatus}`, origin: 'https://example.com' });
+
+			expect(result).toEqual({ ok: false, reason: 'license_not_active' });
+			expect(fetchSpy).not.toHaveBeenCalled();
+			const { results } = await env.DB.prepare('SELECT * FROM download_tokens WHERE license_id = ?')
+				.bind(`lic-dispatch-${licenseStatus}`)
+				.all();
+			expect(results).toHaveLength(0);
+		}
+	);
+
+	it('refuses to mint for a refunded purchase', async () => {
+		await seedLicense('lic-dispatch-refunded', { purchaseStatus: 'refunded' });
 		const fetchSpy = mockResend();
 
-		const result = await dispatchDownloadLink(env, { customerId: 'cust-does-not-exist', origin: 'https://example.com' });
+		const result = await dispatchDownloadLink(env, { licenseId: 'lic-dispatch-refunded', origin: 'https://example.com' });
+
+		expect(result).toEqual({ ok: false, reason: 'license_not_active' });
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it('refuses an unknown license id and sends no email', async () => {
+		const fetchSpy = mockResend();
+
+		const result = await dispatchDownloadLink(env, { licenseId: 'lic-does-not-exist', origin: 'https://example.com' });
+
+		expect(result).toEqual({ ok: false, reason: 'license_not_active' });
+		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it('returns a not-found reason when an active Licença has no customers row', async () => {
+		await seedLicense('lic-dispatch-nocustomer');
+		await env.DB.prepare('DELETE FROM customers WHERE purchase_id = ?').bind('lic-dispatch-nocustomer').run();
+		const fetchSpy = mockResend();
+
+		const result = await dispatchDownloadLink(env, { licenseId: 'lic-dispatch-nocustomer', origin: 'https://example.com' });
 
 		expect(result).toEqual({ ok: false, reason: 'customer_not_found' });
 		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 
 	it('returns an email-failed reason when Resend is unavailable, token already minted', async () => {
-		await seedCustomer('cust-dispatch-2', 'dispatch2@example.com');
+		await seedLicense('lic-dispatch-2', { email: 'dispatch2@example.com' });
 		mockResend({ ok: false });
 
-		const result = await dispatchDownloadLink(env, { customerId: 'cust-dispatch-2', origin: 'https://example.com' });
+		const result = await dispatchDownloadLink(env, { licenseId: 'lic-dispatch-2', origin: 'https://example.com' });
 
 		expect(result).toEqual({ ok: false, reason: 'email_failed', detail: 'validation_error: Invalid `to` field.' });
 		const { results } = await env.DB.prepare('SELECT * FROM download_tokens WHERE customer_id = ?')
-			.bind('cust-dispatch-2')
+			.bind('cust-lic-dispatch-2')
 			.all();
 		expect(results).toHaveLength(1);
 	});

@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { getLicenseStatus } from './license-status';
+import { getLicenseStatus, getLicenseStatusById } from './license-status';
 
 const NOW = new Date('2026-09-29T12:00:00.000Z');
 
@@ -69,5 +69,28 @@ describe('getLicenseStatus', () => {
 		await seedLicense(id, 'active', '2026-09-29T11:00:00.000Z', 123456);
 
 		expect(await getLicenseStatus(env, id, purchaseStatus, NOW)).toEqual({ status: 'revoked' });
+	});
+});
+
+describe('getLicenseStatusById', () => {
+	it('resolves the purchase status itself', async () => {
+		await seedPurchase('sub-license-byid');
+		await seedLicense('sub-license-byid', 'active', '2027-03-15T00:00:00.000Z', 123456);
+
+		expect(await getLicenseStatusById(env, 'sub-license-byid', NOW)).toEqual({
+			status: 'active',
+			expiresAt: '2027-03-15T00:00:00.000Z',
+		});
+	});
+
+	it('reports "revoked" once the purchase is refunded', async () => {
+		await seedPurchase('sub-license-byid-refunded', 'refunded');
+		await seedLicense('sub-license-byid-refunded', 'active', '2027-03-15T00:00:00.000Z', 123456);
+
+		expect(await getLicenseStatusById(env, 'sub-license-byid-refunded', NOW)).toEqual({ status: 'revoked' });
+	});
+
+	it('reports "none" for an unknown id', async () => {
+		expect(await getLicenseStatusById(env, 'sub-unknown', NOW)).toEqual({ status: 'none' });
 	});
 });

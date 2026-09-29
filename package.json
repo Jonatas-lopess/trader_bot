@@ -14,6 +14,7 @@
     "typecheck": "wrangler types && astro check",
     "test": "wrangler types && vitest run",
     "send-download-link": "node --experimental-strip-types scripts/send-download-link.ts",
+    "activate-license": "node --experimental-strip-types scripts/activate-license.ts",
     "provision-customer": "node --experimental-strip-types scripts/provision-customer.ts"
   },
   "dependencies": {

@@ -6,6 +6,7 @@
  * subscription first lands on `active`. Nothing else writes `customers`.
  */
 
+import type { OfferName } from '../../content/catalog';
 import type { ProviderId, PurchaseStatus } from '../billing/payment-provider';
 
 type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
@@ -66,6 +67,20 @@ export async function getCustomerEmail(env: CustomersEnv, customerId: string): P
 	return row?.email ?? null;
 }
 
+/**
+ * The Cliente behind a Licença (`license_id` = `purchase_id`) — catalog-pivot ticket 08:
+ * delivery is per-Licença, so dispatch starts from the Licença and needs whose email
+ * receives the link and whose id the token records.
+ */
+export async function getCustomerByPurchaseId(
+	env: CustomersEnv,
+	purchaseId: string
+): Promise<{ id: string; email: string } | null> {
+	return env.DB.prepare('SELECT id, email FROM customers WHERE purchase_id = ?')
+		.bind(purchaseId)
+		.first<{ id: string; email: string }>();
+}
+
 export type { PurchaseStatus };
 
 /**
@@ -86,12 +101,13 @@ export async function getCustomerAccount(
 ): Promise<{
 	purchaseId: string;
 	robotId: string;
+	offer: OfferName;
 	status: PurchaseStatus;
 	provider: ProviderId;
 	appmaxSubscriptionId: string | null;
 } | null> {
 	const row = await env.DB.prepare(
-		`SELECT s.id AS purchase_id, s.robot_id AS robot_id, s.status AS status, s.provider AS provider,
+		`SELECT s.id AS purchase_id, s.robot_id AS robot_id, s.offer AS offer, s.status AS status, s.provider AS provider,
 		        s.appmax_subscription_id AS appmax_subscription_id
 		 FROM customers c JOIN purchases s ON s.id = c.purchase_id
 		 WHERE c.id = ?`
@@ -100,6 +116,7 @@ export async function getCustomerAccount(
 		.first<{
 			purchase_id: string;
 			robot_id: string;
+			offer: OfferName;
 			status: PurchaseStatus;
 			provider: ProviderId;
 			appmax_subscription_id: string | null;
@@ -108,6 +125,7 @@ export async function getCustomerAccount(
 	return {
 		purchaseId: row.purchase_id,
 		robotId: row.robot_id,
+		offer: row.offer,
 		status: row.status,
 		provider: row.provider,
 		appmaxSubscriptionId: row.appmax_subscription_id,

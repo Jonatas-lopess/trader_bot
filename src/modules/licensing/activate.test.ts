@@ -82,7 +82,7 @@ describe('activateLicense', () => {
 
 	it('refuses without flipping when the purchase has no customers row', async () => {
 		await seedLicense('lic-activate-7', { licenseStatus: 'preparing' });
-		await env.DB.prepare('DELETE FROM customers WHERE purchase_id = ?').bind('lic-activate-7').run();
+		await env.DB.prepare('UPDATE purchases SET customer_id = NULL WHERE id = ?').bind('lic-activate-7').run();
 
 		const result = await activateLicense(env, { licenseId: 'lic-activate-7', origin: 'https://example.com' });
 

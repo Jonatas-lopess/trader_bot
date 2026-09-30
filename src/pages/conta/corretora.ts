@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { getCustomerAccount } from '../../modules/identity/customers';
+import { getCustomerPurchase } from '../../modules/identity/customers';
 import { isSessionValid, requireSession } from '../../modules/identity/session';
 import { saveCorretoraAccount } from '../../modules/licensing/corretora-account';
 
@@ -17,10 +17,13 @@ export const POST: APIRoute = async ({ request, url }) => {
 		return Response.redirect(new URL('/login', url.origin), 303);
 	}
 
-	const account = await getCustomerAccount(env, session.customerId);
-	if (account === null) return Response.redirect(new URL('/login', url.origin), 303);
-
 	const form = await request.formData();
+	const purchaseId = form.get('purchase_id');
+	// The purchase id comes from the form; ownership is checked against the session's Cliente.
+	const account =
+		typeof purchaseId === 'string' ? await getCustomerPurchase(env, session.customerId, purchaseId) : null;
+	if (account === null) return Response.redirect(new URL('/conta', url.origin), 303);
+
 	const raw = form.get('corretora_account');
 	const result = await saveCorretoraAccount(env, account.purchaseId, typeof raw === 'string' ? raw : '');
 

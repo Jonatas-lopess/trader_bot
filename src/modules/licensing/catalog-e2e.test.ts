@@ -148,8 +148,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		const cookie = await loginCookie(email);
 		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({
 			ok: true,
-			canCancel: false,
-			license: { status: 'awaiting_account' },
+			robots: [{ licenses: [{ canCancel: false, license: { status: 'awaiting_account' } }] }],
 		});
 
 		// 4. Nothing can go live before the account is bound.
@@ -161,7 +160,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		// 5. Corretora form → preparing.
 		expect(await saveCorretoraAccount(env, purchase.id, '1234567')).toEqual({ ok: true });
 		expect(await licenseOf(purchase.id)).toMatchObject({ status: 'preparing', corretora_account: 1234567 });
-		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({ license: { status: 'preparing' } });
+		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({ robots: [{ licenses: [{ license: { status: 'preparing' } }] }] });
 
 		// 6. Operator compiles, uploads licenses/<id>.ex5, flips active and the link is emailed.
 		await putLicenseBinary(purchase.id);
@@ -184,7 +183,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		await handleWebhook(env, JSON.stringify({ event: 'order.refunded', order_id: orderId }));
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'refunded' });
 		expect(await resolveDownload(env, token)).toEqual({ ok: false, status: 404 });
-		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({ license: { status: 'revoked' } });
+		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({ robots: [{ licenses: [{ license: { status: 'revoked' } }] }] });
 	});
 
 	it('boleto branch: pending shows the awaiting state and no Licença, then paid provisions it', async () => {
@@ -218,7 +217,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'rejected' });
 		expect(await licenseOf(purchase.id)).toBeNull();
-		expect(await env.DB.prepare('SELECT id FROM customers WHERE purchase_id = ?').bind(purchase.id).first()).toBeNull();
+		expect(await env.DB.prepare('SELECT c.id FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?').bind(purchase.id).first()).toBeNull();
 		expect(await saveCorretoraAccount(env, purchase.id, '1234567')).toEqual({ ok: false, reason: 'no_license' });
 	});
 
@@ -237,7 +236,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'active' });
 
 		const cookie = await loginCookie(email);
-		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({ ok: true, canCancel: true });
+		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({ ok: true, robots: [{ licenses: [{ canCancel: true }] }] });
 
 		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
 			const url = typeof input === 'string' ? input : input.toString();
@@ -254,8 +253,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		).toEqual({ ok: true });
 		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({
 			ok: true,
-			canCancel: false,
-			subscriptionStatus: 'canceled',
+			robots: [{ licenses: [{ canCancel: false, subscriptionStatus: 'canceled' }] }],
 		});
 		expect(await licenseOf(purchase.id)).not.toBeNull();
 	});

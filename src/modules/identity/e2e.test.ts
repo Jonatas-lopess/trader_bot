@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/cloudflare';
 import { env } from 'cloudflare:workers';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cancelSubscription } from '../billing/cancel';
@@ -5,6 +6,8 @@ import { handleWebhook } from '../billing/webhook';
 import { resolveAccountView } from '../licensing/account-page';
 import { redeemMagicLink, requestMagicLink } from './magic-link';
 import { isSessionValid, revokeSession, verifySessionCookie } from './session';
+
+vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
 
 /**
  * .scratch/customer-area/issues/05-end-to-end-verification.md — the
@@ -68,6 +71,7 @@ function requestWithSessionCookie(cookieValue: string): Request {
 describe('customer-area end to end: login to cancel', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('happy path: webhook confirms → customers row exists → login → /conta shows robô+licença → cancel flips status', async () => {
@@ -94,7 +98,7 @@ describe('customer-area end to end: login to cancel', () => {
 		// (ticket 01) from the same authoritative re-fetch.
 		const webhookResult = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_happy' }));
 		expect(webhookResult).toEqual({ status: 200 });
-		const customer = await env.DB.prepare('SELECT id FROM customers WHERE purchase_id = ?')
+		const customer = await env.DB.prepare('SELECT c.id FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?')
 			.bind('sub-e2e-happy')
 			.first<{ id: string }>();
 		expect(customer).not.toBeNull();
@@ -112,9 +116,12 @@ describe('customer-area end to end: login to cancel', () => {
 		const view = await resolveAccountView(env, accountRequest);
 		expect(view).toMatchObject({
 			ok: true,
-			robotName: 'Robô Exemplo A',
-			license: { status: 'awaiting_account' },
-			subscriptionStatus: 'active',
+			robots: [
+				{
+					robotName: 'Robô Exemplo A',
+					licenses: [{ license: { status: 'awaiting_account' }, subscriptionStatus: 'active' }],
+				},
+			],
 		});
 
 		// 4. Cancel (ticket 04) — Appmax call + CAS `UPDATE`, no touch to `licenses`.
@@ -127,7 +134,7 @@ describe('customer-area end to end: login to cancel', () => {
 
 		// 5. The page reflects the new status.
 		const viewAfterCancel = await resolveAccountView(env, requestWithSessionCookie(redeemed.cookieValue));
-		expect(viewAfterCancel).toMatchObject({ ok: true, subscriptionStatus: 'canceled' });
+		expect(viewAfterCancel).toMatchObject({ ok: true, robots: [{ licenses: [{ subscriptionStatus: 'canceled' }] }] });
 	});
 
 	it('an already-used token and a separately-issued expired token are both rejected end to end', async () => {
@@ -214,4 +221,52 @@ describe('customer-area end to end: login to cancel', () => {
 		const stillSignedOk = await resolveAccountView(env, requestWithSessionCookie(redeemed.cookieValue));
 		expect(stillSignedOk.ok).toBe(true);
 	});
+
+	// .scratch/catalog-pivot/issues/14-identity-per-email.md
+	it('one email buying several times is one Cliente: one login reaches every Licença, and a same-Robô repeat is still reported', async () => {
+		const buys = [
+			{ id: 'rb-1', order: 'ord_rb_1', sub: 'asub_rb_1', robot: 'robo-exemplo-a', email: 'Repeat@Example.com' },
+			{ id: 'rb-2', order: 'ord_rb_2', sub: 'asub_rb_2', robot: 'robo-exemplo-b', email: ' repeat@example.com ' },
+			{ id: 'rb-3', order: 'ord_rb_3', sub: 'asub_rb_3', robot: 'robo-exemplo-a', email: 'REPEAT@example.com' },
+		];
+		for (const buy of buys) {
+			await seedPendingSubscription({ id: buy.id, appmaxOrderId: buy.order, appmaxSubscriptionId: buy.sub, planId: buy.robot });
+		}
+		mockOutboundFetch((url) => {
+			const buy = buys.find((candidate) => url.includes(`/orders/${candidate.order}`));
+			if (buy === undefined) throw new Error(`unexpected fetch: ${url}`);
+			return new Response(JSON.stringify({ data: { status: 'aprovado', payment_method: 'cartao', email: buy.email } }), { status: 200 });
+		});
+
+		for (const buy of buys) {
+			expect(await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: buy.order }))).toEqual({ status: 200 });
+		}
+
+		const { results: customers } = await env.DB.prepare('SELECT id, email FROM customers WHERE email = ?')
+			.bind('repeat@example.com')
+			.all<{ id: string; email: string }>();
+		expect(customers).toHaveLength(1);
+		// Only the third purchase repeats a Robô the Cliente already holds.
+		const duplicateReports = vi
+			.mocked(Sentry.captureMessage)
+			.mock.calls.filter(([message]) => message === 'Duplicate Licença for the same Cliente and Robô');
+		expect(duplicateReports).toHaveLength(1);
+		expect(Sentry.captureMessage).toHaveBeenCalledWith(
+			'Duplicate Licença for the same Cliente and Robô',
+			expect.objectContaining({ extra: { purchase_id: 'rb-3', existing_purchase_id: 'rb-1' } })
+		);
+
+		// The login the webhook mailed reaches all three Licenças on /conta.
+		await requestMagicLink(env, { email: ' REPEAT@example.com', ip: '203.0.113.20', origin: 'https://example.com' });
+		const redeemed = await redeemMagicLink(env, await latestTokenFor('repeat@example.com'));
+		if (!redeemed.ok) throw new Error('expected redeem to succeed');
+		const view = await resolveAccountView(env, requestWithSessionCookie(redeemed.cookieValue));
+		expect(view).toMatchObject({
+			ok: true,
+			robots: [
+				{ robotName: 'Robô Exemplo A', licenses: [{ purchaseId: 'rb-1' }, { purchaseId: 'rb-3' }] },
+				{ robotName: 'Robô Exemplo B', licenses: [{ purchaseId: 'rb-2' }] },
+			],
+		});
+	}, 60_000);
 });

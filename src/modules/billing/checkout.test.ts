@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { seedCustomer as attachCustomer } from '../../../test/customer-seed';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GET } from '../../pages/checkout';
 import { createCheckoutSession } from './checkout';
@@ -213,10 +214,12 @@ describe('createCheckoutSession', () => {
 			)
 				.bind(params.purchaseId, params.robotId, params.status)
 				.run();
-			await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
-				.bind(`cust-${params.purchaseId}`, params.purchaseId, params.email)
-				.run();
-			return `cust-${params.purchaseId}`;
+			// Customers are keyed by email: a second purchase by the same email reuses the first id.
+			await attachCustomer({ purchaseId: params.purchaseId, customerId: `cust-${params.purchaseId}`, email: params.email });
+			const row = await env.DB.prepare('SELECT customer_id FROM purchases WHERE id = ?')
+				.bind(params.purchaseId)
+				.first<{ customer_id: string }>();
+			return row!.customer_id;
 		}
 
 		it('blocks a second checkout for a Robô the Cliente already has active', async () => {

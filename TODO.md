@@ -122,7 +122,7 @@ All tickets done. Placeholder bodies still need real legal text before launch (`
 
 ## catalog-pivot
 
-Spec: [.scratch/catalog-pivot/spec.md](.scratch/catalog-pivot/spec.md) — status `done` except 14 (11 stays deferred to 1.0.0; Appmax sandbox checks are pre-go-live gates, PLANNING §13).
+Spec: [.scratch/catalog-pivot/spec.md](.scratch/catalog-pivot/spec.md) — status `done` (11 stays deferred to 1.0.0; Appmax sandbox checks are pre-go-live gates, PLANNING §13).
 Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT, PLANNING, ADR) done.
 
 | # | Ticket | Blocked by | Status |
@@ -140,9 +140,9 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 | 11 | [Research: automated compile/issuance and annual auto-renew](.scratch/catalog-pivot/issues/11-research-automation.md) | — | deferred (1.0.0) |
 | 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | done |
 | 13 | [Persist fiscal data on the purchase for NFS-e](.scratch/catalog-pivot/issues/13-fiscal-data-for-nfse.md) | 02, 04 | done |
-| 14 | [Identity per email — one customer, many purchases](.scratch/catalog-pivot/issues/14-identity-per-email.md) | — | ready-for-agent |
+| 14 | [Identity per email — one customer, many purchases](.scratch/catalog-pivot/issues/14-identity-per-email.md) | — | done |
 
-Frontier: **14** (ready-for-agent, pre-go-live; 11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
+Frontier: none (all done; 11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 
 ## Untracked
 

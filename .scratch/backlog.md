@@ -56,7 +56,7 @@ No test can settle these; each needs one real sandbox call. Runbook: `docs/ops/a
 Settled 2026-09-29:
 
 - **Repeat buyers.** One `customers` row per normalized email, many purchases under it.
-  Tracked as `catalog-pivot/14`, to build before go-live.
+  Done: `catalog-pivot/14`.
 - **Guest double payment.** Accepted risk: `licensing/duplicate-license.ts` reports it to
   Sentry and the operator refunds by hand. Revisit if more than 2 cases in the first month.
 - **Download link on `/conta`.** Stays email-only in 0.1 (PLANNING §8); support resend is a

@@ -80,7 +80,7 @@ describe('dispatchDownloadLink', () => {
 
 	it('returns a not-found reason when an active Licença has no customers row', async () => {
 		await seedLicense('lic-dispatch-nocustomer');
-		await env.DB.prepare('DELETE FROM customers WHERE purchase_id = ?').bind('lic-dispatch-nocustomer').run();
+		await env.DB.prepare('UPDATE purchases SET customer_id = NULL WHERE id = ?').bind('lic-dispatch-nocustomer').run();
 		const fetchSpy = mockResend();
 
 		const result = await dispatchDownloadLink(env, { licenseId: 'lic-dispatch-nocustomer', origin: 'https://example.com' });

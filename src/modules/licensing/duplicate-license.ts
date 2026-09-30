@@ -7,6 +7,7 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
+import { normalizeEmail } from '../identity/normalize-email';
 
 type LicensingEnv = Pick<Cloudflare.Env, 'DB'>;
 
@@ -15,18 +16,20 @@ export async function findDuplicateLicense(
 	env: LicensingEnv,
 	params: { purchaseId: string; email: string; now?: Date }
 ): Promise<string | null> {
+	const email = normalizeEmail(params.email);
+	if (email === null) return null;
 	const row = await env.DB.prepare(
 		`SELECT other.id AS id
 		 FROM purchases mine
 		 JOIN purchases other ON other.robot_id = mine.robot_id AND other.id != mine.id
-		 JOIN customers c ON c.purchase_id = other.id
+		 JOIN customers c ON c.id = other.customer_id
 		 JOIN licenses l ON l.purchase_id = other.id
 		 WHERE mine.id = ? AND c.email = ?
 		   AND other.status IN ('active', 'past_due', 'canceled')
 		   AND l.expires_at > ?
 		 LIMIT 1`
 	)
-		.bind(params.purchaseId, params.email.trim().toLowerCase(), (params.now ?? new Date()).toISOString())
+		.bind(params.purchaseId, email, (params.now ?? new Date()).toISOString())
 		.first<{ id: string }>();
 	return row?.id ?? null;
 }

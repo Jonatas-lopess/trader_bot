@@ -13,7 +13,6 @@ export const pageTitle = 'Sua conta';
 export const pageDescription = 'Acompanhe o status da sua Licença e, na Oferta Mensal, gerencie sua Assinatura.';
 
 export const heading = 'Sua conta';
-export const robotLabel = 'Robô';
 export const licenseLabel = 'Licença';
 export const assinaturaLabel = 'Assinatura';
 

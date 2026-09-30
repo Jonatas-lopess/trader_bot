@@ -87,7 +87,7 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
  * including a replay that finds the row already `active` (two distinct
  * events, e.g. a renewal, can each independently re-apply `active`; the
  * CAS's `meta.changes` only proves *this* write landed, not that the value
- * changed) — `provisionCustomer`'s own `ON CONFLICT DO NOTHING` is what
+ * changed) — `provisionCustomer`'s attach-only-if-unattached write is what
  * makes that safe to call again (own idempotency, per this function's
  * original doc comment).
  *
@@ -104,9 +104,9 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
  * on our own checkout (`checkout.ts` only ever collects `planId`; Appmax's
  * hosted page is what collects the email this function receives). Gated on
  * `provisionCustomer`'s `created` flag, not merely "status is active": a
- * reapplied/renewal event that resolves to the `ON CONFLICT` no-op must not
- * re-issue a login email on every renewal, only on the subscription's first
- * activation. `/login`'s own type-your-email flow (`requestMagicLink`)
+ * reapplied/renewal event for an already-attached purchase must not
+ * re-issue a login email on every renewal, only on the purchase's first
+ * activation (a repeat buyer's second purchase gets its own link). `/login`'s own type-your-email flow (`requestMagicLink`)
  * still exists unchanged as the self-service fallback.
  */
 async function onSubscriptionBecameActive(
@@ -132,6 +132,12 @@ async function onSubscriptionBecameActive(
 	if (purchaseId === null) return;
 
 	const customer = await provisionCustomer(env, { purchaseId, email });
+	if (customer === null) {
+		// Malformed address: never fall back to the raw value (normalize-email.ts).
+		console.error(`onSubscriptionBecameActive: malformed buyer email for purchase_id=${purchaseId} — customers row not created`);
+		Sentry.captureMessage('onSubscriptionBecameActive: malformed buyer email', { extra: { purchase_id: purchaseId } });
+		return;
+	}
 	if (!customer.created) return;
 
 	await reportDuplicateLicense(env, { purchaseId, email });

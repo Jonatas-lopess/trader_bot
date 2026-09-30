@@ -36,7 +36,7 @@ function mockAppmax(status: { status: string; paymentMethod?: string; email?: st
 }
 
 async function customerFor(subscriptionRowId: string): Promise<{ id: string; email: string } | null> {
-	return env.DB.prepare('SELECT id, email FROM customers WHERE purchase_id = ?')
+	return env.DB.prepare('SELECT c.id AS id, c.email AS email FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?')
 		.bind(subscriptionRowId)
 		.first<{ id: string; email: string }>();
 }
@@ -194,7 +194,7 @@ describe('handleWebhook', () => {
 
 	it('first activation also auto-sends the magic-link login email — no email typed anywhere on our own checkout', async () => {
 		await seed({ id: 'sub-auto-link', appmax_order_id: 'ord_auto_link', status: 'pending' });
-		const fetchSpy = mockAppmax({ status: 'aprovado', email: 'cliente@example.com' });
+		const fetchSpy = mockAppmax({ status: 'aprovado', email: 'auto-link@example.com' });
 
 		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_auto_link' }));
 
@@ -206,7 +206,7 @@ describe('handleWebhook', () => {
 
 	it('does not duplicate the customers row, nor re-send a login email, when an already-active event is reapplied', async () => {
 		await seed({ id: 'sub-reapply', appmax_order_id: 'ord_reapply', status: 'active' });
-		mockAppmax({ status: 'aprovado', email: 'cliente@example.com' });
+		mockAppmax({ status: 'aprovado', email: 'reapply@example.com' });
 
 		// Two distinct events (e.g. a renewal) can each independently
 		// re-apply `active` — checkout-webhooks ticket 07's "reapplied event"
@@ -214,7 +214,7 @@ describe('handleWebhook', () => {
 		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_reapply' }));
 		await handleWebhook(env, JSON.stringify({ event: 'subscription.renewed', order_id: 'ord_reapply' }));
 
-		const { results } = await env.DB.prepare('SELECT * FROM customers WHERE purchase_id = ?')
+		const { results } = await env.DB.prepare('SELECT c.* FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?')
 			.bind('sub-reapply')
 			.all();
 		expect(results).toHaveLength(1);

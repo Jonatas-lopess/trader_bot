@@ -7,64 +7,48 @@
  */
 
 import type { OfferName } from '../../content/catalog';
+import { normalizeEmail } from './normalize-email';
 import type { ProviderId, PurchaseStatus } from '../billing/payment-provider';
 
 type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
 
 /**
- * Idempotent by construction: `ON CONFLICT(purchase_id) DO NOTHING` is
- * one atomic statement, no prior `SELECT` — a reapplied `active` webhook
- * event (checkout-webhooks ticket 07's own reapplied-event case) must not
- * duplicate the row for the same subscription (migrations/0003_customers.sql).
+ * Find-or-create the Cliente by normalized email, then attach the purchase to it
+ * (`purchases.customer_id`, migration 0011; ADR-0006 "Identity is per email"). A repeat buyer
+ * resolves to the same `customers` row however the address is cased or padded.
  *
- * `created` tells the caller (`webhook.ts`'s `onSubscriptionBecameActive`)
- * whether this call actually inserted the row versus hit the `ON CONFLICT`
- * no-op — a reapplied/renewal event resolving to `created: false` is how
- * that caller knows not to re-issue a magic link on every renewal, only on
- * the subscription's first activation (customer-area ticket 06).
+ * `created` means "this purchase was newly attached", not "a customers row was inserted": the
+ * caller (`webhook.ts`'s `onSubscriptionBecameActive`) gates the duplicate-Licença report and the
+ * magic-link send on it, so a reapplied or renewal event for an already-attached purchase is a
+ * no-op, while a repeat buyer's second purchase still gets its own link.
+ *
+ * Both writes are single atomic statements (`ON CONFLICT(email) DO NOTHING`, then
+ * `UPDATE ... WHERE customer_id IS NULL`); the `SELECT` between them only resolves the id the
+ * conflict decision already fixed. Returns `null` for a malformed email: callers reject, never
+ * fall back to the raw value.
  */
 export async function provisionCustomer(
 	env: CustomersEnv,
 	params: { purchaseId: string; email: string }
-): Promise<{ id: string; created: boolean }> {
-	const id = crypto.randomUUID();
-	const result = await env.DB.prepare(
-		'INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?) ON CONFLICT(purchase_id) DO NOTHING'
-	)
-		// Normalized the same way `requestMagicLink`'s lookup normalizes its
-		// input (magic-link.ts) — an email stored verbatim from Appmax's
-		// authoritative response (mixed case, stray whitespace) would
-		// otherwise never match a login attempt typed in the customer's own
-		// casing (code review finding, src/modules/identity/magic-link.ts:46).
-		.bind(id, params.purchaseId, params.email.trim().toLowerCase())
+): Promise<{ id: string; created: boolean } | null> {
+	const email = normalizeEmail(params.email);
+	if (email === null) return null;
+
+	await env.DB.prepare('INSERT INTO customers (id, email) VALUES (?, ?) ON CONFLICT(email) DO NOTHING')
+		.bind(crypto.randomUUID(), email)
 		.run();
+	const customer = await env.DB.prepare('SELECT id FROM customers WHERE email = ?').bind(email).first<{ id: string }>();
 
-	if (result.meta.changes > 0) return { id, created: true };
+	const attached = await env.DB.prepare('UPDATE purchases SET customer_id = ? WHERE id = ? AND customer_id IS NULL')
+		.bind(customer!.id, params.purchaseId)
+		.run();
+	if (attached.meta.changes > 0) return { id: customer!.id, created: true };
 
-	// Conflict hit — another delivery for this subscription already
-	// provisioned it. Not a TOCTOU read: the conflict itself was already
-	// decided atomically by the `INSERT` above; this only resolves which
-	// id that earlier insert used.
-	const existing = await env.DB.prepare('SELECT id FROM customers WHERE purchase_id = ?')
+	// Already attached by an earlier delivery: report the Cliente it belongs to.
+	const owner = await env.DB.prepare('SELECT customer_id FROM purchases WHERE id = ?')
 		.bind(params.purchaseId)
-		.first<{ id: string }>();
-	return { id: existing!.id, created: false };
-}
-
-/**
- * Read-only lookup by `customers.id` — .scratch/robot-delivery/issues/02-mint-dispatch-redeem.md's
- * ops-run CLI script needs the Cliente's email to dispatch the download
- * link, given only a `--customer-id=` argument. `identity` owns the
- * `customers` table's reads/writes (PLANNING.md §4); `modules/licensing`
- * imports this directly rather than duplicating a customers query, the same
- * "modules import each other directly" convention `account-page.ts` already
- * follows for `getCustomerAccount`.
- */
-export async function getCustomerEmail(env: CustomersEnv, customerId: string): Promise<string | null> {
-	const row = await env.DB.prepare('SELECT email FROM customers WHERE id = ?')
-		.bind(customerId)
-		.first<{ email: string }>();
-	return row?.email ?? null;
+		.first<{ customer_id: string | null }>();
+	return { id: owner?.customer_id ?? customer!.id, created: false };
 }
 
 /**
@@ -76,52 +60,35 @@ export async function getCustomerByPurchaseId(
 	env: CustomersEnv,
 	purchaseId: string
 ): Promise<{ id: string; email: string } | null> {
-	return env.DB.prepare('SELECT id, email FROM customers WHERE purchase_id = ?')
+	return env.DB.prepare('SELECT c.id AS id, c.email AS email FROM purchases p JOIN customers c ON c.id = p.customer_id WHERE p.id = ?')
 		.bind(purchaseId)
 		.first<{ id: string; email: string }>();
 }
 
 export type { PurchaseStatus };
 
-/**
- * The Compra + Robô a logged-in Cliente owns — .scratch/customer-area/issues/03-license-status-page.md.
- * Single subscription per customer in 0.1 (spec.md's Implementation
- * Decisions), so one JOIN is enough; no attempt to handle a second
- * Assinatura under the same Cliente. `status`/`appmaxSubscriptionId` added
- * by ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md) —
- * the page needs the Assinatura's own status to reflect a cancel, and the
- * cancel action needs the gateway id to call its cancel API. `provider`
- * added alongside the Stripe test driver (docs/adr/0005-stripe-test-driver.md)
- * — cancel.ts needs to know which gateway actually owns the row, not just
- * its id, since `appmaxSubscriptionId` may hold either gateway's id.
- */
-export async function getCustomerAccount(
-	env: CustomersEnv,
-	customerId: string
-): Promise<{
+/** One purchase a Cliente owns, as `/conta` and its actions need it. */
+export type CustomerPurchase = {
 	purchaseId: string;
 	robotId: string;
 	offer: OfferName;
 	status: PurchaseStatus;
 	provider: ProviderId;
 	appmaxSubscriptionId: string | null;
-} | null> {
-	const row = await env.DB.prepare(
-		`SELECT s.id AS purchase_id, s.robot_id AS robot_id, s.offer AS offer, s.status AS status, s.provider AS provider,
-		        s.appmax_subscription_id AS appmax_subscription_id
-		 FROM customers c JOIN purchases s ON s.id = c.purchase_id
-		 WHERE c.id = ?`
-	)
-		.bind(customerId)
-		.first<{
-			purchase_id: string;
-			robot_id: string;
-			offer: OfferName;
-			status: PurchaseStatus;
-			provider: ProviderId;
-			appmax_subscription_id: string | null;
-		}>();
-	if (row === null) return null;
+};
+
+type PurchaseRow = {
+	purchase_id: string;
+	robot_id: string;
+	offer: OfferName;
+	status: PurchaseStatus;
+	provider: ProviderId;
+	appmax_subscription_id: string | null;
+};
+
+const PURCHASE_COLUMNS = `id AS purchase_id, robot_id, offer, status, provider, appmax_subscription_id`;
+
+function toCustomerPurchase(row: PurchaseRow): CustomerPurchase {
 	return {
 		purchaseId: row.purchase_id,
 		robotId: row.robot_id,
@@ -130,4 +97,34 @@ export async function getCustomerAccount(
 		provider: row.provider,
 		appmaxSubscriptionId: row.appmax_subscription_id,
 	};
+}
+
+/**
+ * Every Compra the Cliente owns, oldest first — catalog-pivot ticket 14: `/conta` lists all
+ * Licenças of an email-keyed Cliente on one page. `customerId` comes from the session, so a
+ * Cliente never sees another's rows.
+ */
+export async function listCustomerPurchases(env: CustomersEnv, customerId: string): Promise<CustomerPurchase[]> {
+	const { results } = await env.DB.prepare(
+		`SELECT ${PURCHASE_COLUMNS} FROM purchases WHERE customer_id = ? ORDER BY created_at, id`
+	)
+		.bind(customerId)
+		.all<PurchaseRow>();
+	return results.map(toCustomerPurchase);
+}
+
+/**
+ * One purchase, only if it belongs to this Cliente. The per-purchase actions
+ * (`/conta/corretora`, `/conta/cancelar`) take a `purchase_id` from a form, so ownership is
+ * checked here rather than trusting the posted id.
+ */
+export async function getCustomerPurchase(
+	env: CustomersEnv,
+	customerId: string,
+	purchaseId: string
+): Promise<CustomerPurchase | null> {
+	const row = await env.DB.prepare(`SELECT ${PURCHASE_COLUMNS} FROM purchases WHERE id = ? AND customer_id = ?`)
+		.bind(purchaseId, customerId)
+		.first<PurchaseRow>();
+	return row === null ? null : toCustomerPurchase(row);
 }

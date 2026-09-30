@@ -10,8 +10,8 @@
  *
  * Find candidates with:
  *   SELECT s.id, s.appmax_order_id, s.appmax_subscription_id, s.status
- *   FROM purchases s LEFT JOIN customers c ON c.purchase_id = s.id
- *   WHERE s.status = 'active' AND c.id IS NULL;
+ *   FROM purchases s
+ *   WHERE s.status = 'active' AND s.customer_id IS NULL;
  * (or grep `onSubscriptionBecameActive: no email field` in Worker logs for
  * the order_id/subscription_id).
  *
@@ -23,6 +23,7 @@
 
 import { getPlatformProxy } from 'wrangler';
 import { provisionCustomer } from '../src/modules/identity/customers.ts';
+import { normalizeEmail } from '../src/modules/identity/normalize-email.ts';
 import { issueMagicLink } from '../src/modules/identity/magic-link.ts';
 
 // Same not-yet-registered placeholder domain as `send-download-link.ts`'s
@@ -70,14 +71,19 @@ async function main() {
 		}
 
 		const customer = await provisionCustomer(proxy.env, { purchaseId, email });
+		if (customer === null) {
+			console.error(`Could not provision customer: "${email}" is not a valid email address.`);
+			process.exitCode = 1;
+			return;
+		}
 		if (!customer.created) {
 			console.log(
-				`Purchase ${purchaseId} already has a customers row (id=${customer.id}) — no new row created, no email sent. The Cliente can already use /login.`
+				`Purchase ${purchaseId} is already attached to a Cliente (id=${customer.id}) — nothing changed, no email sent. The Cliente can already use /login.`
 			);
 			return;
 		}
 
-		const sent = await issueMagicLink(proxy.env, { customerId: customer.id, email, origin });
+		const sent = await issueMagicLink(proxy.env, { customerId: customer.id, email: normalizeEmail(email)!, origin });
 		if (!sent.ok) {
 			console.error(
 				`customers row created (id=${customer.id}) but the magic-link email failed to send. The Cliente can now self-serve via /login (their email lookup will match) — retry isn't required, just tell them to try /login.`

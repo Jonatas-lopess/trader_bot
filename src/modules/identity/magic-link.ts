@@ -11,6 +11,7 @@
 
 import * as Sentry from '@sentry/cloudflare';
 import { sendMagicLinkEmail } from './resend-client';
+import { normalizeEmail } from './normalize-email';
 import { createSession } from './session';
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
@@ -85,11 +86,11 @@ export async function requestMagicLink(
 	env: RequestEnv,
 	params: { email: string; ip: string; origin: string }
 ): Promise<void> {
-	// Normalized the same way `provisionCustomer` normalizes what it stores
-	// (customers.ts) — otherwise a customer typing their email in different
-	// casing/whitespace than Appmax reported it could never find their row
-	// (code review finding).
-	const email = params.email.trim().toLowerCase();
+	// Same normalization `provisionCustomer` applies to what it stores, so any casing or padding
+	// of the address finds the one email-keyed row. A malformed address matches nothing and is
+	// dropped like a non-match (the response is identical either way).
+	const email = normalizeEmail(params.email);
+	if (email === null) return;
 	if (!(await isWithinThrottle(env, email, params.ip))) return;
 
 	const customer = await env.DB.prepare('SELECT id FROM customers WHERE email = ?')

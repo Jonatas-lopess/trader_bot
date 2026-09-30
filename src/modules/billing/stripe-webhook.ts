@@ -142,6 +142,11 @@ async function onSubscriptionBecameActive(
 	if (purchaseId === null) return;
 
 	const customer = await provisionCustomer(env, { purchaseId, email });
+	if (customer === null) {
+		// Malformed address: never fall back to the raw value (normalize-email.ts).
+		console.error(`onSubscriptionBecameActive: malformed buyer email for purchase_id=${purchaseId} — customers row not created`);
+		return;
+	}
 	if (!customer.created) return;
 
 	await reportDuplicateLicense(env, { purchaseId, email });

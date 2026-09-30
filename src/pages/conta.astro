@@ -28,7 +28,6 @@ import {
 	rejectedNoticeText,
 	pageDescription,
 	pageTitle,
-	robotLabel,
 } from '../content/conta';
 
 export const prerender = false;
@@ -36,13 +35,11 @@ export const prerender = false;
 const view = await resolveAccountView(env, Astro.request);
 if (!view.ok) return Astro.redirect('/login');
 
-const licenseText = licenseStatusText(view.license);
 const noticeParam = Astro.url.searchParams.get('corretora');
 const notice =
 	noticeParam !== null && noticeParam in corretoraNoticeTexts
 		? corretoraNoticeTexts[noticeParam as keyof typeof corretoraNoticeTexts]
 		: null;
-const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -52,68 +49,72 @@ const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 		{notice !== null && <p class="text-body text-text-secondary" role="status">{notice}</p>}
 
 		{
-			view.subscriptionStatus === 'rejected' && (
-				<p class="text-body text-text-primary" role="status">
-					{rejectedNoticeText.value}
-				</p>
-			)
-		}
+			view.robots.map((robot) => (
+				<section class="flex flex-col gap-6">
+					<h2 class="text-heading-2 font-bold text-text-primary">{robot.robotName}</h2>
 
-		{
-			view.license.status === 'awaiting_account' && (
-				<section class="flex flex-col gap-4 rounded-md border border-border-subtle p-6" id="corretora-banner">
-					<h2 class="text-heading-3 font-bold text-text-primary">{corretoraBannerHeading}</h2>
-					<p class="text-body text-text-secondary">{corretoraBannerBody}</p>
-					<form method="POST" action="/conta/corretora" id="corretora-form" class="flex max-w-sm flex-col gap-4">
-						<label class="flex flex-col gap-2">
-							<span class="text-body-sm text-text-secondary">{corretoraAccountLabel}</span>
-							<input
-								type="text"
-								name="corretora_account"
-								inputmode="numeric"
-								pattern="[1-9][0-9]{0,11}"
-								required
-								class="rounded-md border border-border-subtle px-4 py-2 text-body text-text-primary"
-							/>
-							<span class="text-body-sm text-text-secondary">{corretoraAccountHint}</span>
-						</label>
-						<button
-							type="submit"
-							class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
-						>
-							{corretoraSubmitLabel}
-						</button>
-					</form>
+					{robot.licenses.map((item) => (
+						<article class="flex flex-col gap-6 rounded-md border border-border-subtle p-6" data-purchase-id={item.purchaseId}>
+							{item.subscriptionStatus === 'rejected' && (
+								<p class="text-body text-text-primary" role="status">
+									{rejectedNoticeText.value}
+								</p>
+							)}
+
+							{item.license.status === 'awaiting_account' && (
+								<section class="flex flex-col gap-4" data-corretora-banner>
+									<h3 class="text-heading-3 font-bold text-text-primary">{corretoraBannerHeading}</h3>
+									<p class="text-body text-text-secondary">{corretoraBannerBody}</p>
+									<form method="POST" action="/conta/corretora" data-corretora-form class="flex max-w-sm flex-col gap-4">
+										<input type="hidden" name="purchase_id" value={item.purchaseId} />
+										<label class="flex flex-col gap-2">
+											<span class="text-body-sm text-text-secondary">{corretoraAccountLabel}</span>
+											<input
+												type="text"
+												name="corretora_account"
+												inputmode="numeric"
+												pattern="[1-9][0-9]{0,11}"
+												required
+												class="rounded-md border border-border-subtle px-4 py-2 text-body text-text-primary"
+											/>
+											<span class="text-body-sm text-text-secondary">{corretoraAccountHint}</span>
+										</label>
+										<button
+											type="submit"
+											class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+										>
+											{corretoraSubmitLabel}
+										</button>
+									</form>
+								</section>
+							)}
+
+							<dl class="flex flex-col gap-4">
+								<div>
+									<dt class="text-body-sm text-text-secondary">{licenseLabel}</dt>
+									<dd class="text-body-lg text-text-primary">{licenseStatusText(item.license)}</dd>
+								</div>
+								<div>
+									<dt class="text-body-sm text-text-secondary">{assinaturaLabel}</dt>
+									<dd class="text-body-lg text-text-primary">{assinaturaStatusTexts[item.subscriptionStatus]}</dd>
+								</div>
+							</dl>
+
+							{item.canCancel && (
+								<form method="POST" action="/conta/cancelar" data-cancel-form>
+									<input type="hidden" name="purchase_id" value={item.purchaseId} />
+									<button
+										type="submit"
+										class="button-h-lg inline-flex items-center justify-center rounded-md border border-border-subtle px-6 text-body font-medium text-text-primary"
+									>
+										{cancelLabel}
+									</button>
+								</form>
+							)}
+						</article>
+					))}
 				</section>
-			)
-		}
-
-		<dl class="flex flex-col gap-4">
-			<div>
-				<dt class="text-body-sm text-text-secondary">{robotLabel}</dt>
-				<dd class="text-body-lg text-text-primary">{view.robotName}</dd>
-			</div>
-			<div>
-				<dt class="text-body-sm text-text-secondary">{licenseLabel}</dt>
-				<dd class="text-body-lg text-text-primary">{licenseText}</dd>
-			</div>
-			<div>
-				<dt class="text-body-sm text-text-secondary">{assinaturaLabel}</dt>
-				<dd class="text-body-lg text-text-primary">{assinaturaStatusText}</dd>
-			</div>
-		</dl>
-
-		{
-			view.canCancel && (
-				<form method="POST" action="/conta/cancelar" id="cancel-form" class="mt-4">
-					<button
-						type="submit"
-						class="button-h-lg inline-flex items-center justify-center rounded-md border border-border-subtle px-6 text-body font-medium text-text-primary"
-					>
-						{cancelLabel}
-					</button>
-				</form>
-			)
+			))
 		}
 
 		<form method="POST" action="/logout">
@@ -127,14 +128,16 @@ const assinaturaStatusText = assinaturaStatusTexts[view.subscriptionStatus];
 <script define:vars={{ cancelConfirmMessage, corretoraConfirmMessage }}>
 	// One click plus one confirmation (User Story 10) — a native confirm()
 	// dialog is the friction step before the cancel action fires.
-	const cancelForm = document.getElementById('cancel-form');
-	cancelForm?.addEventListener('submit', (event) => {
-		if (!window.confirm(cancelConfirmMessage)) event.preventDefault();
-	});
+	for (const cancelForm of document.querySelectorAll('[data-cancel-form]')) {
+		cancelForm.addEventListener('submit', (event) => {
+			if (!window.confirm(cancelConfirmMessage)) event.preventDefault();
+		});
+	}
 
 	// The account number is write-once, so confirm before sending it.
-	const corretoraForm = document.getElementById('corretora-form');
-	corretoraForm?.addEventListener('submit', (event) => {
-		if (!window.confirm(corretoraConfirmMessage)) event.preventDefault();
-	});
+	for (const corretoraForm of document.querySelectorAll('[data-corretora-form]')) {
+		corretoraForm.addEventListener('submit', (event) => {
+			if (!window.confirm(corretoraConfirmMessage)) event.preventDefault();
+		});
+	}
 </script>

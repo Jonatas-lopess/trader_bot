@@ -2,7 +2,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** done
 
 **What to build:** make email the identity key. Today `customers.purchase_id` is UNIQUE, so a second purchase by the same email creates a second `customers` row and `/login` reaches only one purchase's Licença. Move to one `customers` row per normalized email, with many purchases and Licenças under it.
 
@@ -15,9 +15,9 @@
 
 Governing docs: ADR-0006, CONTEXT.md, `.scratch/backlog.md` "Repeat buyers".
 
-- [ ] `normalizeEmail` tests: casing, surrounding whitespace, missing `@`, double `@`, empty parts, non-ASCII, plus-aliases stay distinct
-- [ ] Two purchases by the same email yield one `customers` row and two Licenças
-- [ ] Magic-link login for that email reaches both Licenças; `/conta` lists both, grouped by Robô
-- [ ] Same email in different casing resolves to the same customer
-- [ ] The duplicate-license Sentry report still fires when the same Robô is bought twice
-- [ ] `pnpm test` and `pnpm run typecheck` pass
+- [x] `normalizeEmail` tests: casing, surrounding whitespace, missing `@`, double `@`, empty parts, non-ASCII, plus-aliases stay distinct
+- [x] Two purchases by the same email yield one `customers` row and two Licenças
+- [x] Magic-link login for that email reaches both Licenças; `/conta` lists both, grouped by Robô
+- [x] Same email in different casing resolves to the same customer
+- [x] The duplicate-license Sentry report still fires when the same Robô is bought twice
+- [x] `pnpm test` and `pnpm run typecheck` pass

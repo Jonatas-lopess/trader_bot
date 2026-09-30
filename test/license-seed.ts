@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { seedCustomer } from './customer-seed';
 import { putLicenseBinary } from './robot-binary-fixture';
 
 // Seeds the rows a delivery test needs for one Licença: purchase, customer, licenses row and
@@ -18,9 +19,7 @@ export async function seedLicense(
 	await env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, 'starter', 'one_time', 0, ?)")
 		.bind(id, options.purchaseStatus ?? 'active')
 		.run();
-	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
-		.bind(`cust-${id}`, id, email)
-		.run();
+	await seedCustomer({ purchaseId: id, customerId: `cust-${id}`, email });
 	await env.DB.prepare(
 		'INSERT INTO licenses (purchase_id, robot_id, corretora_account, status, expires_at) VALUES (?, ?, 123456, ?, ?)'
 	)

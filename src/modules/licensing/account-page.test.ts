@@ -1,15 +1,14 @@
 import { env } from 'cloudflare:workers';
+import { seedCustomer } from '../../../test/customer-seed';
 import { describe, expect, it } from 'vitest';
 import { createSession } from '../identity/session';
 import { resolveAccountView } from './account-page';
 
-async function seedAccount(params: { purchaseId: string; customerId: string; planId: string; offer?: string }) {
+async function seedAccount(params: { purchaseId: string; customerId: string; planId: string; offer?: string; email?: string }) {
 	await env.DB.prepare('INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, ?, 0, ?)')
 		.bind(params.purchaseId, params.planId, params.offer ?? 'monthly', 'active')
 		.run();
-	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
-		.bind(params.customerId, params.purchaseId, `${params.customerId}@example.com`)
-		.run();
+	await seedCustomer({ purchaseId: params.purchaseId, customerId: params.customerId, email: params.email ?? `${params.customerId}@example.com` });
 }
 
 function requestWithCookie(cookieValue: string): Request {
@@ -30,10 +29,12 @@ describe('resolveAccountView', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			canCancel: true,
-			robotName: 'Robô Exemplo A',
-			license: { status: 'none' },
-			subscriptionStatus: 'active',
+			robots: [
+				{
+					robotName: 'Robô Exemplo A',
+					licenses: [{ purchaseId: 'sub-account-1', canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' }],
+				},
+			],
 		});
 	});
 
@@ -48,10 +49,19 @@ describe('resolveAccountView', () => {
 
 		expect(result).toEqual({
 			ok: true,
-			canCancel: true,
-			robotName: 'Robô Exemplo B',
-			license: { status: 'active', expiresAt: '2027-06-20T00:00:00.000Z' },
-			subscriptionStatus: 'active',
+			robots: [
+				{
+					robotName: 'Robô Exemplo B',
+					licenses: [
+						{
+							purchaseId: 'sub-account-2',
+							canCancel: true,
+							license: { status: 'active', expiresAt: '2027-06-20T00:00:00.000Z' },
+							subscriptionStatus: 'active',
+						},
+					],
+				},
+			],
 		});
 	});
 
@@ -61,7 +71,7 @@ describe('resolveAccountView', () => {
 
 		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
 
-		expect(result).toMatchObject({ ok: true, canCancel: false });
+		expect(result).toMatchObject({ ok: true, robots: [{ licenses: [{ canCancel: false }] }] });
 	});
 
 	it('does not offer cancel once a Mensal is canceled', async () => {
@@ -71,7 +81,48 @@ describe('resolveAccountView', () => {
 
 		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
 
-		expect(result).toMatchObject({ ok: true, canCancel: false });
+		expect(result).toMatchObject({ ok: true, robots: [{ licenses: [{ canCancel: false }] }] });
+	});
+
+	it('lists every Licença of one email on one page, grouped by Robô', async () => {
+		await seedAccount({ purchaseId: 'multi-1', customerId: 'cust-multi', planId: 'robo-exemplo-a', email: 'multi@example.com' });
+		await seedAccount({ purchaseId: 'multi-2', customerId: 'cust-multi-other', planId: 'robo-exemplo-b', email: 'multi@example.com' });
+		await seedAccount({ purchaseId: 'multi-3', customerId: 'cust-multi-third', planId: 'robo-exemplo-a', email: 'multi@example.com', offer: 'one_time' });
+		await env.DB.prepare('INSERT INTO licenses (purchase_id, robot_id, status) VALUES (?, ?, ?)')
+			.bind('multi-2', 'robo-exemplo-b', 'awaiting_account')
+			.run();
+		const { cookieValue } = await createSession(env, 'cust-multi');
+
+		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
+
+		expect(result).toEqual({
+			ok: true,
+			robots: [
+				{
+					robotName: 'Robô Exemplo A',
+					licenses: [
+						{ purchaseId: 'multi-1', canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' },
+						{ purchaseId: 'multi-3', canCancel: false, license: { status: 'none' }, subscriptionStatus: 'active' },
+					],
+				},
+				{
+					robotName: 'Robô Exemplo B',
+					licenses: [
+						{ purchaseId: 'multi-2', canCancel: true, license: { status: 'awaiting_account' }, subscriptionStatus: 'active' },
+					],
+				},
+			],
+		});
+	});
+
+	it("does not list another Cliente's Licenças", async () => {
+		await seedAccount({ purchaseId: 'iso-1', customerId: 'cust-iso-1', planId: 'robo-exemplo-a' });
+		await seedAccount({ purchaseId: 'iso-2', customerId: 'cust-iso-2', planId: 'robo-exemplo-a' });
+		const { cookieValue } = await createSession(env, 'cust-iso-1');
+
+		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
+
+		expect(result).toMatchObject({ ok: true, robots: [{ licenses: [{ purchaseId: 'iso-1' }] }] });
 	});
 
 	it('redirects (ok: false) when the session is valid but no customers row matches — no account to show', async () => {

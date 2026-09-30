@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { seedCustomer } from '../../../test/customer-seed';
 import { describe, expect, it } from 'vitest';
 import { findDuplicateLicense } from './duplicate-license';
 
@@ -15,9 +16,7 @@ async function seed(params: {
 	await env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'one_time', 0, ?)")
 		.bind(params.id, params.robotId ?? 'robo-a', params.purchaseStatus ?? 'active')
 		.run();
-	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
-		.bind(`cust-${params.id}`, params.id, params.email)
-		.run();
+	await seedCustomer({ purchaseId: params.id, customerId: `cust-${params.id}`, email: params.email });
 	if (params.noLicense) return;
 	await env.DB.prepare('INSERT INTO licenses (purchase_id, robot_id, expires_at) VALUES (?, ?, ?)')
 		.bind(params.id, params.robotId ?? 'robo-a', params.expiresAt === undefined ? '9999-12-31T23:59:59.000Z' : params.expiresAt)

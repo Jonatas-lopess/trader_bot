@@ -9,43 +9,52 @@
 
 import { catalog } from '../../content/catalog';
 import { unwrapLaunchBlocking } from '../../shared/launch-blocking';
-import { getCustomerAccount, type PurchaseStatus } from '../identity/customers';
+import { listCustomerPurchases, type PurchaseStatus } from '../identity/customers';
 import { requireSession } from '../identity/session';
 import { getLicenseStatus, type LicenseStatus } from './license-status';
 
 type AccountPageEnv = Pick<Cloudflare.Env, 'DB' | 'SESSION_SECRET'>;
 
-export type AccountView =
-	| {
-			ok: true;
-			robotName: string;
-			// Only a Mensal has a recurring Assinatura to cancel; Compra and Anual are one payment.
-			canCancel: boolean;
-			license: LicenseStatus;
-			// Added by ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md):
-			// the page needs the Assinatura's own status to reflect a cancel and
-			// to hide the cancel action once already canceled. `appmax_subscription_id`
-			// isn't needed here — /conta/cancelar resolves it itself via
-			// `getCustomerAccount` at cancel time, not from this render.
-			subscriptionStatus: PurchaseStatus;
-	  }
-	| { ok: false };
+/** One Licença row on `/conta`: its own purchase, state and Corretora account form. */
+export type AccountLicense = {
+	purchaseId: string;
+	// Only a Mensal has a recurring Assinatura to cancel; Compra and Anual are one payment.
+	canCancel: boolean;
+	license: LicenseStatus;
+	// The Assinatura's own status, so the page reflects a cancel and hides the cancel action.
+	subscriptionStatus: PurchaseStatus;
+};
 
+/** Every Licença of one Robô the Cliente holds (a repeat buyer can hold several). */
+export type AccountRobotGroup = { robotName: string; licenses: AccountLicense[] };
+
+export type AccountView = { ok: true; robots: AccountRobotGroup[] } | { ok: false };
+
+/**
+ * Catalog-pivot ticket 14: the session names one email-keyed Cliente, and `/conta` lists every
+ * Licença under it on one page, grouped by Robô in order of first purchase.
+ */
 export async function resolveAccountView(env: AccountPageEnv, request: Request): Promise<AccountView> {
 	const session = await requireSession(request, env.SESSION_SECRET);
 	if (!session.ok) return { ok: false };
 
-	const account = await getCustomerAccount(env, session.customerId);
-	if (account === null) return { ok: false };
+	const purchases = await listCustomerPurchases(env, session.customerId);
+	if (purchases.length === 0) return { ok: false };
 
-	const robot = catalog.find((candidate) => candidate.slug === account.robotId);
-	const license = await getLicenseStatus(env, account.purchaseId, account.status);
-
-	return {
-		ok: true,
-		canCancel: account.offer === 'monthly' && (account.status === 'active' || account.status === 'past_due'),
-		robotName: robot ? unwrapLaunchBlocking(robot.name) : account.robotId,
-		license,
-		subscriptionStatus: account.status,
-	};
+	const groups = new Map<string, AccountRobotGroup>();
+	for (const purchase of purchases) {
+		let group = groups.get(purchase.robotId);
+		if (group === undefined) {
+			const robot = catalog.find((candidate) => candidate.slug === purchase.robotId);
+			group = { robotName: robot ? unwrapLaunchBlocking(robot.name) : purchase.robotId, licenses: [] };
+			groups.set(purchase.robotId, group);
+		}
+		group.licenses.push({
+			purchaseId: purchase.purchaseId,
+			canCancel: purchase.offer === 'monthly' && (purchase.status === 'active' || purchase.status === 'past_due'),
+			license: await getLicenseStatus(env, purchase.purchaseId, purchase.status),
+			subscriptionStatus: purchase.status,
+		});
+	}
+	return { ok: true, robots: [...groups.values()] };
 }

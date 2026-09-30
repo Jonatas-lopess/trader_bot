@@ -1,4 +1,5 @@
 import { env } from 'cloudflare:workers';
+import { seedCustomer as attachCustomer } from '../../../test/customer-seed';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Sentry from '@sentry/cloudflare';
 import { redeemMagicLink, requestMagicLink } from './magic-link';
@@ -15,9 +16,7 @@ async function seedCustomer(id: string, email: string): Promise<void> {
 	await env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)")
 		.bind(subscriptionId, 'starter', 'active')
 		.run();
-	await env.DB.prepare('INSERT INTO customers (id, purchase_id, email) VALUES (?, ?, ?)')
-		.bind(id, subscriptionId, email)
-		.run();
+	await attachCustomer({ purchaseId: subscriptionId, customerId: id, email });
 }
 
 async function seedToken(token: string, customerId: string, opts: { expired?: boolean; used?: boolean } = {}): Promise<void> {
@@ -48,6 +47,23 @@ describe('magic-link', () => {
 			.all();
 		expect(results).toHaveLength(1);
 		expect(Sentry.captureMessage).not.toHaveBeenCalled();
+	});
+
+	it('finds the Cliente however the address is cased or padded', async () => {
+		await seedCustomer('cust-ml-case', 'case@example.com');
+		const fetchSpy = mockResend();
+
+		await requestMagicLink(env, { email: '  Case@EXAMPLE.com ', ip: '203.0.113.11', origin: 'https://example.com' });
+
+		expect(fetchSpy).toHaveBeenCalled();
+	});
+
+	it('drops a malformed address like a non-match, never falling back to the raw value', async () => {
+		const fetchSpy = mockResend();
+
+		await requestMagicLink(env, { email: 'not-an-email', ip: '203.0.113.12', origin: 'https://example.com' });
+
+		expect(fetchSpy).not.toHaveBeenCalled();
 	});
 
 	it('a non-matching email sends no email — same externally-observable outcome as a match being throttled', async () => {

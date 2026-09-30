@@ -168,7 +168,7 @@ describe('handleStripeWebhook', () => {
 
 		await handleStripeWebhook(testEnv(), payload, await sign(payload));
 
-		const customer = await env.DB.prepare('SELECT id, email FROM customers WHERE purchase_id = ?')
+		const customer = await env.DB.prepare('SELECT c.id AS id, c.email AS email FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?')
 			.bind('sub-provision')
 			.first<{ id: string; email: string }>();
 		expect(customer?.email).toBe('cliente@example.com');
@@ -205,7 +205,7 @@ describe('handleStripeWebhook', () => {
 				extra: expect.objectContaining({ purchase_id: 'pay-bad', expected_cents: 49900, reported_cents: 100 }),
 			})
 		);
-		const customer = await env.DB.prepare('SELECT id FROM customers WHERE purchase_id = ?').bind('pay-bad').first();
+		const customer = await env.DB.prepare('SELECT c.id FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?').bind('pay-bad').first();
 		expect(customer).toBeNull();
 	});
 

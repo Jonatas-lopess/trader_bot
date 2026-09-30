@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { cancelSubscription } from '../../modules/billing/cancel';
-import { getCustomerAccount } from '../../modules/identity/customers';
+import { getCustomerPurchase } from '../../modules/identity/customers';
 import { isSessionValid, requireSession } from '../../modules/identity/session';
 
 export const prerender = false;
@@ -18,8 +18,12 @@ export const POST: APIRoute = async ({ request, url }) => {
 		return Response.redirect(new URL('/login', url.origin), 303);
 	}
 
-	const account = await getCustomerAccount(env, session.customerId);
-	if (account === null) return Response.redirect(new URL('/login', url.origin), 303);
+	const form = await request.formData();
+	const purchaseId = form.get('purchase_id');
+	// The purchase id comes from the form; ownership is checked against the session's Cliente.
+	const account =
+		typeof purchaseId === 'string' ? await getCustomerPurchase(env, session.customerId, purchaseId) : null;
+	if (account === null) return Response.redirect(new URL('/conta', url.origin), 303);
 
 	// The page re-renders with whatever the current status is either way —
 	// if the gateway's cancel call failed, status simply didn't change,

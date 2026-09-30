@@ -11,7 +11,6 @@
  */
 
 import { lookupOffer, type OfferName } from '../../content/catalog';
-import { getCustomerEmail } from '../identity/customers';
 import { selectProvider } from './factory';
 import { paymentMethodsFor } from './payment-provider';
 
@@ -29,16 +28,14 @@ type CheckoutEnv = Pick<
 /**
  * One active Licença per Cliente per Robô (ADR-0006). Only `active` purchases
  * count: a `pending` row from an abandoned or declined attempt must never block
- * a new checkout. A purchase is tied to a Cliente by email, since each
- * provisioning writes its own `customers` row (migrations/0008).
+ * a new checkout. Purchases belong to the Cliente via `purchases.customer_id`
+ * (migration 0011; one Cliente per normalized email).
  */
 async function hasActivePurchase(env: Pick<Cloudflare.Env, 'DB'>, customerId: string, robotId: string): Promise<boolean> {
-	const email = await getCustomerEmail(env, customerId);
-	if (email === null) return false;
 	const row = await env.DB.prepare(
-		"SELECT 1 FROM purchases p JOIN customers c ON c.purchase_id = p.id WHERE c.email = ? AND p.robot_id = ? AND p.status = 'active' LIMIT 1"
+		"SELECT 1 FROM purchases WHERE customer_id = ? AND robot_id = ? AND status = 'active' LIMIT 1"
 	)
-		.bind(email, robotId)
+		.bind(customerId, robotId)
 		.first();
 	return row !== null;
 }

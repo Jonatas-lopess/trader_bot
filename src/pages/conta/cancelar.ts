@@ -21,18 +21,18 @@ export const POST: APIRoute = async ({ request, url }) => {
 	const form = await request.formData();
 	const purchaseId = form.get('purchase_id');
 	// The purchase id comes from the form; ownership is checked against the session's Cliente.
-	const account =
+	const purchase =
 		typeof purchaseId === 'string' ? await getCustomerPurchase(env, session.customerId, purchaseId) : null;
-	if (account === null) return Response.redirect(new URL('/conta', url.origin), 303);
+	if (purchase === null) return Response.redirect(new URL('/conta', url.origin), 303);
 
 	// The page re-renders with whatever the current status is either way —
 	// if the gateway's cancel call failed, status simply didn't change,
 	// which is an honest reflection of reality without a separate error
 	// page (this repo's generally terse error-handling style elsewhere).
 	await cancelSubscription(env, {
-		purchaseId: account.purchaseId,
-		provider: account.provider,
-		providerSubscriptionId: account.appmaxSubscriptionId,
+		purchaseId: purchase.purchaseId,
+		provider: purchase.provider,
+		providerSubscriptionId: purchase.appmaxSubscriptionId,
 	});
 
 	return Response.redirect(new URL('/conta', url.origin), 303);

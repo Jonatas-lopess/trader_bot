@@ -82,15 +82,15 @@ has no native asymmetric primitive, confirmed against its own docs).
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Decide what the payload actually carries](.scratch/license-server/issues/01-payload-content-decision.md) | — | needs-triage |
-| 02 | [Per-license secret/payload schema + verify endpoint](.scratch/license-server/issues/02-schema-and-verify-endpoint.md) | 01 | needs-triage |
-| 03 | [Provision per-license secret/payload and deliver alongside the binary](.scratch/license-server/issues/03-provisioning-and-delivery.md) | 01, 02 | needs-triage |
-| 04 | [MQL5 check-in client — verify, fail-closed with tolerance](.scratch/license-server/issues/04-mql5-checkin-client.md) | 02 | needs-triage |
+| 01 | [Decide what the payload actually carries](.scratch/license-server/issues/01-payload-content-decision.md) | — | deferred (1.0.0) |
+| 02 | [Per-license secret/payload schema + verify endpoint](.scratch/license-server/issues/02-schema-and-verify-endpoint.md) | 01 | deferred (1.0.0) |
+| 03 | [Provision per-license secret/payload and deliver alongside the binary](.scratch/license-server/issues/03-provisioning-and-delivery.md) | 01, 02 | deferred (1.0.0) |
+| 04 | [MQL5 check-in client — verify, fail-closed with tolerance](.scratch/license-server/issues/04-mql5-checkin-client.md) | 02 | deferred (1.0.0) |
 | 05 | [Enforce N robôs ativos simultâneos via check-in instance tracking](.scratch/license-server/issues/05-robo-count-entitlement.md) | 01, 02 | wontfix (ADR-0006) |
 | 06 | [Collect Corretora account number at checkout and bind it per license](.scratch/license-server/issues/06-corretora-account-checkout.md) | — | superseded by catalog-pivot 07 |
-| 07 | [Verify the live-connected Corretora account against the bound one at check-in](.scratch/license-server/issues/07-corretora-live-verification.md) | 02, 04, 06 | needs-triage |
+| 07 | [Verify the live-connected Corretora account against the bound one at check-in](.scratch/license-server/issues/07-corretora-live-verification.md) | 02, 04, 06 | deferred (1.0.0) |
 
-Frontier: **01** — the payload-content decision blocks everything else in this effort; resolve it first.
+Frontier: none until 1.0.0 starts. 01 (payload content) is the first thing to grill then; it blocks the rest. Whole effort is post-launch.
 
 ## sentry-integration
 
@@ -122,7 +122,7 @@ All tickets done. Placeholder bodies still need real legal text before launch (`
 
 ## catalog-pivot
 
-Spec: [.scratch/catalog-pivot/spec.md](.scratch/catalog-pivot/spec.md) — status `done` (11 stays deferred to 1.0.0; Appmax sandbox checks are pre-go-live gates, PLANNING §13).
+Spec: [.scratch/catalog-pivot/spec.md](.scratch/catalog-pivot/spec.md) — status `done` except 14 (11 stays deferred to 1.0.0; Appmax sandbox checks are pre-go-live gates, PLANNING §13).
 Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT, PLANNING, ADR) done.
 
 | # | Ticket | Blocked by | Status |
@@ -140,8 +140,9 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 | 11 | [Research: automated compile/issuance and annual auto-renew](.scratch/catalog-pivot/issues/11-research-automation.md) | — | deferred (1.0.0) |
 | 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | done |
 | 13 | [Persist fiscal data on the purchase for NFS-e](.scratch/catalog-pivot/issues/13-fiscal-data-for-nfse.md) | 02, 04 | done |
+| 14 | [Identity per email — one customer, many purchases](.scratch/catalog-pivot/issues/14-identity-per-email.md) | — | ready-for-agent |
 
-Frontier: none (11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
+Frontier: **14** (ready-for-agent, pre-go-live; 11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 
 ## Untracked
 

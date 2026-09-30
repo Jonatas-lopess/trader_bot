@@ -76,6 +76,9 @@ plan-keyed tables.
 **Routes.** `/catalog` replaces `/planos`; `/planos` redirects to `/catalog`. No per-Robô
 detail pages until a second real Robô exists.
 
+**Identity is per email.** Amended after the pivot: `customers` is keyed by normalized email,
+not by purchase, so a repeat buyer has one login reaching every Licença (ticket 14).
+
 ## Deferred to 1.0.0
 
 - Annual auto-renew (card only; Pix and Boleto can never auto-charge) and the reminder email

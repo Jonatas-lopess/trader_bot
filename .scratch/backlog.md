@@ -36,7 +36,7 @@ detail.
 
 ### Appmax sandbox checks (PLANNING.md §13)
 
-No test can settle these; each needs one real sandbox call.
+No test can settle these; each needs one real sandbox call. Runbook: `docs/ops/appmax-sandbox-checks.md` (no sandbox credentials yet).
 
 - `amounts.sub_total` on `GET /v1/orders/{id}` is in integer cents. The webhook amount check
   depends on it: if wrong, every legitimate Appmax payment lands `rejected`. (04)
@@ -53,20 +53,27 @@ No test can settle these; each needs one real sandbox call.
 
 ### Decisions for the owner
 
-- **Repeat buyers.** `customers.purchase_id` is UNIQUE, so a second purchase creates a second
-  `customers` row with the same email, and `/login` by email reaches only one purchase's
-  Licença. Needs an identity-per-email design call. (02, 07, 08)
-- **Guest double payment.** A guest is only identified after payment, so nothing blocks paying
-  twice for the same Robô. `licensing/duplicate-license.ts` reports it to Sentry at
-  provisioning; the operator resolves by hand (refund). Decide whether that is enough. (03, 07)
-- **Download link on `/conta`.** Left out: PLANNING §8 says no self-service resend in 0.1, so
-  delivery is email-only. Add a button if that changes. (08)
-- **Mensal fiscal data.** Subscription refetch carries no customer, so `buyer_document` is
-  NULL for Mensal and the operator enters it by hand for the nota. (13)
+Settled 2026-09-29:
+
+- **Repeat buyers.** One `customers` row per normalized email, many purchases under it.
+  Tracked as `catalog-pivot/14`, to build before go-live.
+- **Guest double payment.** Accepted risk: `licensing/duplicate-license.ts` reports it to
+  Sentry and the operator refunds by hand. Revisit if more than 2 cases in the first month.
+- **Download link on `/conta`.** Stays email-only in 0.1 (PLANNING §8); support resend is a
+  step in `docs/ops/license-activation.md`. Revisit if support tickets appear.
+- **Mensal fiscal data.** `buyer_document` is NULL for Mensal today. Wait on the Appmax
+  sandbox (does the hosted flow return it?). If not, ask for CPF/CNPJ on `/conta` after
+  activation. The operator enters it by hand meanwhile. (13)
+- **Stripe `charge.refunded` and dispute events.** `wontfix`: Stripe is the test driver only.
+  Reopens if Stripe is ever considered for production. (04)
+
+Still open:
+
 - **Nota already issued for a refunded purchase.** Ask the contador whether it must be
   cancelled (`TODO — confirm with contador` in `docs/ops/nfse.md`). (13)
-- **Stripe `charge.refunded` and dispute events** are not mapped. Test driver only; matters
-  only if Stripe stays anywhere near production. (04)
+
+Also settled: license-server 01–04 and 07 are `deferred (1.0.0)`; marketing-pages 09 waits;
+launch without social proof (06), with no fabricated metrics.
 
 ### Copy and legal (all `launchBlocking`)
 

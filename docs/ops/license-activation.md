@@ -50,6 +50,10 @@ pnpm run send-download-link -- --license-id=<license_id> --origin=<site origin>
 
 Minting is refused for any Licença that is not `active`.
 
+**Support resend.** Delivery is email-only in 0.1 (PLANNING §8): `/conta` has no download button.
+When a Cliente reports a lost link or a spam-folder email, confirm the Licença is `active` and
+the purchase is payable, then run the command above. It sends to the email on the customer row.
+
 ## Refunds
 
 A refund (7-day withdrawal) sets the purchase to `refunded`, which revokes the Licença: an

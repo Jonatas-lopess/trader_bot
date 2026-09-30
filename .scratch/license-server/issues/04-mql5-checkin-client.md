@@ -1,5 +1,7 @@
 # 04: MQL5 check-in client — verify, fail-closed with tolerance, never touch open positions
 
+**Status:** deferred (1.0.0)
+
 **What to build:** the robot-side half — init and hourly check-in, HMAC verification using
 MQL5's native `CryptEncode(CRYPT_HASH_SHA256, ...)`, and the fail-closed/tolerance/
 positions-never-abandoned behavior.

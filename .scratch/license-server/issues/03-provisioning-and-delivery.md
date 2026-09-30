@@ -1,5 +1,7 @@
 # 03: Provision per-license secret/payload and deliver alongside the binary
 
+**Status:** deferred (1.0.0)
+
 **What to build:** the ops-run path that mints a license's secret and initial payload, and
 extends `robot-delivery`'s download flow to hand the robot its per-license config alongside
 the (unchanged, one-program) `.ex5`.

@@ -1,5 +1,7 @@
 # 01: Decide what the payload actually carries
 
+**Status:** deferred (1.0.0)
+
 **What to build:** nothing shippable — a decision, recorded here, on what the server-issued
 `payload` blob (spec.md's Solution, piece 4) actually contains for 1.0.0's first cut. Every
 other ticket in this effort treats `payload` as opaque bytes; none of them can be

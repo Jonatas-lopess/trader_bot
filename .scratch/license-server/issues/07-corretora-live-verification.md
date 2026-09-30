@@ -1,5 +1,7 @@
 # 07: Verify the live-connected Corretora account against the bound one at check-in
 
+**Status:** deferred (1.0.0)
+
 **What to build:** extend the check-in (both the MQL5 client, ticket 04, and the verify
 endpoint, ticket 02) so the robot reports the brokerage account it's actually trading
 through, live, and the server rejects a mismatch against the account bound at checkout

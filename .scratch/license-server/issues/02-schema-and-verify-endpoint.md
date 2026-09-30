@@ -1,5 +1,7 @@
 # 02: Per-license secret/payload schema + verify endpoint
 
+**Status:** deferred (1.0.0)
+
 **What to build:** the server side of the check-in — a D1 migration extending licensing
 with a per-license HMAC secret and payload, plus the `login + nonce` verify endpoint that
 signs its response.

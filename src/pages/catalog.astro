@@ -6,6 +6,7 @@
 // per Robô, and the regulatory note, wrapped in the site shell. Content comes
 // from src/content/catalog-page.ts — see docs/agents/content-files.md.
 import BaseLayout from '../layouts/base-layout.astro';
+import CatalogCarousel from '../components/catalog-carousel.astro';
 import RobotCard from '../components/robot-card.astro';
 import { catalogCards, pageDescription, pageHeading, pageTitle, regulatoryNote } from '../content/catalog-page';
 ---
@@ -15,8 +16,14 @@ import { catalogCards, pageDescription, pageHeading, pageTitle, regulatoryNote }
 		<h1 class="text-heading-1 font-bold text-text-primary">{pageHeading}</h1>
 	</section>
 
-	<section class="content-row gutter-x grid grid-cols-1 gap-6 pb-20 md:grid-cols-2 lg:grid-cols-3">
-		{catalogCards.map((card) => <RobotCard card={card} />)}
+	<section class="pb-10">
+		<CatalogCarousel>
+			{catalogCards.map((card) => (
+				<li>
+					<RobotCard card={card} />
+				</li>
+			))}
+		</CatalogCarousel>
 	</section>
 
 	<section class="content-row gutter-x pb-20">

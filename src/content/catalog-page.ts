@@ -37,6 +37,10 @@ export const offerCaptions: Record<OfferName, string> = {
 	monthly: 'por mês, somente cartão',
 };
 
+export const carouselLabel = 'Robôs do catálogo';
+export const carouselPrevLabel = 'Robô anterior';
+export const carouselNextLabel = 'Próximo Robô';
+
 export const comingSoonLabel = 'Em breve';
 export const strategyTypeLabel = 'Estratégia';
 export const corretorasLabel = 'Corretoras compatíveis';

@@ -43,12 +43,12 @@ const secondary = card.offers.filter((o) => o.offer !== 'one_time');
 
 	<dl class="mt-4 flex flex-col gap-2 text-body-sm">
 		<div class="flex gap-2">
-			<dt class="text-text-tertiary">{strategyTypeLabel}:</dt>
-			<dd class="text-text-secondary">{card.strategyType}</dd>
+			<dt class="text-text-secondary">{strategyTypeLabel}:</dt>
+			<dd class="font-medium text-text-primary">{card.strategyType}</dd>
 		</div>
 		<div class="flex gap-2">
-			<dt class="text-text-tertiary">{corretorasLabel}:</dt>
-			<dd class="text-text-secondary">{card.corretoras.join(', ')}</dd>
+			<dt class="text-text-secondary">{corretorasLabel}:</dt>
+			<dd class="font-medium text-text-primary">{card.corretoras.join(', ')}</dd>
 		</div>
 	</dl>
 
@@ -56,9 +56,9 @@ const secondary = card.offers.filter((o) => o.offer !== 'one_time');
 		main && (
 			<div class="mt-6">
 				<div class="flex items-baseline gap-2">
-					<span class="text-heading-2 font-bold text-text-primary">{main.priceText}</span>
+					<span class="font-heading text-heading-2 font-bold text-text-primary">{main.priceText}</span>
 				</div>
-				<p class="mt-1 text-caption text-text-tertiary">{main.caption}</p>
+				<p class="mt-1 text-caption text-text-secondary">{main.caption}</p>
 				<a
 					href={main.href}
 					class="button-h-lg mt-4 inline-flex w-full items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
@@ -88,7 +88,7 @@ const secondary = card.offers.filter((o) => o.offer !== 'one_time');
 							</span>
 							<span>{offer.priceText}</span>
 						</a>
-						<span class="text-caption text-text-tertiary">
+						<span class="text-caption text-text-secondary">
 							{offer.caption}
 							{offer.offer === 'annual' && ` · ${annualPixNote.value}`}
 						</span>

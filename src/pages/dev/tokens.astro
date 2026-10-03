@@ -38,11 +38,14 @@ const surfaceTokens: Swatch[] = [
 	{ name: 'surface-raised', bgClass: 'bg-surface-raised', role: 'Cards, panels' },
 	{ name: 'surface-overlay', bgClass: 'bg-surface-overlay', role: 'Header/footer bars, sticky nav' },
 	{ name: 'surface-sunken', bgClass: 'bg-surface-sunken', role: 'Inset wells, toggle track' },
+	{ name: 'surface-emphasis', bgClass: 'bg-surface-emphasis', role: 'Badges, disabled actions, note panels' },
 ];
 
 const borderTokens: Swatch[] = [
 	{ name: 'border-subtle', bgClass: 'bg-border-subtle', role: 'Hairlines, card outlines' },
 	{ name: 'border-strong', bgClass: 'bg-border-strong', role: 'Emphasized dividers' },
+	{ name: 'border-high-contrast', bgClass: 'bg-border-high-contrast', role: 'Form field boundaries (3:1 or better)' },
+	{ name: 'border-accent', bgClass: 'bg-border-accent', role: 'Focus and active outlines' },
 ];
 
 const textTokens: Swatch[] = [
@@ -83,10 +86,32 @@ const typeScale: TypeSample[] = [
 ];
 
 const radiusScale: TypeSample[] = [
+	{ name: 'radius-2xs', class: 'rounded-2xs' },
+	{ name: 'radius-xs', class: 'rounded-xs' },
 	{ name: 'radius-sm', class: 'rounded-sm' },
 	{ name: 'radius-md', class: 'rounded-md' },
 	{ name: 'radius-lg', class: 'rounded-lg' },
 	{ name: 'radius-xl', class: 'rounded-xl' },
+	{ name: 'radius-2xl', class: 'rounded-2xl' },
+	{ name: 'radius-pill', class: 'rounded-pill' },
+	{ name: 'radius-circle', class: 'rounded-circle' },
+];
+
+const borderWidthScale: TypeSample[] = [
+	{ name: 'border-w-1', class: 'border-w-1' },
+	{ name: 'border-w-2', class: 'border-w-2' },
+];
+
+type FontSample = {
+	name: string;
+	class: string;
+	family: string;
+};
+
+const fontFamilies: FontSample[] = [
+	{ name: 'font-sans', class: 'font-sans', family: 'Manrope — body and UI' },
+	{ name: 'font-heading', class: 'font-heading', family: 'Geist — headings' },
+	{ name: 'font-mono', class: 'font-mono', family: 'Geist Mono — codes and keys' },
 ];
 
 const shadowScale: TypeSample[] = [
@@ -179,6 +204,25 @@ const iconEntries = [
 					</div>
 				</section>
 
+				<!-- Font families -->
+				<section class="mb-16">
+					<h2 class="text-heading-2 font-semibold mb-6">Font families</h2>
+					<div class="flex flex-col gap-6">
+						{
+							fontFamilies.map((sample) => (
+								<div class="border-b border-border-subtle pb-6">
+									<p class={`${sample.class} text-heading-3 text-text-primary`}>
+										Automação inteligente 0123456789
+									</p>
+									<p class="text-caption text-text-tertiary mt-2">
+										{sample.name} — {sample.family}
+									</p>
+								</div>
+							))
+						}
+					</div>
+				</section>
+
 				<!-- Spacing / layout primitives -->
 				<section class="mb-16">
 					<h2 class="text-heading-2 font-semibold mb-6">Layout primitives</h2>
@@ -224,7 +268,22 @@ const iconEntries = [
 						{
 							radiusScale.map((sample) => (
 								<div class="flex flex-col items-center gap-2">
-									<div class={`size-20 bg-brand-primary-subtle border border-border-strong ${sample.class}`} />
+									<div class={`h-20 w-28 bg-brand-primary-subtle border border-border-strong ${sample.class}`} />
+									<p class="text-caption text-text-tertiary">{sample.name}</p>
+								</div>
+							))
+						}
+					</div>
+				</section>
+
+				<!-- Border width -->
+				<section class="mb-16">
+					<h2 class="text-heading-2 font-semibold mb-6">Border width</h2>
+					<div class="flex flex-wrap gap-6">
+						{
+							borderWidthScale.map((sample) => (
+								<div class="flex flex-col items-center gap-2">
+									<div class={`size-20 rounded-lg bg-surface-raised border-border-high-contrast ${sample.class}`} />
 									<p class="text-caption text-text-tertiary">{sample.name}</p>
 								</div>
 							))

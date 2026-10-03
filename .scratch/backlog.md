@@ -72,7 +72,7 @@ Still open:
 - **Nota already issued for a refunded purchase.** Ask the contador whether it must be
   cancelled (`TODO — confirm with contador` in `docs/ops/nfse.md`). (13)
 
-Also settled: license-server 01–04 and 07 are `deferred (1.0.0)`; marketing-pages 09 waits;
+Also settled: license-server 01–04 and 07 are `deferred (1.0.0)`; marketing-pages 09 done (Variables exist in Figma; palette disagreement with `global.css` written up in the ticket);
 launch without social proof (06), with no fabricated metrics.
 
 ### Copy and legal (all `launchBlocking`)

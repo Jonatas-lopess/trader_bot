@@ -1,6 +1,6 @@
 # 04: `/conta` restyled from the wireframes
 
-**What to build:** The customer area takes the visual language of the `painel-cliente` and `estados-licenca` wireframes (Figma `86:1423` and `86:1602`; PNG exports in the repo root) with no change to content or behavior. The six Licença states (`none`, `awaiting_account`, `preparing`, `active`, `expired`, `revoked`), the Corretora account form, the Assinatura cancel and the email-only download path all work exactly as today.
+**What to build:** The customer area takes the visual language of the `painel-cliente` and `estados-licenca` wireframes (Figma `86:1423` and `86:1602`; PNG exports: [painel-cliente](../wireframes/painel-cliente.png), [estados-licenca](../wireframes/estados-licenca.png)) with no change to content or behavior. The six Licença states (`none`, `awaiting_account`, `preparing`, `active`, `expired`, `revoked`), the Corretora account form, the Assinatura cancel and the email-only download path all work exactly as today.
 
 Carry over from the wireframes:
 

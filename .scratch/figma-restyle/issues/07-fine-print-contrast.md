@@ -14,11 +14,19 @@ To leave on `text-tertiary` (placeholder or disabled by intent): the footer "Con
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] No `text-tertiary` remains on text that carries meaning on `/`, `/catalog`, `/login`, `/privacidade`, `/termos-de-uso`, `/checkout/confirmacao`
+- [x] No `text-tertiary` remains on text that carries meaning on `/`, `/catalog`, `/login`, `/privacidade`, `/termos-de-uso`, `/checkout/confirmacao`
 - [ ] The legal notice and regulatory note measure at least 4.5:1 on their background
-- [ ] Hierarchy is still visible (labels stay lighter than values, e.g. via size or weight, not via the muted color)
+- [x] Hierarchy is still visible (labels stay lighter than values, e.g. via size or weight, not via the muted color)
 - [ ] The token value of `text-tertiary` is unchanged
 
 ## Comments
+
+### Done, 2026-10-02
+
+**Changed.** `text-tertiary` to `text-secondary` on: footer AVISO LEGAL and copyright (`site-footer.astro`), `regulatoryNote` (`catalog.astro`), robot-card labels `Estratégia:` / `Corretoras compatíveis:`, price caption and per-offer captions (`robot-card.astro`). Hierarchy: the robot-card `dd` values moved from `text-secondary` to `text-primary` + `font-medium`, so the labels stay lighter than the values without the muted color. Left on `text-tertiary` by intent: footer "Contato" dead link, hero visual placeholder, video "em produção" label. Token value untouched. `grep text-tertiary src` (outside `/dev/tokens`) leaves only those three.
+
+**Contrast (computed, WCAG 2.x).** `#94a3b8` on `surface-base` 7.19:1, `surface-raised` 6.53:1, `surface-overlay` 5.79:1, all at least 4.5:1.
+
+**Viewed vs code-read.** Viewed in headless Chromium (full-page PNGs): `/catalog` at 1280 and 390 (regulatory note, card labels and captions, footer legal notice), `/privacidade` at 390 (footer). `/`, `/termos-de-uso` footer is the same component, seen in the same screenshots. `/login` and `/checkout/confirmacao` have no `text-tertiary` by grep (code-read; `/login` is being edited under ticket 09, not touched here).

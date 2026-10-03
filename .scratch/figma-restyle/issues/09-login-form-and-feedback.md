@@ -9,10 +9,16 @@ Figma node: no login frame exists (landing `6:5` only), so this is a code-and-sc
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The input boundary measures at least 3:1 against its surroundings, with a visible keyboard focus state
-- [ ] The error message uses the danger color; the "sent" message keeps `text-secondary`
-- [ ] The existing `/login` tests still pass (content strings unchanged)
+- [x] The input boundary measures at least 3:1 against its surroundings, with a visible keyboard focus state
+- [x] The error message uses the danger color; the "sent" message keeps `text-secondary`
+- [x] The existing `/login` tests still pass (content strings unchanged)
 
 ## Comments
+
+### Built, 2026-10-02
+
+`src/pages/login.astro` only; `src/content/login.ts` untouched (copy unchanged). Input: `border-w-1 border-border-high-contrast bg-surface-raised` plus `focus:border-border-accent focus:shadow-focus-ring focus:outline-none` (the `license-card.astro` idea, not edited). Error `<p role="alert">`: `text-danger` (was `text-brand-primary`). "Sent" message stays `text-secondary`. Form action, `name="email"`, `required` and the rest unchanged.
+
+Verification. **Viewed** (Playwright 1.63 headless Chromium against `pnpm build` + `astro preview`, screenshots at 1280 and 390): `/login`, `/login?sent=1&error=1`, the focused input at 390. The field is clearly visible with a light-grey boundary on a raised fill; the error is pink; the sent line is grey; the focus state shows the accent border and the 3px ring. Computed in the browser: unfocused border `#94a3b8`-class token (7.2:1 on the canvas by the ticket's numbers, computed not measured), fill `rgb(23,30,41)`, focus border `rgb(137,180,250)` with the ring `0.5` alpha shadow, error color `rgb(243,139,168)` (danger). **Not viewed:** the unfocused input at 390 on its own, hover. **Tests:** `pnpm typecheck` 0 errors, `pnpm build` ok; `src/modules/identity` suites pass (customers, magic-link, session, normalize-email). `e2e.test.ts` failed once when run together with the others (while a concurrent build/preview from another agent was running) and passed 4/4 when rerun alone; no test asserts on login markup or classes. Also extended `/dev/tokens` for tickets 01/02 (not part of this ticket's criteria).

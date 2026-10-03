@@ -83,3 +83,11 @@ launch without social proof (06), with no fabricated metrics.
 - Política de privacidade does not yet list name and CPF/CNPJ under "Dados coletados"
   (`src/content/legal.ts`); the document is LGPD personal data. (13)
 - Everything else: `grep -rn "launchBlocking(" src/content/`.
+
+## Deferred from figma-restyle
+
+Decided in the 2026-10-02 grilling; each waits on a decision that isn't made yet.
+
+- **Near-expiry state** ("Vence em 5 dias", `estados-licenca` wireframe). Needs a renewal rule first: only an Anual, or a Mensal whose Assinatura is canceled, really ends. A live Mensal renews, so "vence" would mislead. Auto-renew research is `catalog-pivot/11` (1.0.0).
+- **Chargeback-specific copy** ("Suspensa por chargeback"). `getLicenseStatus` maps `refunded` and `chargeback` to one `revoked` state. Legal wording is `launchBlocking` anyway; fits with the refund-policy work.
+- **Robô → Advisor rename.** The wireframes' "Meus produtos" would eventually read "Meus Advisors" (more technical term). Heading stays "Sua conta" and the domain term stays Robô until the owner decides. One sweep: `CONTEXT.md`, the ADR and `src/content/`.

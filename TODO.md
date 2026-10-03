@@ -144,6 +144,21 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 
 Frontier: none (all done; 11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 
+## figma-restyle
+
+No spec.md — small enough to skip straight to tickets. Wayfinding from a grilling session (2026-10-02): Figma is now the source for the palette, type and shape tokens; `/conta` takes the visual language of the `painel-cliente` and `estados-licenca` wireframes with no change to content or behavior. Follows `marketing-pages/09`.
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Figma colors behind the existing role names](.scratch/figma-restyle/issues/01-color-tokens.md) | — | ready-for-agent |
+| 02 | [Figma radii, border widths and elevation behind the existing tokens](.scratch/figma-restyle/issues/02-radii-borders-shadows.md) | — | ready-for-agent |
+| 03 | [Self-hosted Geist, Manrope and Geist Mono](.scratch/figma-restyle/issues/03-self-hosted-fonts.md) | — | ready-for-agent |
+| 04 | [`/conta` restyled from the wireframes](.scratch/figma-restyle/issues/04-conta-restyle.md) | 01, 02, 03 | ready-for-agent |
+| 05 | [Visual sweep of the other pages after the port](.scratch/figma-restyle/issues/05-visual-sweep.md) | 01, 02, 03 | ready-for-agent |
+| 06 | [Close the Figma reads the quota blocked](.scratch/figma-restyle/issues/06-close-figma-reads.md) | Figma quota reset | ready-for-human |
+
+Frontier: **01**, **02**, **03** (independent; 01 and 02 edit different sections of the tokens file). 04 and 05 wait for all three.
+
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work, the external prerequisites, and the "Open before go-live (catalog-pivot)" list: Appmax sandbox checks, owner decisions, launch-blocking copy.

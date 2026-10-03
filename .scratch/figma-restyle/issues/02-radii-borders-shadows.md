@@ -12,12 +12,19 @@ Rules:
 
 **Blocked by:** None (can start immediately). It edits the same tokens file as 01 in a different section, so merge order doesn't matter.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Radii at 8, 12, 16 are unchanged in value; the 24px one now follows Figma and its consumers were checked
-- [ ] The new radii and the 1/2 border widths exist as usable utilities
-- [ ] The card shadow and the brand glow match Figma's geometry and alpha
-- [ ] The correspondence between Figma's radius names and the code's is written in this ticket's comments
-- [ ] Typecheck and the full test suite pass; no page shows an obviously wrong corner or shadow
+- [x] Radii at 8, 12, 16 are unchanged in value; the 24px one now follows Figma and its consumers were checked
+- [x] The new radii and the 1/2 border widths exist as usable utilities
+- [x] The card shadow and the brand glow match Figma's geometry and alpha
+- [x] The correspondence between Figma's radius names and the code's is written in this ticket's comments
+- [x] Typecheck and the full test suite pass; no page shows an obviously wrong corner or shadow
 
 ## Comments
+
+- 2026-10-02: Done in `src/styles/global.css`.
+- Radius correspondence (Figma `--rt-radius-*` → code name, px): `md`=8 → `sm`; `lg`=12 → `md`; 16 → `lg`; 22 → `xl` (was 24); 4 → `2xs`; 6 → `xs`; 40 → `2xl`; 99 → `pill`; 200 → `circle`; 0 is `rounded-none`. Note `xs` and `2xl` override Tailwind's defaults; no existing page used `rounded-xs`, `rounded-2xl` or `rounded-3xl`.
+- Consumers of the 24→22 token (`rounded-xl`): hero visual placeholder (`hero-section.astro`) and video frame (`video-section.astro`). A 2px corner change; checked by reading, not yet in the browser (covered by ticket 05).
+- Border widths: `--border-width-1/2` with `border-w-1` / `border-w-2` utilities.
+- Elevation: `shadow-card` = `0 8px 24px 0 rgb(0 0 0 / 0.25)` (Figma `#00000040`). `shadow-glow-brand` = `0 12px 32px 0` at 12% of `brand-primary` via relative color (Figma `#89B4FA1F`).
+- Suite: see ticket 03 comment.

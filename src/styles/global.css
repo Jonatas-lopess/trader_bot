@@ -6,9 +6,12 @@
  * is CSS-first: this file *is* the configuration, there is no
  * tailwind.config.js.
  *
- * The Figma file defines zero variables (`get_variable_defs` returns `{}`),
- * so every token below is authored by hand against the concrete
- * measurements stated in the ticket, built out into a coherent scale. Do
+ * Color, radius, border-width, elevation and type-family tokens follow the
+ * Figma Variables (`--rt-*` collections in the Trader file; ticket
+ * .scratch/figma-restyle). Role names stay (`brand-primary`, `surface-raised`,
+ * …) and are mapped onto the Figma role that plays the same part. Roles Figma
+ * does not draw are marked "derived, not in Figma" below. Layout primitives
+ * and the type-size scale are still hand-authored (ticket 02). Do
  * not add raw hex values or one-off pixel sizes anywhere else in the
  * codebase — extend the scale here instead and consume it through a
  * Tailwind utility (`bg-brand-primary`, `text-heading-2`, `card-w-wide`,
@@ -18,51 +21,71 @@
  * `--color-blue-600`.
  */
 
+/* Self-hosted fonts (ticket .scratch/figma-restyle/issues/03): Latin subset,
+ * `font-display: swap` (fontsource default). Only the weights in use ship. */
+@import '@fontsource/geist/latin-500.css';
+@import '@fontsource/geist/latin-700.css';
+@import '@fontsource/manrope/latin-400.css';
+@import '@fontsource/manrope/latin-500.css';
+@import '@fontsource/manrope/latin-700.css';
+@import '@fontsource/geist-mono/latin-400.css';
+
 @import 'tailwindcss';
 
 @theme {
 	/* ---------------------------------------------------------------
-	 * Color — dark, confident fintech palette. Navy surfaces, an
-	 * electric-blue brand color, a violet accent for "inteligente"/AI
-	 * framing (brain-cog, chart-spline), and success/danger semantics
-	 * for check-check / x-circle inclusion rows.
+	 * Color — Figma `--rt-color-*`. The comment on each token names the
+	 * Figma role it takes its value from. Roles tagged "derived, not in
+	 * Figma" have no Figma counterpart: they are computed from a Figma
+	 * value and wait for the owner's confirmation or redraw
+	 * (.scratch/figma-restyle/issues/06-close-figma-reads.md).
 	 * --------------------------------------------------------------- */
 
 	/* Surfaces, darkest to lightest elevation */
-	--color-surface-base: #0a0e16; /* page background */
-	--color-surface-raised: #121826; /* cards, panels */
-	--color-surface-overlay: #1a2233; /* header/footer bars, sticky nav */
-	--color-surface-sunken: #060910; /* inset wells, toggle track */
+	--color-surface-base: #10141d; /* page background — background-canvas */
+	--color-surface-raised: #171e29; /* cards, panels — surface-default */
+	--color-surface-overlay: #1f2836; /* header/footer bars, sticky nav — surface-raised */
+	--color-surface-emphasis: #2b3c4e; /* badges, disabled actions, note panels — surface-emphasis */
+	--color-surface-sunken: #0b0e15; /* inset wells, toggle track — derived, not in Figma: canvas at ~70% lightness */
 
 	/* Borders */
-	--color-border-subtle: #212b3d;
-	--color-border-strong: #303d57;
+	--color-border-subtle: #1e293b; /* border-default */
+	--color-border-strong: #475569; /* border-strong */
+	--color-border-high-contrast: #94a3b8; /* border-high-contrast */
+	--color-border-accent: #89b4fa; /* border-accent */
 
 	/* Text */
-	--color-text-primary: #f4f6fa; /* headings, body copy */
-	--color-text-secondary: #99a3b8; /* supporting paragraphs, meta */
-	--color-text-tertiary: #5e697f; /* placeholders, disabled, fine print */
-	--color-text-on-brand: #ffffff; /* text/icons on filled brand surfaces */
+	--color-text-primary: #f1f5f9; /* headings, body copy — text-primary */
+	--color-text-secondary: #94a3b8; /* supporting paragraphs, meta — text-secondary */
+	--color-text-tertiary: #475569; /* placeholders, disabled, fine print — text-muted (about 2.4:1 on surface-base, below AA for body text) */
+	--color-text-on-brand: #10141d; /* text/icons on filled brand surfaces — text-inverse */
 
 	/* Brand */
-	--color-brand-primary: #3d7cff; /* primary CTA, links, focus */
-	--color-brand-primary-hover: #2f63d6; /* hover/active state */
-	--color-brand-primary-subtle: #16233d; /* tinted chip/badge backgrounds */
-	--color-accent: #8b5cf6; /* secondary accent — gradients, AI-framed icons */
+	--color-brand-primary: #89b4fa; /* primary CTA, links, focus — action-primary */
+	--color-brand-primary-hover: #7ba2e1; /* hover/active — derived, not in Figma: action-primary mixed 10% toward black */
+	--color-brand-primary-subtle: #89b4fa1f; /* tinted chip/badge backgrounds — derived, not in Figma: action-primary at 12% alpha */
+	--color-accent: #cba6f7; /* secondary accent — derived, not in Figma: violet in the same pastel family as action-primary */
 
 	/* Semantic — inclusion/exclusion rows */
-	--color-success: #22c55e; /* check-check */
-	--color-success-subtle: #123321;
-	--color-danger: #ef4444; /* x-circle */
-	--color-danger-subtle: #2e1416;
+	--color-success: #4ead8a; /* check-check — feedback-success */
+	--color-success-subtle: #4ead8a1a; /* surface-success */
+	--color-danger: #f38ba8; /* x-circle — derived, not in Figma: red in the same pastel family as action-primary */
+	--color-danger-subtle: #f38ba81a; /* derived, not in Figma: danger at 10% alpha, like surface-success */
 
 	/* ---------------------------------------------------------------
 	 * Typography
 	 * --------------------------------------------------------------- */
 
+	/* Figma families: Manrope body, Geist headings, Geist Mono data. */
 	--font-sans:
-		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-		Arial, sans-serif;
+		'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+		'Helvetica Neue', Arial, sans-serif;
+	--font-heading:
+		'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+		'Helvetica Neue', Arial, sans-serif;
+	--font-mono:
+		'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas,
+		'Liberation Mono', monospace;
 
 	--text-display: 3.5rem; /* hero headline */
 	--text-display--line-height: 1.1;
@@ -82,24 +105,41 @@
 	--text-caption--line-height: 1.4;
 
 	/* ---------------------------------------------------------------
-	 * Radius
+	 * Radius — Figma `--rt-radius-*` scale: 0, 4, 6, 8, 12, 16, 22, 40,
+	 * pill 99, circle 200. The existing names keep their pixel values
+	 * (Figma names its scale one step differently: Figma `md` = 8 is the
+	 * code's `sm`, Figma `lg` = 12 is the code's `md`).
 	 * --------------------------------------------------------------- */
 
+	--radius-2xs: 0.25rem; /* 4px — tiny chips */
+	--radius-xs: 0.375rem; /* 6px — badges */
 	--radius-sm: 0.5rem; /* 8px — inputs, small chips */
 	--radius-md: 0.75rem; /* 12px — buttons */
 	--radius-lg: 1rem; /* 16px — cards */
-	--radius-xl: 1.5rem; /* 24px — large panels, hero visual placeholder */
+	--radius-xl: 1.375rem; /* 22px — large panels, hero visual placeholder (was 24px; Figma has 22) */
+	--radius-2xl: 2.5rem; /* 40px */
+	--radius-pill: 99px;
+	--radius-circle: 200px;
 
 	/* ---------------------------------------------------------------
-	 * Shadow — dark-surface elevation, expressed as black-alpha layers
-	 * plus a brand-tinted glow/focus ring derived from --color-brand-primary
-	 * via relative color syntax, so both stay in sync with one edit.
+	 * Border width — Figma `--rt-border-width-1/2`. Consumed through the
+	 * `border-w-1` / `border-w-2` utilities below.
+	 * --------------------------------------------------------------- */
+
+	--border-width-1: 1px;
+	--border-width-2: 2px;
+
+	/* ---------------------------------------------------------------
+	 * Shadow — `shadow-card` is Figma Elevation/Card (0 8 24, #00000040);
+	 * `shadow-glow-brand` takes Figma Elevation/Accent's geometry and
+	 * alpha (0 12 32, 12%) but derives its color from --color-brand-primary
+	 * via relative color syntax, as does the focus ring, so they follow
+	 * one edit.
 	 * --------------------------------------------------------------- */
 
 	--shadow-raised: 0 4px 12px -2px rgb(0 0 0 / 0.45);
-	--shadow-card:
-		0 8px 24px -4px rgb(0 0 0 / 0.5), 0 2px 8px -2px rgb(0 0 0 / 0.35);
-	--shadow-glow-brand: 0 0 32px -8px rgb(from var(--color-brand-primary) r g b / 0.55);
+	--shadow-card: 0 8px 24px 0 rgb(0 0 0 / 0.25);
+	--shadow-glow-brand: 0 12px 32px 0 rgb(from var(--color-brand-primary) r g b / 0.12);
 	--shadow-focus-ring: 0 0 0 3px rgb(from var(--color-brand-primary) r g b / 0.5);
 
 	/* ---------------------------------------------------------------
@@ -123,6 +163,18 @@
 
 	--card-w-narrow: 302px; /* 4-col card width on the 1280px row */
 	--card-w-wide: 410.67px; /* 3-col-with-one-wider card width */
+}
+
+/* Headings render in the heading family without each page opting in. */
+@layer base {
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		font-family: var(--font-heading);
+	}
 }
 
 /* Layout-primitive utilities — one definition per measurement, consumed
@@ -167,4 +219,12 @@
 
 @utility card-w-wide {
 	width: var(--card-w-wide);
+}
+
+@utility border-w-1 {
+	border-width: var(--border-width-1);
+}
+
+@utility border-w-2 {
+	border-width: var(--border-width-2);
 }

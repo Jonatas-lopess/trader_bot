@@ -10,6 +10,11 @@ import '../styles/global.css';
 import SiteHeader from '../components/site-header.astro';
 import SiteFooter from '../components/site-footer.astro';
 import { cfBeaconToken } from '../shared/analytics';
+// Above-the-fold weights (hero headline, body, buttons) are preloaded; the
+// rest load on demand through the @font-face rules in global.css.
+import geist700 from '@fontsource/geist/files/geist-latin-700-normal.woff2?url';
+import manrope400 from '@fontsource/manrope/files/manrope-latin-400-normal.woff2?url';
+import manrope500 from '@fontsource/manrope/files/manrope-latin-500-normal.woff2?url';
 
 export type Props = {
 	title: string;
@@ -42,6 +47,12 @@ const fullTitle = `${title} · ${siteName}`;
 		<meta name="twitter:description" content={description} />
 
 		<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+
+		{
+			[geist700, manrope400, manrope500].map((href) => (
+				<link rel="preload" href={href} as="font" type="font/woff2" crossorigin />
+			))
+		}
 
 		{
 			cfBeaconToken && (

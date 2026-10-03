@@ -8,6 +8,9 @@
 // (swipe, wheel, arrows, or keyboard) and the highlight follows the centre.
 // No highlight with fewer than three cards: there is no "central" one.
 //
+// Below `sm` the arrows are hidden: they would sit on the card text, and a
+// swipe scrolls the track natively.
+//
 // Labels come from src/content/catalog-page.ts — docs/agents/content-files.md.
 import { ChevronLeft, ChevronRight } from '@lucide/astro';
 import { carouselLabel, carouselNextLabel, carouselPrevLabel } from '../content/catalog-page';
@@ -18,7 +21,7 @@ import { carouselLabel, carouselNextLabel, carouselPrevLabel } from '../content/
 		type="button"
 		data-carousel-prev
 		aria-label={carouselPrevLabel}
-		class="absolute left-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-surface-raised text-text-primary transition-colors hover:bg-surface-overlay"
+		class="absolute left-2 top-1/2 z-10 hidden max-sm:hidden! h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-surface-raised text-text-primary transition-colors hover:bg-surface-overlay"
 	>
 		<ChevronLeft aria-hidden="true" />
 	</button>
@@ -37,7 +40,7 @@ import { carouselLabel, carouselNextLabel, carouselPrevLabel } from '../content/
 		type="button"
 		data-carousel-next
 		aria-label={carouselNextLabel}
-		class="absolute right-2 top-1/2 z-10 hidden h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-surface-raised text-text-primary transition-colors hover:bg-surface-overlay"
+		class="absolute right-2 top-1/2 z-10 hidden max-sm:hidden! h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-surface-raised text-text-primary transition-colors hover:bg-surface-overlay"
 	>
 		<ChevronRight aria-hidden="true" />
 	</button>

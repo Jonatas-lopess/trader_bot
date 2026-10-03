@@ -89,6 +89,11 @@
 
 	--text-display: 3.5rem; /* hero headline */
 	--text-display--line-height: 1.1;
+	/* Phone size of the hero headline (below `sm`). Derived, not in Figma: no
+	 * mobile artboard exists (PLANNING.md §2). Geist 700 at 3.5rem does not fit a
+	 * 390px column; 2.25rem keeps "Automação" inside it. */
+	--text-display-phone: 2.25rem;
+	--text-display-phone--line-height: 1.15;
 	--text-heading-1: 2.75rem; /* page/section titles */
 	--text-heading-1--line-height: 1.15;
 	--text-heading-2: 2rem; /* sub-section titles, card prices */
@@ -149,7 +154,11 @@
 	 * repeating pixel values per section.
 	 * --------------------------------------------------------------- */
 
-	--layout-gutter: 80px; /* page gutter, both frames */
+	--layout-gutter: 80px; /* page gutter, both frames (from `lg`) */
+	/* Phone and tablet gutters: derived, not in Figma (no mobile artboard,
+	 * PLANNING.md §2). 80px each side left a 230px column on a 390px phone. */
+	--layout-gutter-phone: 20px; /* below `sm` (640px) */
+	--layout-gutter-tablet: 40px; /* `sm` up to `lg` (1024px) */
 	--layout-content-row: 1280px; /* max-width content row */
 
 	--badge-h: 28px; /* section-badge pill height */
@@ -158,7 +167,8 @@
 	--button-h-sm: 44px; /* secondary/compact button height */
 	--button-h-lg: 48px; /* primary button height */
 
-	--card-p-sm: 32px; /* Robô card padding */
+	--card-p-sm: 32px; /* Robô card padding (from `sm`) */
+	--card-p-sm-phone: 20px; /* Robô card padding below `sm`: derived, not in Figma. Keeps the annual row's price on one line at 390px */
 	--card-p-lg: 40px; /* large card padding */
 
 	--card-w-narrow: 302px; /* 4-col card width on the 1280px row */
@@ -179,8 +189,18 @@
 
 /* Layout-primitive utilities — one definition per measurement, consumed
  * by class name so no section hardcodes these pixel values again. */
+/* Gutter steps down with the viewport: phone, tablet, then the Figma 80px
+ * from `lg` (so 1280px is unchanged). */
 @utility gutter-x {
-	padding-inline: var(--layout-gutter);
+	padding-inline: var(--layout-gutter-phone);
+
+	@media (min-width: 40rem) {
+		padding-inline: var(--layout-gutter-tablet);
+	}
+
+	@media (min-width: 64rem) {
+		padding-inline: var(--layout-gutter);
+	}
 }
 
 @utility content-row {
@@ -206,7 +226,11 @@
 }
 
 @utility card-p-sm {
-	padding: var(--card-p-sm);
+	padding: var(--card-p-sm-phone);
+
+	@media (min-width: 40rem) {
+		padding: var(--card-p-sm);
+	}
 }
 
 @utility card-p-lg {

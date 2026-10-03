@@ -150,14 +150,18 @@ No spec.md — small enough to skip straight to tickets. Wayfinding from a grill
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Figma colors behind the existing role names](.scratch/figma-restyle/issues/01-color-tokens.md) | — | ready-for-agent |
-| 02 | [Figma radii, border widths and elevation behind the existing tokens](.scratch/figma-restyle/issues/02-radii-borders-shadows.md) | — | ready-for-agent |
-| 03 | [Self-hosted Geist, Manrope and Geist Mono](.scratch/figma-restyle/issues/03-self-hosted-fonts.md) | — | ready-for-agent |
-| 04 | [`/conta` restyled from the wireframes](.scratch/figma-restyle/issues/04-conta-restyle.md) | 01, 02, 03 | ready-for-agent |
-| 05 | [Visual sweep of the other pages after the port](.scratch/figma-restyle/issues/05-visual-sweep.md) | 01, 02, 03 | ready-for-agent |
+| 01 | [Figma colors behind the existing role names](.scratch/figma-restyle/issues/01-color-tokens.md) | — | done |
+| 02 | [Figma radii, border widths and elevation behind the existing tokens](.scratch/figma-restyle/issues/02-radii-borders-shadows.md) | — | done |
+| 03 | [Self-hosted Geist, Manrope and Geist Mono](.scratch/figma-restyle/issues/03-self-hosted-fonts.md) | — | done |
+| 04 | [`/conta` restyled from the wireframes](.scratch/figma-restyle/issues/04-conta-restyle.md) | 01, 02, 03 | ready-for-human |
+| 05 | [Visual sweep of the other pages after the port](.scratch/figma-restyle/issues/05-visual-sweep.md) | 01, 02, 03 | done |
 | 06 | [Close the Figma reads the quota blocked](.scratch/figma-restyle/issues/06-close-figma-reads.md) | Figma quota reset | ready-for-human |
+| 07 | [Fine print and labels unreadable on `text-tertiary`](.scratch/figma-restyle/issues/07-fine-print-contrast.md) | — | ready-for-agent |
+| 08 | [Phone layout breaks with the wider fonts](.scratch/figma-restyle/issues/08-phone-layout-with-geist.md) | — | ready-for-agent |
+| 09 | [`/login` field is nearly invisible; error reads as info](.scratch/figma-restyle/issues/09-login-form-and-feedback.md) | — | ready-for-agent |
+| 10 | [Wordmark and prices use `text-heading-*` but render in the body font](.scratch/figma-restyle/issues/10-heading-font-on-wordmark-and-prices.md) | — | ready-for-agent |
 
-Frontier: **01**, **02**, **03** (independent; 01 and 02 edit different sections of the tokens file). 04 and 05 wait for all three.
+Frontier: **07**, **08**, **09**, **10** (follow-ups from the 05 sweep, independent). 04 is built and waits for the owner's browser review of every state; 06 waits for the Figma quota reset. 05's Figma-node comparison could not run (quota) and rides with 06.
 
 ## Untracked
 

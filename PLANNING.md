@@ -78,7 +78,8 @@ tracked as a known risk, not a solved problem.
 | Object storage | R2 | Robot binary, served through a Worker binding |
 | Email | Resend | Plain `fetch`, no SDK |
 | Error tracking | `@sentry/cloudflare`, `Sentry.withSentry` as the outermost Worker export (`sentry.server.config.ts`) | Error capture only, `tracesSampleRate: 0` — no stated need for performance tracing yet. Unset `SENTRY_DSN` ships fine, same gate convention as Appmax/Resend. `environment` tag read per-request off `SENTRY_ENVIRONMENT`, falling back to `'unconfigured'` rather than Sentry's own `'production'` default (sentry-integration/issues/07) |
-| Styling | Tailwind v4, `@theme` tokens | Figma file defines zero variables; tokens authored by hand |
+| Styling | Tailwind v4, `@theme` tokens | Color, radius, border-width and elevation tokens follow the Figma Variables (`--rt-*`, figma-restyle); layout primitives and the type-size scale are still authored by hand. Roles Figma does not draw are marked "derived, not in Figma" in `global.css` |
+| Fonts | `@fontsource/geist`, `@fontsource/manrope`, `@fontsource/geist-mono` | Self-hosted WOFF2, Latin subset only, `font-display: swap`; no third-party font request. Geist headings, Manrope body, Geist Mono data (figma-restyle/03) |
 | Icons | `@lucide/astro` | Per-icon Astro components, tree-shaken to only what's imported. `lucide-astro` (no scope) is deprecated upstream in favour of this package — do not add it |
 | Analytics | Cloudflare Web Analytics | Cookieless, no consent banner required |
 | Video | YouTube iframe | Loaded directly |

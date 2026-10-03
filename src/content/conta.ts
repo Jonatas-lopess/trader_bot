@@ -128,7 +128,7 @@ export const licenseBadges: Record<LicenseStatus['status'], LicenseBadge> = {
 	awaiting_account: { label: 'Conta pendente', icon: 'key-round', tone: 'neutral' },
 	preparing: { label: 'Em preparo', icon: 'cog', tone: 'neutral' },
 	active: { label: 'Licença ativa', icon: 'shield-check', tone: 'success' },
-	expired: { label: 'Licença expirada', icon: 'circle-x', tone: 'danger' },
+	expired: { label: 'Licença expirada', icon: 'circle-x', tone: 'neutral' },
 	revoked: { label: 'Licença revogada', icon: 'shield-alert', tone: 'danger' },
 };
 

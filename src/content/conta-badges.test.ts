@@ -19,9 +19,9 @@ describe('licenseBadges', () => {
 		expect(new Set(labels).size).toBe(statuses.length);
 	});
 
-	it('marks active as success and revoked/expired as danger', () => {
+	it('marks active as success, revoked as danger and expired as neutral (drawn neutral in estados-licenca)', () => {
 		expect(licenseBadges.active.tone).toBe('success');
-		expect(licenseBadges.expired.tone).toBe('danger');
+		expect(licenseBadges.expired.tone).toBe('neutral');
 		expect(licenseBadges.revoked.tone).toBe('danger');
 	});
 });

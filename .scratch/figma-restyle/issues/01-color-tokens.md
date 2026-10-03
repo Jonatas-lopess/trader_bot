@@ -34,7 +34,7 @@ Also fix the now-false comment at the top of the tokens file ("the Figma file de
 - [x] Each derived role has a one-line rationale in this ticket's comments, marked "derived, not in Figma"
 - [x] The contrast of `text-tertiary` (`#475569`) on `surface-base` (`#10141d`) is measured and written down. It is about 2.4:1, below AA for body text. Report it; do not change the Figma value
 - [x] The tokens-file header comment no longer claims Figma has zero variables
-- [x] Typecheck and the full test suite pass; the landing, catalog, login, legal and `/conta` pages render with no broken contrast or missing color
+- [ ] Typecheck and the full test suite pass; the landing, catalog, login, legal and `/conta` pages render with no broken contrast or missing color
 
 ## Comments
 
@@ -46,4 +46,4 @@ Also fix the now-false comment at the top of the tokens file ("the Figma file de
   - `danger` `#f38ba8` and `accent` `#cba6f7`: no Figma counterpart; red and violet in the same pastel family as `action-primary`.
   - `danger-subtle` `#f38ba81a`: `danger` at 10% alpha, matching `surface-success`.
 - Contrast measured (WCAG): `text-tertiary` `#475569` on `surface-base` `#10141d` = 2.43:1; on `surface-raised` `#171e29` = 2.21:1. Below AA (4.5:1) for body text. Used for footer legal text, robot-card captions and labels, and placeholders (`text-caption`/`text-body-sm`). Figma value kept; reported only. Other pairs: `text-secondary` on base 7.19:1; `text-on-brand` on `brand-primary` 8.75:1, on hover 7.10:1.
-- Full suite and typecheck: see ticket 03 comment (run once for the whole token batch).
+- Typecheck and the full suite pass (39 files, 352 tests; see ticket 03). The "no broken contrast" half is not met: the sweep (ticket 05) found `text-tertiary` fine print at 1.96–2.43:1 (follow-up 07) and a 1.26:1 `/login` field border (follow-up 09). Box left open until those close.

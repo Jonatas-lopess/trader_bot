@@ -27,4 +27,4 @@ Rules:
 - Consumers of the 24→22 token (`rounded-xl`): hero visual placeholder (`hero-section.astro`) and video frame (`video-section.astro`). A 2px corner change; checked by reading, not yet in the browser (covered by ticket 05).
 - Border widths: `--border-width-1/2` with `border-w-1` / `border-w-2` utilities.
 - Elevation: `shadow-card` = `0 8px 24px 0 rgb(0 0 0 / 0.25)` (Figma `#00000040`). `shadow-glow-brand` = `0 12px 32px 0` at 12% of `brand-primary` via relative color (Figma `#89B4FA1F`).
-- Suite: see ticket 03 comment.
+- Typecheck and the full suite pass (39 files, 352 tests). The sweep (ticket 05) viewed the 22px consumers in the browser: corners look fine. The brand glow is much fainter at Figma's 12% alpha; accepted, not a finding.

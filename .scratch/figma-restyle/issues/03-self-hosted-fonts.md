@@ -12,7 +12,7 @@ Weights come from the PNG wireframes for now: regular, medium and bold for headi
 - [x] The built Worker serves the WOFF2 files from the same origin; the network panel shows no request to a font CDN
 - [x] Only the Latin subset and the weights in use are shipped; the size added to the build is recorded in this ticket's comments
 - [x] Above-the-fold weights are preloaded and `font-display: swap` is set, so text is never invisible while loading
-- [x] Typecheck and the full test suite pass; the page renders correctly with the fonts blocked
+- [ ] Typecheck and the full test suite pass; the page renders correctly with the fonts blocked (tests pass; fonts-blocked rendering not viewed)
 
 ## Comments
 
@@ -21,4 +21,7 @@ Weights come from the PNG wireframes for now: regular, medium and bold for headi
 - Preload: Geist 700, Manrope 400, Manrope 500 in `base-layout.astro` (hashed URLs through `?url` imports). `font-display: swap` comes from the fontsource CSS.
 - Fallback with fonts blocked: not viewed in a browser; the stacks fall through to the system fonts by construction.
 - Browser network-panel check not done by the agent (no browser); the build output was inspected instead.
-- Typecheck: 0 errors. Full suite result recorded below once finished.
+- Typecheck: 0 errors. Full suite: 39 files, 352 tests pass (one earlier run showed 3 failures in `identity/e2e.test.ts` while builds and agents shared the machine; the file passes alone and the clean rerun passed).
+- Correction from code review: fontsource's CSS also references `.woff` fallbacks, so `dist/client/_astro` holds 12 font files (6 `.woff2` + 6 `.woff`, ~116 KB of `.woff`). Browsers load only the WOFF2; the `.woff` files are dead weight in the build, not in page loads.
+- Ticket 05's browser sweep confirmed Geist 700 and Manrope 400/500/700 load and no request leaves the origin. The fonts-blocked rendering is still unviewed.
+- Note: `font-semibold` (600) is used in a few components; with only 500 and 700 shipped the browser picks 700.

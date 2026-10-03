@@ -106,6 +106,45 @@ export const corretoraNoticeTexts: Record<CorretoraNotice, string> = {
 	unavailable: 'Não foi possível registrar o número da conta para esta compra. Fale com o nosso suporte.',
 };
 
+// Notice banner tone: a saved account number is good news, the rest are errors.
+export type NoticeTone = 'success' | 'danger';
+export const corretoraNoticeTones: Record<CorretoraNotice, NoticeTone> = {
+	saved: 'success',
+	invalid: 'danger',
+	exists: 'danger',
+	unavailable: 'danger',
+};
+
+// Figma restyle ticket 04 (.scratch/figma-restyle/issues/04-conta-restyle.md): one status badge
+// per Licença state. `icon` is a key into the Lucide map in `src/components/license-card.astro`
+// so this file stays free of component imports. Derived states (everything but the wireframe's
+// "Expirada" / "Pagamento pendente") reuse the same badge pattern; owner reviews them in browser.
+export type BadgeTone = 'success' | 'danger' | 'neutral';
+export type LicenseBadgeIcon = 'hourglass' | 'key-round' | 'cog' | 'shield-check' | 'circle-x' | 'shield-alert';
+export type LicenseBadge = { label: string; icon: LicenseBadgeIcon; tone: BadgeTone };
+
+export const licenseBadges: Record<LicenseStatus['status'], LicenseBadge> = {
+	none: { label: 'Pagamento pendente', icon: 'hourglass', tone: 'neutral' },
+	awaiting_account: { label: 'Conta pendente', icon: 'key-round', tone: 'neutral' },
+	preparing: { label: 'Em preparo', icon: 'cog', tone: 'neutral' },
+	active: { label: 'Licença ativa', icon: 'shield-check', tone: 'success' },
+	expired: { label: 'Licença expirada', icon: 'circle-x', tone: 'danger' },
+	revoked: { label: 'Licença revogada', icon: 'shield-alert', tone: 'danger' },
+};
+
+// Static panel from the `estados-licenca` wireframe. Adapted copy (the frame mentions Pix/boleto
+// and suspension), so it waits for the owner's launch pass.
+export const backendNoteHeading = launchBlocking(
+	'Liberação somente após confirmação do backend',
+	'Adapted from the Figma estados-licenca frame (86:1602); wording not yet approved by the owner.'
+);
+export const backendNoteBody = launchBlocking(
+	'O backend valida o pagamento e a Licença antes de liberar o acesso ao Robô. Concluir o checkout não libera o acesso por si só. Na expiração ou revogação, o acesso permanece bloqueado.',
+	'Adapted from the Figma estados-licenca frame (86:1602); wording not yet approved by the owner.'
+);
+
+export const customerAreaLabel = 'Área do cliente';
+
 export const logoutLabel = 'Sair';
 
 export const cancelLabel = 'Cancelar assinatura';

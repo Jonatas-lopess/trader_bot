@@ -1,0 +1,142 @@
+---
+// Licença product card — src/components/license-card.astro
+//
+// One card per Licença on `/conta` (.scratch/figma-restyle/issues/04-conta-restyle.md): icon tile,
+// status badge per Licença state, mono data row, and the Corretora form / cancel control that
+// the state allows. Card pattern from the `painel-cliente` / `estados-licenca` wireframes; states
+// the wireframes do not draw reuse it. Copy comes from src/content/conta.ts — see
+// docs/agents/content-files.md. Behavior (form actions, data attributes) is unchanged; the
+// confirm() script stays in the page.
+import { CircleX, Cog, Hourglass, KeyRound, ShieldAlert, ShieldCheck } from '@lucide/astro';
+import type { AccountLicense } from '../modules/licensing/account-page';
+import {
+	assinaturaLabel,
+	assinaturaStatusTexts,
+	cancelLabel,
+	corretoraAccountHint,
+	corretoraAccountLabel,
+	corretoraBannerBody,
+	corretoraBannerHeading,
+	corretoraSubmitLabel,
+	licenseBadges,
+	licenseLabel,
+	licenseStatusText,
+	rejectedNoticeText,
+	type BadgeTone,
+	type LicenseBadgeIcon,
+} from '../content/conta';
+
+type Props = {
+	item: AccountLicense;
+};
+
+const { item } = Astro.props;
+
+const icons: Record<LicenseBadgeIcon, typeof Hourglass> = {
+	hourglass: Hourglass,
+	'key-round': KeyRound,
+	cog: Cog,
+	'shield-check': ShieldCheck,
+	'circle-x': CircleX,
+	'shield-alert': ShieldAlert,
+};
+
+// Full class strings, so Tailwind's scanner sees every one.
+const badgeToneClasses: Record<BadgeTone, string> = {
+	success: 'bg-success-subtle text-success',
+	danger: 'bg-danger-subtle text-danger',
+	neutral: 'bg-surface-emphasis text-brand-primary',
+};
+const tileToneClasses: Record<BadgeTone, string> = {
+	success: 'text-success',
+	danger: 'text-danger',
+	neutral: 'text-brand-primary',
+};
+
+const badge = licenseBadges[item.license.status];
+const Icon = icons[badge.icon];
+---
+
+<article
+	class="card-p-sm flex flex-col gap-6 rounded-lg border-w-1 border-border-subtle bg-surface-raised shadow-card"
+	data-purchase-id={item.purchaseId}
+>
+	<div class="flex flex-wrap items-center gap-4">
+		<span class={`flex size-12 shrink-0 items-center justify-center rounded-md bg-surface-emphasis ${tileToneClasses[badge.tone]}`}>
+			<Icon size={24} aria-hidden="true" />
+		</span>
+		<h3 class="min-w-0 flex-1 text-heading-3 font-bold text-text-primary">{licenseLabel}</h3>
+		<span
+			class={`inline-flex shrink-0 items-center gap-1.5 rounded-xs px-2 py-1 font-mono text-caption ${badgeToneClasses[badge.tone]}`}
+		>
+			<Icon size={14} aria-hidden="true" />
+			{badge.label}
+		</span>
+	</div>
+
+	{
+		item.subscriptionStatus === 'rejected' && (
+			<p class="rounded-md bg-surface-emphasis p-4 text-body text-text-primary" role="status">
+				{rejectedNoticeText.value}
+			</p>
+		)
+	}
+
+	{
+		item.license.status === 'awaiting_account' && (
+			<section
+				class="flex flex-col gap-4 rounded-md border-w-1 border-border-accent bg-surface-sunken p-4"
+				data-corretora-banner
+			>
+				<h4 class="text-body-lg font-bold text-text-primary">{corretoraBannerHeading}</h4>
+				<p class="text-body text-text-secondary">{corretoraBannerBody}</p>
+				<form method="POST" action="/conta/corretora" data-corretora-form class="flex max-w-sm flex-col gap-4">
+					<input type="hidden" name="purchase_id" value={item.purchaseId} />
+					<label class="flex flex-col gap-2">
+						<span class="text-body-sm text-text-secondary">{corretoraAccountLabel}</span>
+						<input
+							type="text"
+							name="corretora_account"
+							inputmode="numeric"
+							pattern="[1-9][0-9]{0,11}"
+							required
+							class="rounded-sm border-w-1 border-border-strong bg-surface-base px-4 py-2 font-mono text-body text-text-primary focus:border-border-accent focus:shadow-focus-ring focus:outline-none"
+						/>
+						<span class="text-body-sm text-text-secondary">{corretoraAccountHint}</span>
+					</label>
+					<button
+						type="submit"
+						class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+					>
+						{corretoraSubmitLabel}
+					</button>
+				</form>
+			</section>
+		)
+	}
+
+	<dl class="grid gap-4 border-t border-border-subtle pt-6 sm:grid-cols-2">
+		<div class="flex flex-col gap-1">
+			<dt class="text-body-sm text-text-secondary">{licenseLabel}</dt>
+			<dd class="font-mono text-body text-text-primary">{licenseStatusText(item.license)}</dd>
+		</div>
+		<div class="flex flex-col gap-1">
+			<dt class="text-body-sm text-text-secondary">{assinaturaLabel}</dt>
+			<dd class="font-mono text-body text-text-primary">{assinaturaStatusTexts[item.subscriptionStatus]}</dd>
+		</div>
+	</dl>
+
+	{
+		item.canCancel && (
+			<form method="POST" action="/conta/cancelar" data-cancel-form>
+				<input type="hidden" name="purchase_id" value={item.purchaseId} />
+				<button
+					type="submit"
+					class="button-h-lg inline-flex items-center justify-center rounded-md border-w-1 border-border-strong px-6 text-body font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+				>
+					{cancelLabel}
+				</button>
+			</form>
+		)
+	}
+</article>

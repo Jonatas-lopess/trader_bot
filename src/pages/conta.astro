@@ -9,23 +9,18 @@
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/base-layout.astro';
 import { resolveAccountView } from '../modules/licensing/account-page';
+import LicenseCard from '../components/license-card.astro';
+import { Server } from '@lucide/astro';
 import {
-	assinaturaLabel,
-	assinaturaStatusTexts,
+	backendNoteBody,
+	backendNoteHeading,
 	cancelConfirmMessage,
-	cancelLabel,
-	heading,
-	corretoraAccountHint,
-	corretoraAccountLabel,
-	corretoraBannerBody,
-	corretoraBannerHeading,
 	corretoraConfirmMessage,
 	corretoraNoticeTexts,
-	corretoraSubmitLabel,
-	licenseLabel,
-	licenseStatusText,
+	corretoraNoticeTones,
+	customerAreaLabel,
+	heading,
 	logoutLabel,
-	rejectedNoticeText,
 	pageDescription,
 	pageTitle,
 } from '../content/conta';
@@ -36,92 +31,55 @@ const view = await resolveAccountView(env, Astro.request);
 if (!view.ok) return Astro.redirect('/login');
 
 const noticeParam = Astro.url.searchParams.get('corretora');
-const notice =
-	noticeParam !== null && noticeParam in corretoraNoticeTexts
-		? corretoraNoticeTexts[noticeParam as keyof typeof corretoraNoticeTexts]
-		: null;
+const noticeKey =
+	noticeParam !== null && noticeParam in corretoraNoticeTexts ? (noticeParam as keyof typeof corretoraNoticeTexts) : null;
+const notice = noticeKey !== null ? corretoraNoticeTexts[noticeKey] : null;
+const noticeToneClass =
+	noticeKey !== null && corretoraNoticeTones[noticeKey] === 'success'
+		? 'border-success bg-success-subtle'
+		: 'border-danger bg-danger-subtle';
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
-	<section class="content-row gutter-x flex flex-col gap-6 py-20">
-		<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+	<section class="content-row gutter-x flex flex-col gap-8 py-20">
+		<div class="flex flex-wrap items-end justify-between gap-4">
+			<div class="flex flex-col gap-2">
+				<p class="font-mono text-caption uppercase text-border-accent">{customerAreaLabel}</p>
+				<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+			</div>
+			<form method="POST" action="/logout">
+				<button type="submit" class="text-body-sm text-text-secondary underline transition-colors hover:text-text-primary">
+					{logoutLabel}
+				</button>
+			</form>
+		</div>
 
-		{notice !== null && <p class="text-body text-text-secondary" role="status">{notice}</p>}
+		{
+			notice !== null && (
+				<p class={`rounded-md border-w-1 p-4 text-body text-text-primary ${noticeToneClass}`} role="status">
+					{notice}
+				</p>
+			)
+		}
 
 		{
 			view.robots.map((robot) => (
 				<section class="flex flex-col gap-6">
 					<h2 class="text-heading-2 font-bold text-text-primary">{robot.robotName}</h2>
-
 					{robot.licenses.map((item) => (
-						<article class="flex flex-col gap-6 rounded-md border border-border-subtle p-6" data-purchase-id={item.purchaseId}>
-							{item.subscriptionStatus === 'rejected' && (
-								<p class="text-body text-text-primary" role="status">
-									{rejectedNoticeText.value}
-								</p>
-							)}
-
-							{item.license.status === 'awaiting_account' && (
-								<section class="flex flex-col gap-4" data-corretora-banner>
-									<h3 class="text-heading-3 font-bold text-text-primary">{corretoraBannerHeading}</h3>
-									<p class="text-body text-text-secondary">{corretoraBannerBody}</p>
-									<form method="POST" action="/conta/corretora" data-corretora-form class="flex max-w-sm flex-col gap-4">
-										<input type="hidden" name="purchase_id" value={item.purchaseId} />
-										<label class="flex flex-col gap-2">
-											<span class="text-body-sm text-text-secondary">{corretoraAccountLabel}</span>
-											<input
-												type="text"
-												name="corretora_account"
-												inputmode="numeric"
-												pattern="[1-9][0-9]{0,11}"
-												required
-												class="rounded-md border border-border-subtle px-4 py-2 text-body text-text-primary"
-											/>
-											<span class="text-body-sm text-text-secondary">{corretoraAccountHint}</span>
-										</label>
-										<button
-											type="submit"
-											class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
-										>
-											{corretoraSubmitLabel}
-										</button>
-									</form>
-								</section>
-							)}
-
-							<dl class="flex flex-col gap-4">
-								<div>
-									<dt class="text-body-sm text-text-secondary">{licenseLabel}</dt>
-									<dd class="text-body-lg text-text-primary">{licenseStatusText(item.license)}</dd>
-								</div>
-								<div>
-									<dt class="text-body-sm text-text-secondary">{assinaturaLabel}</dt>
-									<dd class="text-body-lg text-text-primary">{assinaturaStatusTexts[item.subscriptionStatus]}</dd>
-								</div>
-							</dl>
-
-							{item.canCancel && (
-								<form method="POST" action="/conta/cancelar" data-cancel-form>
-									<input type="hidden" name="purchase_id" value={item.purchaseId} />
-									<button
-										type="submit"
-										class="button-h-lg inline-flex items-center justify-center rounded-md border border-border-subtle px-6 text-body font-medium text-text-primary"
-									>
-										{cancelLabel}
-									</button>
-								</form>
-							)}
-						</article>
+						<LicenseCard item={item} />
 					))}
 				</section>
 			))
 		}
 
-		<form method="POST" action="/logout">
-			<button type="submit" class="text-body-sm text-text-secondary underline">
-				{logoutLabel}
-			</button>
-		</form>
+		<aside class="flex gap-4 rounded-lg bg-surface-emphasis p-6">
+			<Server size={24} class="mt-0.5 shrink-0 text-brand-primary" aria-hidden="true" />
+			<div class="flex flex-col gap-1">
+				<p class="text-body font-bold text-text-primary">{backendNoteHeading.value}</p>
+				<p class="text-body-sm text-text-secondary">{backendNoteBody.value}</p>
+			</div>
+		</aside>
 	</section>
 </BaseLayout>
 

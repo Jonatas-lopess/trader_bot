@@ -20,7 +20,7 @@ const error = Astro.url.searchParams.has('error');
 		<p class="text-body-lg text-text-secondary">{subheading}</p>
 
 		{sent && <p class="text-body text-text-secondary" role="status">{sentMessage}</p>}
-		{error && <p class="text-body text-brand-primary" role="alert">{errorMessage}</p>}
+		{error && <p class="text-body text-danger" role="alert">{errorMessage}</p>}
 
 		<form method="POST" action="/login/request" class="flex w-full max-w-sm flex-col gap-4">
 			<label class="flex flex-col gap-2 text-left">
@@ -29,7 +29,7 @@ const error = Astro.url.searchParams.has('error');
 					type="email"
 					name="email"
 					required
-					class="rounded-md border border-border-subtle px-4 py-2 text-body text-text-primary"
+					class="rounded-md border-w-1 border-border-high-contrast bg-surface-raised px-4 py-2 text-body text-text-primary focus:border-border-accent focus:shadow-focus-ring focus:outline-none"
 				/>
 			</label>
 			<button

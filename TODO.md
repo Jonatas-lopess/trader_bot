@@ -170,12 +170,12 @@ No spec.md — four small tickets. Origin: owner noted (2026-10-05) that online 
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Support channel (replaces inert Contato and support button)](.scratch/withdrawal-guarantee/issues/01-support-channel.md) | — | ready-for-agent |
+| 01 | [Support channel (replaces inert Contato and support button)](.scratch/withdrawal-guarantee/issues/01-support-channel.md) | — | done |
 | 02 | [How a Cliente requests the 7-day withdrawal](.scratch/withdrawal-guarantee/issues/02-withdrawal-request-path.md) | 01, 04 | ready-for-agent |
 | 03 | [Tell the buyer about the 7 days before and after paying](.scratch/withdrawal-guarantee/issues/03-surface-the-guarantee.md) | — | ready-for-agent |
 | 04 | [Owner decisions for the withdrawal path](.scratch/withdrawal-guarantee/issues/04-owner-decisions.md) | — | ready-for-human |
 
-Frontier: 01, 03 (agent) and 04 (owner).
+Frontier: 03 (agent) and 04 (owner).
 
 ## Untracked
 

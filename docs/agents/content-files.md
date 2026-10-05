@@ -82,8 +82,8 @@ grepping `from '../content/` (or `from '../../content/`) across `src/`.
 
 ## Dead links (adjacent, not the same convention)
 
-Links with no destination in this scope (Contato, and the support button on `/conta`) are a separate concern from launch-blocking copy — they're not unapproved copy,
-they're routes that don't exist yet. They're inventoried once, in
-`src/content/dead-links.ts`, and rendered as inert `<span>` elements (never
-`<a href="#">`) by `src/components/site-header.astro`, `site-footer.astro` and `src/pages/conta.astro`. Grep:
-`grep -rn "deadLinks\." src/`.
+Links with no destination yet are a separate concern from launch-blocking copy — they're not
+unapproved copy, they're routes that don't exist yet. They're inventoried once, in
+`src/content/dead-links.ts`, and rendered as inert `<span>` elements (never `<a href="#">`).
+The inventory is empty today: Contato and the support button on `/conta` became `mailto:` links
+to the address in `src/content/support.ts`. Grep: `grep -rn "deadLinks\." src/`.

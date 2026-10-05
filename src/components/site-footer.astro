@@ -2,7 +2,7 @@
 // Site footer — src/components/site-footer.astro
 //
 // Brand column, "Links Úteis" (real destinations), "Suporte & Termos"
-// (Termos and Privacidade link out; Contato is a dead link, src/content/dead-links.ts), the AVISO LEGAL disclaimer, and
+// (Termos and Privacidade link out; Contato is a mailto, src/content/support.ts), the AVISO LEGAL disclaimer, and
 // the copyright line. Content comes from src/content/footer.ts — see
 // docs/agents/content-files.md.
 import {
@@ -49,22 +49,12 @@ const year = new Date().getFullYear();
 				{
 					supportLinks.map((link) => (
 						<li>
-							{'href' in link ? (
-								<a
-									href={link.href}
-									class="text-body-sm text-text-secondary hover:text-text-primary"
-								>
-									{link.label}
-								</a>
-							) : (
-								<span
-									class="cursor-not-allowed text-body-sm text-text-tertiary"
-									aria-disabled="true"
-									title="Indisponível nesta etapa"
-								>
-									{link.label}
-								</span>
-							)}
+							<a
+								href={link.href}
+								class="text-body-sm text-text-secondary hover:text-text-primary"
+							>
+								{link.label}
+							</a>
 						</li>
 					))
 				}

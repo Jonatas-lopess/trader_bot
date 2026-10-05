@@ -12,7 +12,6 @@ import { resolveAccountView } from '../modules/licensing/account-page';
 import LicenseCard from '../components/license-card.astro';
 import ConfirmDialog from '../components/confirm-dialog.astro';
 import { CircleCheck, Headphones, Server } from '@lucide/astro';
-import { deadLinks } from '../content/dead-links';
 import {
 	activeLicensesText,
 	backendNoteBody,
@@ -23,9 +22,11 @@ import {
 	pageDescription,
 	pageTitle,
 	subheading,
+	supportButtonLabel,
 	supportCardBody,
 	supportCardHeading,
 } from '../content/conta';
+import { supportMailto } from '../content/support';
 
 export const prerender = false;
 
@@ -83,13 +84,12 @@ const noticeToneClass =
 						<h2 class="text-body-lg font-bold text-text-primary">{supportCardHeading.value}</h2>
 					</div>
 					<p class="text-body-sm text-text-secondary">{supportCardBody.value}</p>
-					<span
-						class="button-h-sm inline-flex cursor-not-allowed items-center justify-center rounded-md border-w-1 border-border-subtle text-body-sm font-medium text-text-tertiary"
-						aria-disabled="true"
-						title="Indisponível nesta etapa"
+					<a
+						href={supportMailto()}
+						class="button-h-sm inline-flex items-center justify-center rounded-md border-w-1 border-border-subtle text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
 					>
-						{deadLinks.suporte}
-					</span>
+						{supportButtonLabel}
+					</a>
 				</aside>
 
 				<aside class="flex gap-3 rounded-lg bg-surface-emphasis p-5">

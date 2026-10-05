@@ -333,7 +333,7 @@ Consequences, stated rather than hidden:
   the account form and the cancel control the state allows. The Figma wireframes also draw a
   license-key box, a download button, an invoice table, an upgrade card and a Cliente name;
   none exists in 0.1 (no key, email-only delivery, no invoice data, no plan tiers, no name
-  held), so none is built. The support button has no destination yet (`deadLinks.suporte`).
+  held), so none is built. The support button is a `mailto:` to the e-mail-only support address (`src/content/support.ts`).
   Cancel and the Corretora account are confirmed in a styled `<dialog>`, not the browser's
   `confirm()`.
 - **Expiry follows purchase status** through one derivation function. A Compra's Licença is

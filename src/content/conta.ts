@@ -172,7 +172,7 @@ export const customerAreaLabel = 'Área do cliente';
 
 // Support card from the `painel-cliente` wireframe ("Precisa de ajuda?"). Trimmed to what is
 // true in 0.1: the wireframe's "suporte prioritário por e-mail e chat" is a plan claim with no
-// plan behind it. The button has no destination yet (src/content/dead-links.ts).
+// plan behind it. The button is a mailto to the support address (src/content/support.ts).
 export const supportCardHeading = launchBlocking(
 	'Precisa de ajuda?',
 	'Adapted from the Figma painel-cliente frame (86:1423); wording not yet approved by the owner.'
@@ -181,6 +181,8 @@ export const supportCardBody = launchBlocking(
 	'Dúvidas sobre sua Licença, o número da conta na Corretora ou o download do Robô? Fale com o nosso suporte.',
 	'Adapted from the Figma painel-cliente frame (86:1423); wording not yet approved by the owner.'
 );
+
+export const supportButtonLabel = 'Falar com o suporte';
 
 export const logoutLabel = 'Sair';
 

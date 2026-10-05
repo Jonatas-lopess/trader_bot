@@ -3,21 +3,15 @@
  * copyright line.
  *
  * See `docs/agents/content-files.md` for the typed content-file convention
- * this follows, and `src/content/dead-links.ts` for the inert-link set
- * (Contato).
+ * this follows. Contato opens the support e-mail (`src/content/support.ts`).
  */
 
-import { deadLinks } from './dead-links';
 import { politicaDePrivacidade, termosDeUso } from './legal';
+import { supportMailto } from './support';
 
 export type FooterLink = {
 	label: string;
 	href: string;
-};
-
-export type DeadFooterLink = {
-	label: string;
-	dead: true;
 };
 
 export const footerBrand = {
@@ -35,12 +29,12 @@ export const usefulLinks: FooterLink[] = [
 	{ label: 'FAQ', href: '/#faq' },
 ];
 
-// Termos and Privacidade have routes (src/content/legal.ts); Contato does
-// NOT have a destination in this scope — see src/content/dead-links.ts.
-export const supportLinks: (FooterLink | DeadFooterLink)[] = [
+// Termos and Privacidade have routes (src/content/legal.ts); Contato is a mailto to the
+// support address (src/content/support.ts).
+export const supportLinks: FooterLink[] = [
 	{ label: termosDeUso.pageTitle, href: termosDeUso.path },
 	{ label: politicaDePrivacidade.pageTitle, href: politicaDePrivacidade.path },
-	{ label: deadLinks.contato, dead: true },
+	{ label: 'Contato', href: supportMailto() },
 ];
 
 // AVISO LEGAL — real compliance copy, shipped verbatim on every page

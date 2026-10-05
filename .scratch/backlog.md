@@ -92,7 +92,7 @@ Decided in the 2026-10-02 grilling; each waits on a decision that isn't made yet
 - **Chargeback-specific copy** ("Suspensa por chargeback"). `getLicenseStatus` maps `refunded` and `chargeback` to one `revoked` state. Legal wording is `launchBlocking` anyway; fits with the refund-policy work.
 - **Robô → Advisor rename.** The `/conta` heading is "Meus produtos" (as the wireframe); it would eventually read "Meus Advisors" (more technical term). The domain term stays Robô until the owner decides. One sweep: `CONTEXT.md`, the ADR and `src/content/`.
 - **Wireframe elements `/conta` does not have** (figma-restyle/04). Each needs something 0.1 lacks: license-key box with Copiar (no key), "Baixar novamente" and installer row (download is email-only, PLANNING §8), invoice table (no invoice data), upgrade card (no plan tiers), avatar and name (only an email is held), and the Downloads / Faturas / Suporte / Conta tabs. "Renovar licença" waits on the renewal rule above.
-- **Support channel.** The "Falar com o suporte" button on `/conta` and Contato in the footer are inert (`src/content/dead-links.ts`) until a support channel exists.
+- **Support channel.** Closed: footer Contato and the "Falar com o suporte" button on `/conta` are `mailto:` links to `supportEmail` (`src/content/support.ts`, launch-blocking until the production domain exists). Done: `withdrawal-guarantee/01`.
 - **Legal routes.** Termos and Privacidade also open as a modal on `/conta`; whether `/termos-de-uso` and `/privacidade` can be dropped is open (a public URL is often asked for by gateway onboarding; PLANNING §9).
 
 ## Deferred from catalog-pivot 15

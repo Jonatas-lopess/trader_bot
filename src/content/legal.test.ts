@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { deadLinks } from './dead-links';
 import { supportLinks } from './footer';
 import { politicaDePrivacidade, termosDeUso, withdrawalBody, withdrawalHeading } from './legal';
 
@@ -19,12 +18,8 @@ describe('legal pages content', () => {
 		expect(withdrawalBody.reason).toMatch(/art\. 49/);
 	});
 
-	it('footer links both pages; only Contato stays dead', () => {
+	it('footer links both pages before Contato (the mailto is covered in support.test.ts)', () => {
 		const hrefs = supportLinks.flatMap((l) => ('href' in l ? [l.href] : []));
-		expect(hrefs).toEqual([termosDeUso.path, politicaDePrivacidade.path]);
-		const deadLabels = supportLinks.flatMap((l) => ('dead' in l ? [l.label] : []));
-		expect(deadLabels).toEqual([deadLinks.contato]);
-		// The inventory also lists the /conta support button (same missing support channel).
-		expect(Object.keys(deadLinks)).toEqual(['contato', 'suporte']);
+		expect(hrefs.slice(0, 2)).toEqual([termosDeUso.path, politicaDePrivacidade.path]);
 	});
 });

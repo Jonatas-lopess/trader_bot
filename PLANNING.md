@@ -453,7 +453,10 @@ External, none of them code. Split by what they actually block.
    before flipping to production sends. **Currently using Resend's shared test sender**
    (`onboarding@resend.dev`, `src/modules/identity/resend-client.ts`) since `robotrader.com.br`
    is unverified — go-live must swap `FROM_ADDRESS` back to `login@robotrader.com.br` once
-   verification lands.
+   verification lands. The shared sender only delivers to the Resend account owner, so a
+   test env used by anyone else sets `DEV_LOGIN_KEY` and logs in via
+   `GET /login/dev?email=<cliente>&key=<DEV_LOGIN_KEY>` (no e-mail sent; 404 when the secret
+   is unset). Never set in production.
 4. **Appmax's published webhook source-IP list, once Appmax provides one.** §13 —
    `APPMAX_WEBHOOK_IPS` (`src/modules/billing/webhook-hardening.ts`) ships unset and fails
    closed until then; `/billing/webhook` rejects every delivery, Appmax's included, so this

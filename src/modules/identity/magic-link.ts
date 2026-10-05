@@ -12,13 +12,29 @@
 import * as Sentry from '@sentry/cloudflare';
 import { sendMagicLinkEmail } from './resend-client';
 import { normalizeEmail } from './normalize-email';
-import { createSession } from './session';
+import { createSession, timingSafeEqual } from './session';
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
 type RequestEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY' | 'LOGIN_RATE_LIMITER'>;
 type RedeemEnv = Pick<Cloudflare.Env, 'DB' | 'SESSION_SECRET'>;
 type IssueEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY'>;
+
+/**
+ * Token insert + verify URL, shared by the e-mailed link (`issueMagicLink`) and the dev
+ * bypass (`issueDevLoginUrl`) so both hand `redeemMagicLink` the exact same kind of token.
+ */
+async function mintMagicLinkUrl(
+	env: Pick<Cloudflare.Env, 'DB'>,
+	params: { customerId: string; origin: string }
+): Promise<string> {
+	const token = crypto.randomUUID();
+	const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
+	await env.DB.prepare('INSERT INTO login_tokens (token, customer_id, expires_at) VALUES (?, ?, ?)')
+		.bind(token, params.customerId, expiresAt)
+		.run();
+	return new URL(`/login/verify?token=${token}`, params.origin).toString();
+}
 
 /**
  * Mint-and-send, factored out of `requestMagicLink` so a caller that
@@ -37,13 +53,7 @@ export async function issueMagicLink(
 	env: IssueEnv,
 	params: { customerId: string; email: string; origin: string }
 ): Promise<{ ok: boolean }> {
-	const token = crypto.randomUUID();
-	const expiresAt = new Date(Date.now() + TOKEN_TTL_MS).toISOString();
-	await env.DB.prepare('INSERT INTO login_tokens (token, customer_id, expires_at) VALUES (?, ?, ?)')
-		.bind(token, params.customerId, expiresAt)
-		.run();
-
-	const magicLinkUrl = new URL(`/login/verify?token=${token}`, params.origin).toString();
+	const magicLinkUrl = await mintMagicLinkUrl(env, params);
 	const sent = await sendMagicLinkEmail(env, { to: params.email, magicLinkUrl });
 	// Previously discarded — a Resend outage (or a misconfigured key) left
 	// no trace anywhere while the Cliente-facing response stayed identical
@@ -127,4 +137,30 @@ export async function redeemMagicLink(env: RedeemEnv, token: string): Promise<Re
 
 	const session = await createSession(env, row.customer_id);
 	return { ok: true, ...session };
+}
+
+/**
+ * Test-environment stopgap for Resend's shared sender (`onboarding@resend.dev`), which only
+ * delivers to the Resend account owner — anyone else testing a deployed env never receives a
+ * magic link. Skips the e-mail: returns the verify URL directly, for `/login/dev` to redirect to.
+ *
+ * Gated on `DEV_LOGIN_KEY` being set and matching; unset/empty or a wrong key returns `null`
+ * (fail closed, same posture as `APPMAX_WEBHOOK_IPS`), as does an unknown or malformed
+ * email. Never set in production.
+ */
+export async function issueDevLoginUrl(
+	env: Pick<Cloudflare.Env, 'DB' | 'DEV_LOGIN_KEY'>,
+	params: { email: string; key: string; origin: string }
+): Promise<string | null> {
+	if (env.DEV_LOGIN_KEY === undefined || env.DEV_LOGIN_KEY === '') return null;
+	if (!timingSafeEqual(params.key, env.DEV_LOGIN_KEY)) return null;
+
+	const email = normalizeEmail(params.email);
+	if (email === null) return null;
+	const customer = await env.DB.prepare('SELECT id FROM customers WHERE email = ?')
+		.bind(email)
+		.first<{ id: string }>();
+	if (customer === null) return null;
+
+	return mintMagicLinkUrl(env, { customerId: customer.id, origin: params.origin });
 }

@@ -3,6 +3,9 @@ APPMAX_CLIENT_SECRET=
 APPMAX_WEBHOOK_IPS=
 RESEND_API_KEY=
 SESSION_SECRET=
+# Test-env-only: enables GET /login/dev?email=&key= (login without the magic-link e-mail,
+# for while Resend's shared sender only delivers to the account owner). Never set in production.
+DEV_LOGIN_KEY=
 # Unset ships fine — Sentry.withSentry gates on this being present
 # (sentry.server.config.ts), same convention as Appmax/Resend above.
 SENTRY_DSN=

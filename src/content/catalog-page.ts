@@ -43,6 +43,7 @@ export const carouselNextLabel = 'Próximo Robô';
 
 export const comingSoonLabel = 'Em breve';
 export const strategyTypeLabel = 'Estratégia';
+export const marketLabel = 'Mercado';
 export const corretorasLabel = 'Corretoras compatíveis';
 
 // Carried over from the Plans page (marketing-pages 07). The "Economize 20%"
@@ -101,18 +102,37 @@ export type CatalogCard = {
 	name: string;
 	shortDescription: string;
 	strategyType: string;
+	/** Empty when the Robô declares no market. */
+	market: string[];
+	/** Empty when the Robô declares no Corretoras. */
 	corretoras: string[];
 	status: RobotStatus;
 	/** In Compra, Anual, Mensal order; empty for a coming-soon Robô. */
 	offers: CardOffer[];
 };
 
+export type CardInfoRow = { label: string; value: string };
+
+/**
+ * The informational rows under the description, in order: Estratégia (always),
+ * then Mercado and Corretoras compatíveis only when their list is non-empty
+ * (no dash, no "a definir").
+ */
+export const cardInfoRows = (card: CatalogCard): CardInfoRow[] => [
+	{ label: strategyTypeLabel, value: card.strategyType },
+	...(card.market.length > 0 ? [{ label: marketLabel, value: card.market.join(', ') }] : []),
+	...(card.corretoras.length > 0
+		? [{ label: corretorasLabel, value: card.corretoras.join(', ') }]
+		: []),
+];
+
 export const catalogCards: CatalogCard[] = catalog.map((robot) => ({
 	slug: robot.slug,
 	name: unwrapLaunchBlocking(robot.name),
 	shortDescription: unwrapLaunchBlocking(robot.shortDescription),
 	strategyType: unwrapLaunchBlocking(robot.strategyType),
-	corretoras: unwrapLaunchBlocking(robot.supportedCorretoras),
+	market: robot.market ? unwrapLaunchBlocking(robot.market) : [],
+	corretoras: robot.supportedCorretoras ? unwrapLaunchBlocking(robot.supportedCorretoras) : [],
 	status: robot.status,
 	offers:
 		robot.status === 'coming-soon'

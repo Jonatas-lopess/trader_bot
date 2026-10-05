@@ -2,7 +2,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** done
 
 **What to build:** add where a Robô operates to the catalog, make the two informational card rows optional, and pin the catalog's naming and length rules with tests. Origin: grilling session 2026-10-05 on what a Robô record carries. Content only: no D1 migration, no ADR.
 
@@ -25,8 +25,8 @@
 
 Governing docs: ADR-0006 ("Catalog data is a typed content file"), `docs/agents/content-files.md`, CONTEXT.md (Robô, Catálogo).
 
-- [ ] `Robot.market` and optional `supportedCorretoras` in `catalog.ts`; the placeholders as above
-- [ ] `CatalogCard.market`; "Mercado" label in `catalog-page.ts`
-- [ ] `robot-card.astro` renders a row only when its list is non-empty; a card test covers `robo-exemplo-c` (neither row) and `-a` (both rows)
-- [ ] Guard tests: slug format and uniqueness, name uniqueness without accents or case, `shortDescription` ≤ 140
-- [ ] `pnpm test` and `pnpm run typecheck` pass
+- [x] `Robot.market` and optional `supportedCorretoras` in `catalog.ts`; the placeholders as above
+- [x] `CatalogCard.market`; "Mercado" label in `catalog-page.ts`
+- [x] `robot-card.astro` renders a row only when its list is non-empty; a card test covers `robo-exemplo-c` (neither row) and `-a` (both rows)
+- [x] Guard tests: slug format and uniqueness, name uniqueness without accents or case, `shortDescription` ≤ 140
+- [x] `pnpm test` and `pnpm run typecheck` pass

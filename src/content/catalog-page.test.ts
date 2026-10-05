@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { catalog, lookupOffer } from './catalog';
-import { catalogCards, checkoutHref, formatBrl, offerOrder } from './catalog-page';
+import { cardInfoRows, catalogCards, checkoutHref, formatBrl, offerOrder } from './catalog-page';
 
 describe('formatBrl', () => {
 	it('formats integer cents as BRL', () => {
@@ -45,5 +45,39 @@ describe('catalogCards', () => {
 		const soon = catalogCards.filter((c) => c.status === 'coming-soon');
 		expect(soon.length).toBeGreaterThan(0);
 		for (const card of soon) expect(card.offers).toEqual([]);
+	});
+});
+
+describe('card info rows', () => {
+	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
+
+	it('shows Estratégia, Mercado and Corretoras compatíveis on a Robô that fills them', () => {
+		const card = bySlug('robo-exemplo-a');
+		expect(card.market.length).toBeGreaterThan(0);
+		expect(card.corretoras.length).toBeGreaterThan(0);
+		expect(cardInfoRows(card).map((r) => r.label)).toEqual([
+			'Estratégia',
+			'Mercado',
+			'Corretoras compatíveis',
+		]);
+	});
+
+	it('omits Mercado and Corretoras compatíveis when the Robô has neither', () => {
+		const card = bySlug('robo-exemplo-c');
+		expect(card.market).toEqual([]);
+		expect(card.corretoras).toEqual([]);
+		expect(cardInfoRows(card).map((r) => r.label)).toEqual(['Estratégia']);
+	});
+
+	it('omits a row whose list is empty, with no placeholder value', () => {
+		const card = { ...bySlug('robo-exemplo-a'), market: [], corretoras: ['X'] };
+		const rows = cardInfoRows(card);
+		expect(rows.map((r) => r.label)).toEqual(['Estratégia', 'Corretoras compatíveis']);
+		for (const row of rows) expect(row.value).not.toMatch(/^(-|–|—|a definir)$/i);
+	});
+
+	it('joins list values with a comma', () => {
+		const card = { ...bySlug('robo-exemplo-a'), market: ['Mini Índice', 'Mini Dólar'] };
+		expect(cardInfoRows(card).find((r) => r.label === 'Mercado')?.value).toBe('Mini Índice, Mini Dólar');
 	});
 });

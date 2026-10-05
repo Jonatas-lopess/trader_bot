@@ -30,11 +30,22 @@ export type RobotStatus = 'available' | 'coming-soon';
 export type OfferPrice = LaunchBlocking<number>;
 
 export type Robot = {
+	/**
+	 * Kebab-case and frozen after the first Compra: it is in `/checkout?robot=`,
+	 * `robots/<slug>/` in R2 and `purchases.robot_id`. Renaming it orphans all three.
+	 */
 	slug: string;
 	name: LaunchBlocking<string>;
 	shortDescription: LaunchBlocking<string>;
 	strategyType: LaunchBlocking<string>;
-	supportedCorretoras: LaunchBlocking<CorretoraName[]>;
+	/**
+	 * Where the Robô operates, as free labels ("Mini Índice", "Mini Dólar"). Not an
+	 * enum (nothing filters by it), not the MT5 symbol (changes with the contract
+	 * expiry), not the timeframe. Optional: the card omits the row when absent.
+	 */
+	market?: LaunchBlocking<string[]>;
+	/** Optional: the card omits the row when absent. Only `/catalog` reads it. */
+	supportedCorretoras?: LaunchBlocking<CorretoraName[]>;
 	status: RobotStatus;
 	/** Up to three Ofertas; a robot lists only the ones it sells. */
 	offers: Partial<Record<OfferName, OfferPrice>>;
@@ -52,6 +63,7 @@ export const catalog: Robot[] = [
 		name: launchBlocking('Robô Exemplo A', placeholderName),
 		shortDescription: launchBlocking('Descrição curta do Robô Exemplo A.', placeholderClaim),
 		strategyType: launchBlocking('Tendência', placeholderClaim),
+		market: launchBlocking(['Mini Índice', 'Mini Dólar'], placeholderClaim),
 		supportedCorretoras: launchBlocking(['Corretora Exemplo'], placeholderClaim),
 		status: 'available',
 		offers: {
@@ -65,6 +77,7 @@ export const catalog: Robot[] = [
 		name: launchBlocking('Robô Exemplo B', placeholderName),
 		shortDescription: launchBlocking('Descrição curta do Robô Exemplo B.', placeholderClaim),
 		strategyType: launchBlocking('Reversão à média', placeholderClaim),
+		market: launchBlocking(['Mini Índice'], placeholderClaim),
 		supportedCorretoras: launchBlocking(['Corretora Exemplo'], placeholderClaim),
 		status: 'available',
 		offers: {
@@ -76,7 +89,6 @@ export const catalog: Robot[] = [
 		name: launchBlocking('Robô Exemplo C', placeholderName),
 		shortDescription: launchBlocking('Em breve.', placeholderClaim),
 		strategyType: launchBlocking('Scalping', placeholderClaim),
-		supportedCorretoras: launchBlocking(['Corretora Exemplo'], placeholderClaim),
 		status: 'coming-soon',
 		offers: {},
 	},

@@ -49,3 +49,44 @@ describe('catalog placeholders', () => {
 		expect(new Set(slugs).size).toBe(slugs.length);
 	});
 });
+
+describe('catalog guards', () => {
+	it('slugs are kebab-case', () => {
+		for (const robot of catalog) expect(robot.slug).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
+	});
+
+	const fold = (text: string) =>
+		text
+			.normalize('NFD')
+			.replace(/\p{M}/gu, '')
+			.toLowerCase();
+
+	it('names are unique ignoring accents and case', () => {
+		const names = catalog.map((r) => fold(r.name.value));
+		expect(new Set(names).size).toBe(names.length);
+	});
+
+	it('shortDescription is at most 140 characters', () => {
+		for (const robot of catalog) {
+			expect(robot.shortDescription.value.length).toBeLessThanOrEqual(140);
+		}
+	});
+
+	it('market, when present, is a launch-blocked list of non-empty labels', () => {
+		for (const robot of catalog) {
+			if (!robot.market) continue;
+			expect(robot.market.blocked).toBe(true);
+			for (const label of robot.market.value) expect(label.trim()).not.toBe('');
+		}
+	});
+
+	it('placeholder Robôs: -a and -b fill market and corretoras, -c fills neither', () => {
+		const bySlug = (slug: string) => catalog.find((r) => r.slug === slug)!;
+		for (const slug of ['robo-exemplo-a', 'robo-exemplo-b']) {
+			expect(bySlug(slug).market?.value.length).toBeGreaterThan(0);
+			expect(bySlug(slug).supportedCorretoras?.value.length).toBeGreaterThan(0);
+		}
+		expect(bySlug('robo-exemplo-c').market).toBeUndefined();
+		expect(bySlug('robo-exemplo-c').supportedCorretoras).toBeUndefined();
+	});
+});

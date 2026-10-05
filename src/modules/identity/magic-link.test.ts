@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import { seedCustomer as attachCustomer } from '../../../test/customer-seed';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import * as Sentry from '@sentry/cloudflare';
-import { redeemMagicLink, requestMagicLink } from './magic-link';
+import { issueDevLoginUrl, redeemMagicLink, requestMagicLink } from './magic-link';
 import { isSessionValid, verifySessionCookie } from './session';
 
 vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
@@ -153,5 +153,56 @@ describe('magic-link', () => {
 	it('an unknown token is rejected', async () => {
 		const result = await redeemMagicLink(env, 'tok-does-not-exist');
 		expect(result).toEqual({ ok: false });
+	});
+
+	describe('issueDevLoginUrl', () => {
+		const origin = 'https://example.com';
+
+		it('returns a verify URL that redeems to a session, without sending any e-mail', async () => {
+			await seedCustomer('cust-dev-ok', 'dev-ok@example.com');
+			const fetchSpy = mockResend();
+
+			const url = await issueDevLoginUrl(
+				{ DB: env.DB, DEV_LOGIN_KEY: 'k3y' },
+				{ email: ' Dev-OK@example.com ', key: 'k3y', origin }
+			);
+
+			expect(fetchSpy).not.toHaveBeenCalled();
+			const token = new URL(url ?? '').searchParams.get('token');
+			expect(token).not.toBeNull();
+			const result = await redeemMagicLink(env, token ?? '');
+			expect(result.ok).toBe(true);
+			if (!result.ok) throw new Error('expected ok');
+			expect(await verifySessionCookie(result.cookieValue, env.SESSION_SECRET)).toMatchObject({
+				ok: true,
+				customerId: 'cust-dev-ok',
+			});
+		});
+
+		it.each([
+			['unset', undefined, 'k3y'],
+			['empty, even against an empty key', '', ''],
+			['mismatched', 'k3y', 'wrong'],
+		])('fails closed when DEV_LOGIN_KEY is %s', async (label, configured, provided) => {
+			const id = `cust-dev-closed-${label.split(' ')[0]}`;
+			await seedCustomer(id, `${id}@example.com`);
+
+			const url = await issueDevLoginUrl(
+				{ DB: env.DB, DEV_LOGIN_KEY: configured },
+				{ email: `${id}@example.com`, key: provided, origin }
+			);
+
+			expect(url).toBeNull();
+			const { results } = await env.DB.prepare('SELECT * FROM login_tokens WHERE customer_id = ?')
+				.bind(id)
+				.all();
+			expect(results).toHaveLength(0);
+		});
+
+		it('returns null for an unknown or malformed email even with the right key', async () => {
+			const env2 = { DB: env.DB, DEV_LOGIN_KEY: 'k3y' };
+			expect(await issueDevLoginUrl(env2, { email: 'nobody@example.com', key: 'k3y', origin })).toBeNull();
+			expect(await issueDevLoginUrl(env2, { email: 'not-an-email', key: 'k3y', origin })).toBeNull();
+		});
 	});
 });

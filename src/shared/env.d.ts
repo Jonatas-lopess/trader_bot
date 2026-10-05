@@ -25,6 +25,13 @@ declare global {
 			STRIPE_WEBHOOK_SECRET: string;
 			/** Resend API key (modules/identity/resend-client.ts). Test mode/sending until PLANNING.md §12's domain-verification prerequisite lands. */
 			RESEND_API_KEY: string;
+			/**
+			 * Test-env-only shared secret for `GET /login/dev` (modules/identity/magic-link.ts's
+			 * `issueDevLoginUrl`): logs a Cliente in without the magic-link e-mail, because Resend's
+			 * shared sender (PLANNING.md §12 item 3) only delivers to the account owner. Unset
+			 * disables the route (404). Never set in production.
+			 */
+			DEV_LOGIN_KEY?: string;
 			/** HMAC key signing the session cookie (modules/identity/session.ts) — never stored, only verified against. */
 			SESSION_SECRET: string;
 			/**

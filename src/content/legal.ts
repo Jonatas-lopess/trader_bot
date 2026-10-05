@@ -15,6 +15,8 @@ import { launchBlocking, type LaunchBlocking } from '../shared/launch-blocking';
 
 export type LegalSection = {
 	heading: string;
+	/** Fragment id on the rendered page; set only on sections other pages link to. */
+	id?: string;
 	body: LaunchBlocking<string>;
 };
 
@@ -36,6 +38,9 @@ const placeholderBody = (page: string) =>
 // Honored in 0.1 by manual refund via Appmax; the Licença is revoked by expiry-to-now
 // (docs/ops/withdrawal-refund.md). Wording below is a placeholder: a lawyer writes the real clause.
 export const withdrawalHeading = 'Direito de arrependimento';
+// Anchor of the clause on /termos-de-uso (rendered as the section's `id` by legal-page.astro).
+// The catalog, FAQ, paid confirmation and footer all link to it (withdrawal-guarantee 03).
+export const withdrawalAnchor = 'direito-de-arrependimento';
 export const withdrawalBody = launchBlocking(
 	'TODO — cláusula de arrependimento (CDC art. 49, 7 dias, reembolso e revogação da Licença) pendente de redação jurídica.',
 	'Placeholder — CDC art. 49 withdrawal clause must be worded by a lawyer (ADR-0006 Withdrawal, PLANNING.md §9)',
@@ -53,11 +58,14 @@ export const termosDeUso: LegalPage = {
 		{ heading: 'Limitação de responsabilidade', body: placeholderBody('Termos de uso') },
 		{ heading: 'Pagamento e renovação', body: placeholderBody('Termos de uso') },
 		{ heading: 'Cancelamento', body: placeholderBody('Termos de uso') },
-		{ heading: withdrawalHeading, body: withdrawalBody },
+		{ heading: withdrawalHeading, id: withdrawalAnchor, body: withdrawalBody },
 		{ heading: 'Alterações destes termos', body: placeholderBody('Termos de uso') },
 		{ heading: 'Foro e legislação aplicável', body: placeholderBody('Termos de uso') },
 	],
 };
+
+/** Link target for every "7 dias para desistir da compra" statement. */
+export const withdrawalHref = `${termosDeUso.path}#${withdrawalAnchor}`;
 
 export const politicaDePrivacidade: LegalPage = {
 	path: '/privacidade',

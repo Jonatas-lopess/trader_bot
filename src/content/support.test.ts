@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deadLinks } from './dead-links';
 import { supportLinks } from './footer';
-import { politicaDePrivacidade, termosDeUso } from './legal';
+import { politicaDePrivacidade, termosDeUso, withdrawalHref } from './legal';
 import { supportEmail, supportMailto } from './support';
 
 describe('support channel', () => {
@@ -15,9 +15,9 @@ describe('support channel', () => {
 		expect(supportMailto()).toBe(`mailto:${supportEmail.value}`);
 	});
 
-	it('footer Contato is a real mailto link, after Termos and Privacidade', () => {
+	it('footer Contato is a real mailto link, last, after Termos, Privacidade and the withdrawal clause', () => {
 		const links = supportLinks.map((l) => ('href' in l ? l.href : null));
-		expect(links).toEqual([termosDeUso.path, politicaDePrivacidade.path, supportMailto()]);
+		expect(links).toEqual([termosDeUso.path, politicaDePrivacidade.path, withdrawalHref, supportMailto()]);
 		expect(supportLinks.some((l) => 'dead' in l)).toBe(false);
 	});
 

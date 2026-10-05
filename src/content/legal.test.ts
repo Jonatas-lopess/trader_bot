@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { supportLinks } from './footer';
-import { politicaDePrivacidade, termosDeUso, withdrawalBody, withdrawalHeading } from './legal';
+import {
+	politicaDePrivacidade,
+	termosDeUso,
+	withdrawalAnchor,
+	withdrawalBody,
+	withdrawalHeading,
+	withdrawalHref,
+} from './legal';
 
 describe('legal pages content', () => {
 	it.each([termosDeUso, politicaDePrivacidade])('$path has sections, all launch-blocked placeholders', (page) => {
@@ -21,5 +28,13 @@ describe('legal pages content', () => {
 	it('footer links both pages before Contato (the mailto is covered in support.test.ts)', () => {
 		const hrefs = supportLinks.flatMap((l) => ('href' in l ? [l.href] : []));
 		expect(hrefs.slice(0, 2)).toEqual([termosDeUso.path, politicaDePrivacidade.path]);
+	});
+
+	it('the withdrawal clause has a real anchor that withdrawalHref points at', () => {
+		const section = termosDeUso.sections.find((s) => s.heading === withdrawalHeading);
+		expect(section?.id).toBe(withdrawalAnchor);
+		expect(withdrawalHref).toBe(`${termosDeUso.path}#${withdrawalAnchor}`);
+		const ids = termosDeUso.sections.flatMap((s) => (s.id ? [s.id] : []));
+		expect(new Set(ids).size).toBe(ids.length);
 	});
 });

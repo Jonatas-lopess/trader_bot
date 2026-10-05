@@ -1,4 +1,6 @@
 import { launchBlocking } from '../shared/launch-blocking';
+import { withdrawalHref } from './legal';
+import { supportEmail, supportMailto } from './support';
 
 /**
  * Copy for the intermediate confirmation page (`/checkout/confirmacao`) —
@@ -20,6 +22,20 @@ export const rejectedMessage = launchBlocking(
 	'Recebemos o seu pagamento, mas ele precisa de uma verificação manual antes de liberar a sua Licença. Nossa equipe entrará em contato por e-mail. Não é necessário pagar novamente; se preferir, fale com o suporte.',
 	'ADR-0006 / PLANNING.md §6 Price integrity: placeholder copy for a paid-but-rejected purchase (amount mismatch); needs support-channel and legal wording before launch.'
 );
+
+// Shown under the "Pagamento confirmado!" message once the purchase is `active`
+// (withdrawal-guarantee 03). How to request: the support e-mail for now; the request link on
+// /conta is ticket 02, not built. "Desistir da compra", never "garantia".
+export const withdrawalNotice = {
+	text: launchBlocking(
+		'Você tem 7 dias para desistir da compra. Para pedir, escreva para o suporte:',
+		'CDC art. 49 / ADR-0006 Withdrawal: tells the paid Cliente about the 7-day withdrawal and how to ' +
+			'request it; wording is a placeholder a lawyer confirms, and the request path is the support ' +
+			'e-mail until withdrawal-guarantee 02 lands.',
+	),
+	supportLink: { label: supportEmail.value, href: supportMailto() },
+	termosLink: { label: 'Direito de arrependimento nos Termos de uso', href: withdrawalHref },
+};
 
 // Keyed by PurchaseState (src/modules/billing/status.ts) — kept as a
 // literal union here rather than importing that type, so this content file

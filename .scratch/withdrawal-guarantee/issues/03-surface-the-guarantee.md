@@ -2,7 +2,7 @@
 
 **Blocked by:** —
 
-**Status:** ready-for-agent
+**Status:** done
 
 **What to build:** the right is only stated in the Termos today. CDC wants the Cliente informed clearly at purchase. Add a short statement, all `launchBlocking`, linking to the Termos clause:
 
@@ -13,12 +13,15 @@
 
 Not "garantia": that word suggests a product-performance guarantee. The statutory right is *arrependimento*; copy says "7 dias para desistir da compra". Lawyer confirms.
 
-- [ ] Line on catalog cards and the buy action, in a content file, `launchBlocking`
-- [ ] FAQ entry, Oferta-scoped
-- [ ] Sentence on the paid confirmation
-- [ ] Each links to the Termos section anchor
-- [ ] `pnpm test` passes
+- [x] Line on catalog cards and the buy action, in a content file, `launchBlocking`
+- [x] FAQ entry, Oferta-scoped
+- [x] Sentence on the paid confirmation
+- [x] Each links to the Termos section anchor
+- [x] `pnpm test` passes
 
 ## Decisions / Notes
 
 - Wireframe has no slot for this (checked 2026-10-05: no mention in `landing-page`, `catalogo-planos`, `painel-cliente`, `estados-licenca`). Slots to add in Figma, if the design should follow: a line in the `catalogo-planos` cards, an FAQ question in `landing-page`, a "Solicitar arrependimento" action in the `painel-cliente` "Central de suporte", a revoked-by-withdrawal state in `estados-licenca`.
+- Built: `buyWithdrawalNote` + `cardWithdrawalNote` (catalog-page.ts, under the buy area of every card with offers, none on coming-soon), FAQ "Posso pedir reembolso?" right after the cancel question (faq.ts, new optional `links`), `withdrawalNotice` (checkout-confirmation.ts, shown on the `active` state only, points at the support e-mail until 02 exists), footer link "Direito de arrependimento". All three copy slots are `launchBlocking`; the footer label reuses the Termos heading (plain, not blocked).
+- The Termos clause had no anchor. `LegalSection` gained an optional `id`; the clause is `#direito-de-arrependimento` (`withdrawalAnchor`, `withdrawalHref` in legal.ts), rendered by `legal-page.astro`. The `/conta` Termos dialog does not render ids (the links go to the page).
+- When 02 lands, swap the support e-mail in `withdrawalNotice` for the `/conta` request link.

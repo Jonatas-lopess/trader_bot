@@ -20,6 +20,7 @@ import {
 	pageTitle,
 	pendingTimeoutMessage,
 	pendingTimeoutRetry,
+	withdrawalNotice,
 } from '../../content/checkout-confirmation';
 
 export const prerender = false;
@@ -49,6 +50,20 @@ const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 					>
 						{activeCtaLabel}
 					</span>
+					{/* The 7-day withdrawal (withdrawal-guarantee 03); shown on the paid state only, like the CTA. */}
+					<p
+						id="confirmation-withdrawal"
+						class="mt-4 hidden max-w-xl text-body-sm text-text-secondary data-[visible]:block"
+					>
+						{withdrawalNotice.text.value}{' '}
+						<a href={withdrawalNotice.supportLink.href} class="font-medium text-brand-primary underline">
+							{withdrawalNotice.supportLink.label}
+						</a>
+						{' · '}
+						<a href={withdrawalNotice.termosLink.href} class="font-medium text-brand-primary underline">
+							{withdrawalNotice.termosLink.label}
+						</a>
+					</p>
 					{/* Shown only once a `pending` wait times out; starts a new checkout, never resumes this row. */}
 					<a
 						id="confirmation-retry"
@@ -70,6 +85,7 @@ const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 		const messageEl = document.getElementById('confirmation-message');
 		const ctaEl = document.getElementById('confirmation-cta');
 		const retryEl = document.getElementById('confirmation-retry');
+		const withdrawalEl = document.getElementById('confirmation-withdrawal');
 
 		// PLANNING.md §7: ~2s interval, no WebSocket, no Durable Object.
 		const POLL_INTERVAL_MS = 2000;
@@ -101,6 +117,10 @@ const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 			if (ctaEl) {
 				if (state === 'active') ctaEl.setAttribute('data-visible', '');
 				else ctaEl.removeAttribute('data-visible');
+			}
+			if (withdrawalEl) {
+				if (state === 'active') withdrawalEl.setAttribute('data-visible', '');
+				else withdrawalEl.removeAttribute('data-visible');
 			}
 		};
 

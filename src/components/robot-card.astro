@@ -11,6 +11,7 @@ import {
 	annualPixNote,
 	annualSavingsBadge,
 	cardInfoRows,
+	cardWithdrawalNote,
 	comingSoonLabel,
 	type CatalogCard,
 } from '../content/catalog-page';
@@ -22,6 +23,7 @@ type Props = {
 const { card } = Astro.props;
 const main = card.offers.find((o) => o.offer === 'one_time');
 const secondary = card.offers.filter((o) => o.offer !== 'one_time');
+const withdrawalNote = cardWithdrawalNote(card);
 ---
 
 <div
@@ -94,6 +96,17 @@ const secondary = card.offers.filter((o) => o.offer !== 'one_time');
 					</li>
 				))}
 			</ul>
+		)
+	}
+
+	{
+		withdrawalNote && (
+			<p class="mt-4 text-caption text-text-secondary">
+				{withdrawalNote.text.value}{' '}
+				<a href={withdrawalNote.href} class="font-medium text-brand-primary underline">
+					{withdrawalNote.linkLabel}
+				</a>
+			</p>
 		)
 	}
 </div>

@@ -6,7 +6,7 @@
  * this follows. Contato opens the support e-mail (`src/content/support.ts`).
  */
 
-import { politicaDePrivacidade, termosDeUso } from './legal';
+import { politicaDePrivacidade, termosDeUso, withdrawalHeading, withdrawalHref } from './legal';
 import { supportMailto } from './support';
 
 export type FooterLink = {
@@ -29,11 +29,13 @@ export const usefulLinks: FooterLink[] = [
 	{ label: 'FAQ', href: '/#faq' },
 ];
 
-// Termos and Privacidade have routes (src/content/legal.ts); Contato is a mailto to the
-// support address (src/content/support.ts).
+// Termos and Privacidade have routes (src/content/legal.ts); the withdrawal link goes to the
+// Termos clause anchor (withdrawal-guarantee 03); Contato is a mailto to the support address
+// (src/content/support.ts).
 export const supportLinks: FooterLink[] = [
 	{ label: termosDeUso.pageTitle, href: termosDeUso.path },
 	{ label: politicaDePrivacidade.pageTitle, href: politicaDePrivacidade.path },
+	{ label: withdrawalHeading, href: withdrawalHref },
 	{ label: 'Contato', href: supportMailto() },
 ];
 

@@ -1,5 +1,5 @@
 /**
- * FAQ content — heading and five Q&A items for the landing page's
+ * FAQ content — heading and six Q&A items for the landing page's
  * `faq-section` band (frame `6:160`,
  * `.scratch/marketing-pages/issues/08-landing-plan-teaser-and-faq.md`,
  * updated for the catalog by `.scratch/catalog-pivot/issues/10-copy-and-docs-sweep.md`).
@@ -33,6 +33,8 @@
  *    Assinatura can be cancelled. PLANNING.md §6 records Appmax ships no
  *    self-service portal, so the cancel UI is this project's own build
  *    (customer area, §1).
+ *  - "Posso pedir reembolso?" — launch-blocked (withdrawal-guarantee 03): the
+ *    CDC art. 49 7-day withdrawal, scoped per Oferta, linking the Termos clause.
  *  - "Quais formas de pagamento vocês aceitam?" — factual, per ADR-0006:
  *    Compra and Anual accept card, Boleto and Pix (single payment); Mensal
  *    is card only (recurring). No installments in 0.1.
@@ -41,12 +43,18 @@
  */
 
 import { launchBlocking, type LaunchBlocking } from '../shared/launch-blocking';
+import { withdrawalHref } from './legal';
+import { supportMailto } from './support';
 
 export const heading = 'Perguntas Frequentes';
+
+export type FaqLink = { label: string; href: string };
 
 export type FaqItem = {
 	question: string;
 	answer: string | LaunchBlocking<string>;
+	/** Rendered under the answer. */
+	links?: FaqLink[];
 };
 
 export const faqItems: FaqItem[] = [
@@ -94,13 +102,34 @@ export const faqItems: FaqItem[] = [
 		// Scoped to Mensal: Compra is one payment for a perpetual Licença and
 		// Anual is one payment for 12 months with no auto-renew in 0.1
 		// (ADR-0006), so neither has anything to cancel. The 7-day
-		// withdrawal is handled in Termos de uso, not here.
+		// withdrawal is the next question.
 		answer:
 			'Na Oferta Mensal, sim. O cancelamento é feito diretamente pela área do cliente, ' +
 			'sem precisar abrir chamado de suporte: a Assinatura deixa de renovar no próximo ' +
 			'ciclo e a Licença ativa permanece válida até a data de expiração já concedida. ' +
 			'A Compra e a Oferta Anual são pagamentos únicos, sem renovação automática, então ' +
 			'não há assinatura a cancelar.',
+	},
+	{
+		question: 'Posso pedir reembolso?',
+		// withdrawal-guarantee 03: CDC art. 49 right, stated where the Cliente looks for the
+		// cancel question. Scoped per Oferta (cancel is Mensal-only; the 7 days is not).
+		// "Desistir da compra", never "garantia".
+		answer: launchBlocking(
+			'Sim, você tem 7 dias para desistir da compra, a contar da data do pagamento, e o valor ' +
+				'pago é reembolsado. Na Compra e na Oferta Anual, os 7 dias valem para o pagamento ' +
+				'único. Na Oferta Mensal, valem para a primeira cobrança; cancelar a Assinatura ' +
+				'(pergunta acima) só interrompe as renovações seguintes. Para pedir, fale com o ' +
+				'suporte por e-mail.',
+			'CDC art. 49 / ADR-0006 Withdrawal: wording is a placeholder a lawyer confirms. Open for ' +
+				'the owner (.scratch/withdrawal-guarantee/issues/04-owner-decisions.md): whether the ' +
+				'7 days count from purchase or from delivery of the Licença, and how Mensal renewals ' +
+				'are covered. The request path is the support e-mail until withdrawal-guarantee 02 lands.',
+		),
+		links: [
+			{ label: 'Direito de arrependimento nos Termos de uso', href: withdrawalHref },
+			{ label: 'Falar com o suporte', href: supportMailto() },
+		],
 	},
 	{
 		question: 'Quais formas de pagamento vocês aceitam?',

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { catalog, lookupOffer } from './catalog';
-import { cardInfoRows, catalogCards, checkoutHref, formatBrl, offerOrder } from './catalog-page';
+import {
+	buyWithdrawalNote,
+	cardInfoRows,
+	cardWithdrawalNote,
+	catalogCards,
+	checkoutHref,
+	formatBrl,
+	offerOrder,
+} from './catalog-page';
+import { withdrawalHref } from './legal';
 
 describe('formatBrl', () => {
 	it('formats integer cents as BRL', () => {
@@ -79,5 +88,26 @@ describe('card info rows', () => {
 	it('joins list values with a comma', () => {
 		const card = { ...bySlug('robo-exemplo-a'), market: ['Mini Índice', 'Mini Dólar'] };
 		expect(cardInfoRows(card).find((r) => r.label === 'Mercado')?.value).toBe('Mini Índice, Mini Dólar');
+	});
+});
+
+describe('withdrawal note on the buy area', () => {
+	it('is launch-blocked, says 7 dias para desistir da compra, never "garantia"', () => {
+		expect(buyWithdrawalNote.text.blocked).toBe(true);
+		expect(buyWithdrawalNote.text.reason).toMatch(/art\. 49/);
+		expect(buyWithdrawalNote.text.value).toMatch(/7 dias para desistir da compra/);
+		expect(buyWithdrawalNote.text.value).not.toMatch(/garantia/i);
+	});
+
+	it('links to the Termos withdrawal clause anchor', () => {
+		expect(buyWithdrawalNote.href).toBe(withdrawalHref);
+	});
+
+	it('appears on every card with something to buy, never on a coming-soon card', () => {
+		for (const card of catalogCards) {
+			if (card.offers.length > 0) expect(cardWithdrawalNote(card)).toBe(buyWithdrawalNote);
+			else expect(cardWithdrawalNote(card)).toBeNull();
+		}
+		expect(catalogCards.some((c) => cardWithdrawalNote(c) !== null)).toBe(true);
 	});
 });

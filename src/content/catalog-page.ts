@@ -15,6 +15,7 @@
 
 import { launchBlocking, unwrapLaunchBlocking } from '../shared/launch-blocking';
 import { catalog, type OfferName, type RobotStatus } from './catalog';
+import { withdrawalHref } from './legal';
 
 export const pageTitle = 'Catálogo de Robôs';
 export const pageDescription =
@@ -54,6 +55,21 @@ export const annualSavingsBadge = launchBlocking(
 	'Frame claim (marketing-pages 07) with no real annual price behind it: catalog annual prices are ' +
 		'placeholders (ADR-0006 "Open"). Do not compute a discount and ship it; confirm the real one first.',
 );
+
+// One line under the buy area of every card with something to buy. Checkout is hosted by
+// Appmax, so this is the last place we control before payment (withdrawal-guarantee 03).
+// "Desistir da compra", never "garantia": the statutory right is arrependimento, and
+// "garantia" reads as a product-performance guarantee (CDC art. 37).
+export const buyWithdrawalNote = {
+	text: launchBlocking(
+		'7 dias para desistir da compra.',
+		'CDC art. 49 / ADR-0006 Withdrawal: informing the Cliente of the 7-day withdrawal at purchase; ' +
+			'wording ("desistir da compra", not "garantia") is a placeholder a lawyer confirms. ' +
+			'Mensal: only the first charge is inside the right (ticket 04 decision 4 pending).',
+	),
+	linkLabel: 'Saiba mais',
+	href: withdrawalHref,
+};
 
 // PLANNING.md §6: Pix is the cheaper, faster-settling method for a single annual charge.
 export const annualPixNote = launchBlocking(
@@ -125,6 +141,10 @@ export const cardInfoRows = (card: CatalogCard): CardInfoRow[] => [
 		? [{ label: corretorasLabel, value: card.corretoras.join(', ') }]
 		: []),
 ];
+
+/** The withdrawal line for a card; null when the Robô has nothing to buy (coming soon). */
+export const cardWithdrawalNote = (card: CatalogCard): typeof buyWithdrawalNote | null =>
+	card.offers.length > 0 ? buyWithdrawalNote : null;
 
 export const catalogCards: CatalogCard[] = catalog.map((robot) => ({
 	slug: robot.slug,

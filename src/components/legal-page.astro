@@ -18,7 +18,7 @@ const { page } = Astro.props;
 		<h1 class="text-heading-1 font-bold text-text-primary">{page.heading}</h1>
 		{
 			page.sections.map((section) => (
-				<section class="mt-10">
+				<section id={section.id} class="mt-10 scroll-mt-24">
 					<h2 class="text-heading-3 font-bold text-text-primary">{section.heading}</h2>
 					<p class="mt-3 text-body text-text-secondary">{section.body.value}</p>
 				</section>

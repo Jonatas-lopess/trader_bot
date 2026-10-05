@@ -23,14 +23,14 @@ The page heading is now "Meus produtos" (scope revision above); the domain term 
 
 **Blocked by:** 01, 02, 03.
 
-**Status:** ready-for-human
+**Status:** done
 
 - [x] Each of the six Licença states renders as a card in the wireframe style, with an icon badge and a mono data row
 - [x] The Corretora form, its notices and the cancel control appear in the new style and behave as before
 - [x] The backend-confirmation note panel and the "Área do cliente" header label are present
 - [x] None of the skipped elements appear
 - [x] No behavior change: the existing content and `/conta` tests pass unchanged; any new copy lives in the content files
-- [ ] The owner has viewed every state in the browser (`astro dev`) after the scope revision and signed off or listed changes
+- [x] The owner has viewed every state in the browser (`astro dev`) after the scope revision and signed off or listed changes (2026-10-05: all states and flows OK; asked for a styled confirmation and legal modals, both done)
 - [x] Typecheck and the full test suite pass
 
 ## Comments

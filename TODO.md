@@ -146,14 +146,14 @@ Frontier: none (all done; 11 deferred). Supersedes `marketing-pages` 07/08 and `
 
 ## figma-restyle
 
-No spec.md — small enough to skip straight to tickets. Wayfinding from a grilling session (2026-10-02): Figma is now the source for the palette, type and shape tokens; `/conta` takes the visual language of the `painel-cliente` and `estados-licenca` wireframes with no change to content or behavior. Follows `marketing-pages/09`.
+No spec.md — small enough to skip straight to tickets. Wayfinding from a grilling session (2026-10-02): Figma is now the source for the palette, type and shape tokens; `/conta` takes the visual language and layout of the `painel-cliente` and `estados-licenca` wireframes with no change to behavior (layout added after the owner's first review, see 04). Follows `marketing-pages/09`.
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
 | 01 | [Figma colors behind the existing role names](.scratch/figma-restyle/issues/01-color-tokens.md) | — | done |
 | 02 | [Figma radii, border widths and elevation behind the existing tokens](.scratch/figma-restyle/issues/02-radii-borders-shadows.md) | — | done |
 | 03 | [Self-hosted Geist, Manrope and Geist Mono](.scratch/figma-restyle/issues/03-self-hosted-fonts.md) | — | done |
-| 04 | [`/conta` restyled from the wireframes](.scratch/figma-restyle/issues/04-conta-restyle.md) | 01, 02, 03 | ready-for-human |
+| 04 | [`/conta` restyled from the wireframes](.scratch/figma-restyle/issues/04-conta-restyle.md) | 01, 02, 03 | done |
 | 05 | [Visual sweep of the other pages after the port](.scratch/figma-restyle/issues/05-visual-sweep.md) | 01, 02, 03 | done |
 | 06 | [Close the Figma reads the quota blocked](.scratch/figma-restyle/issues/06-close-figma-reads.md) | Figma quota reset | ready-for-human |
 | 07 | [Fine print and labels unreadable on `text-tertiary`](.scratch/figma-restyle/issues/07-fine-print-contrast.md) | — | done |
@@ -161,7 +161,7 @@ No spec.md — small enough to skip straight to tickets. Wayfinding from a grill
 | 09 | [`/login` field is nearly invisible; error reads as info](.scratch/figma-restyle/issues/09-login-form-and-feedback.md) | — | done |
 | 10 | [Wordmark and prices use `text-heading-*` but render in the body font](.scratch/figma-restyle/issues/10-heading-font-on-wordmark-and-prices.md) | — | done |
 
-Frontier: **09**, **10** (follow-ups from the 05 sweep, independent; 07 and 08 done, 10 implemented and waits for the full test suite). 04 is built and waits for the owner's browser review of every state; 06 waits for the Figma quota reset. 05's Figma-node comparison could not run (quota) and rides with 06.
+Frontier: **06** (waits for the Figma quota reset; 05's Figma-node comparison could not run and rides with it). 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
 
 ## Untracked
 

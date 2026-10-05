@@ -52,7 +52,11 @@ Built and done, per `TODO.md`:
   dispatch.
 - **sentry-integration** — error reporting wired into the Worker, source maps uploaded on
   deploy.
-- **legal-pages** — Termos de uso / Política de privacidade (placeholder text).
+- **legal-pages** — Termos de uso / Política de privacidade (placeholder text); also
+  shown as a modal in the customer area.
+- **figma-restyle** — Figma-sourced colors, shape tokens and self-hosted fonts; `/conta`
+  ("Meus produtos") rebuilt on the wireframe layout with an app shell and styled confirmations.
+  Remaining: re-check against the Figma nodes once the quota resets (ticket 06).
 - **catalog-pivot** — robot catalog, checkout by robot + offer with server-side price,
   webhook amount check, per-Licença delivery. See `TODO.md` for what remains.
 

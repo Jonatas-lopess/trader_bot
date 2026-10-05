@@ -10,7 +10,7 @@ sentence yet, and ADR-0006 wins.
 Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
 ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
 
-Last updated: 2026-09-29 (catalog pivot, ADR-0006)
+Last updated: 2026-10-05 (customer-area layout, figma-restyle/04)
 
 ---
 
@@ -327,6 +327,15 @@ Consequences, stated rather than hidden:
   check-in verification (`license-server`) ships.
 - **Issuance has a human in it.** The customer area shows *status* and must not promise an
   instant key.
+- **The customer area shows what 0.1 can back.** `/conta` ("Meus produtos") has its own app
+  shell (account header with tab bar, slim footer; `BaseLayout` `shell="account"`) and one lean
+  card per Licença: Robô, Oferta, state badge, Licença, Assinatura and Corretora account, plus
+  the account form and the cancel control the state allows. The Figma wireframes also draw a
+  license-key box, a download button, an invoice table, an upgrade card and a Cliente name;
+  none exists in 0.1 (no key, email-only delivery, no invoice data, no plan tiers, no name
+  held), so none is built. The support button has no destination yet (`deadLinks.suporte`).
+  Cancel and the Corretora account are confirmed in a styled `<dialog>`, not the browser's
+  `confirm()`.
 - **Expiry follows purchase status** through one derivation function. A Compra's Licença is
   perpetual (far-future `expires_at`); `canceled` keeps the paid term, `refunded` and
   `chargeback` set expiry to now.
@@ -365,7 +374,9 @@ real wording from a lawyer).
 
 **Legal pages** (Termos de uso, Política de privacidade) ship with structure and
 placeholder text carrying TODOs. Real text comes from you or a lawyer. Generated legal copy
-is a liability for a product in this category, not a shortcut.
+is a liability for a product in this category, not a shortcut. The customer area opens both
+as a modal from its footer (`legal-dialog.astro`); the `/termos-de-uso` and `/privacidade`
+routes stay for the marketing footer and direct links.
 
 ---
 

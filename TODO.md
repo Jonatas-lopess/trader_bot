@@ -164,6 +164,19 @@ No spec.md — small enough to skip straight to tickets. Wayfinding from a grill
 
 Frontier: **06** (waits for the Figma quota reset; 05's Figma-node comparison could not run and rides with it). 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
 
+## withdrawal-guarantee
+
+No spec.md — four small tickets. Origin: owner noted (2026-10-05) that online sales owe a 7-day CDC art. 49 withdrawal. The refund mechanics and the Termos clause exist (catalog-pivot 09); what is missing is the Cliente seeing the right and a path to request it.
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Support channel (replaces inert Contato and support button)](.scratch/withdrawal-guarantee/issues/01-support-channel.md) | — | ready-for-agent |
+| 02 | [How a Cliente requests the 7-day withdrawal](.scratch/withdrawal-guarantee/issues/02-withdrawal-request-path.md) | 01, 04 | ready-for-agent |
+| 03 | [Tell the buyer about the 7 days before and after paying](.scratch/withdrawal-guarantee/issues/03-surface-the-guarantee.md) | — | ready-for-agent |
+| 04 | [Owner decisions for the withdrawal path](.scratch/withdrawal-guarantee/issues/04-owner-decisions.md) | — | ready-for-human |
+
+Frontier: 01, 03 (agent) and 04 (owner).
+
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work, the external prerequisites, and the "Open before go-live (catalog-pivot)" list: Appmax sandbox checks, owner decisions, launch-blocking copy.

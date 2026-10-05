@@ -4,11 +4,14 @@
 // Wraps every page (ticket .scratch/marketing-pages/issues/03-site-shell.md).
 // Sets lang="pt-BR", applies the design tokens from ticket 02, and renders
 // per-page title/description as <title>, meta description, Open Graph tags
-// and a Twitter card. Wraps the page in the site header and footer, and
-// loads the Cloudflare Web Analytics beacon when a token is configured.
+// and a Twitter card. Wraps the page in the site header and footer (or the
+// customer-area shell, `shell="account"`), and loads the Cloudflare Web
+// Analytics beacon when a token is configured.
 import '../styles/global.css';
 import SiteHeader from '../components/site-header.astro';
 import SiteFooter from '../components/site-footer.astro';
+import AccountHeader from '../components/account-header.astro';
+import AccountFooter from '../components/account-footer.astro';
 import { cfBeaconToken } from '../shared/analytics';
 // Above-the-fold weights (hero headline, body, buttons) are preloaded; the
 // rest load on demand through the @font-face rules in global.css.
@@ -19,9 +22,11 @@ import manrope500 from '@fontsource/manrope/files/manrope-latin-500-normal.woff2
 export type Props = {
 	title: string;
 	description: string;
+	// `account` swaps the marketing header and footer for the customer-area shell (/conta).
+	shell?: 'site' | 'account';
 };
 
-const { title, description } = Astro.props;
+const { title, description, shell = 'site' } = Astro.props;
 
 const siteName = 'Robô Trader';
 const fullTitle = `${title} · ${siteName}`;
@@ -65,10 +70,10 @@ const fullTitle = `${title} · ${siteName}`;
 		}
 	</head>
 	<body class="bg-surface-base font-sans text-text-primary">
-		<SiteHeader />
+		{shell === 'account' ? <AccountHeader /> : <SiteHeader />}
 		<main>
 			<slot />
 		</main>
-		<SiteFooter />
+		{shell === 'account' ? <AccountFooter /> : <SiteFooter />}
 	</body>
 </html>

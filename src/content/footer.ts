@@ -63,4 +63,7 @@ export const legalNotice =
 	'informações deste site têm caráter informativo e não constituem recomendação de ' +
 	'investimento, análise de valores mobiliários ou consultoria financeira.';
 
+// Close button on the legal modals shown by the account shell (src/components/legal-dialog.astro).
+export const legalDialogCloseLabel = 'Fechar';
+
 export const copyright = (year: number): string => `© ${year} Robô Trader. Todos os direitos reservados.`;

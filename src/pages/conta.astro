@@ -10,25 +10,31 @@ import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/base-layout.astro';
 import { resolveAccountView } from '../modules/licensing/account-page';
 import LicenseCard from '../components/license-card.astro';
-import { Server } from '@lucide/astro';
+import ConfirmDialog from '../components/confirm-dialog.astro';
+import { CircleCheck, Headphones, Server } from '@lucide/astro';
+import { deadLinks } from '../content/dead-links';
 import {
+	activeLicensesText,
 	backendNoteBody,
 	backendNoteHeading,
-	cancelConfirmMessage,
-	corretoraConfirmMessage,
 	corretoraNoticeTexts,
 	corretoraNoticeTones,
-	customerAreaLabel,
 	heading,
-	logoutLabel,
 	pageDescription,
 	pageTitle,
+	subheading,
+	supportCardBody,
+	supportCardHeading,
 } from '../content/conta';
 
 export const prerender = false;
 
 const view = await resolveAccountView(env, Astro.request);
 if (!view.ok) return Astro.redirect('/login');
+
+// One flat grid of cards; the view keeps a Robô's Licenças adjacent (order of first purchase).
+const cards = view.robots.flatMap((robot) => robot.licenses.map((item) => ({ robotName: robot.robotName, item })));
+const activeCount = cards.filter(({ item }) => item.license.status === 'active').length;
 
 const noticeParam = Astro.url.searchParams.get('corretora');
 const noticeKey =
@@ -40,18 +46,21 @@ const noticeToneClass =
 		: 'border-danger bg-danger-subtle';
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription}>
-	<section class="content-row gutter-x flex flex-col gap-8 py-20">
+<BaseLayout title={pageTitle} description={pageDescription} shell="account">
+	<section class="content-row gutter-x flex flex-col gap-8 py-12 sm:py-16">
 		<div class="flex flex-wrap items-end justify-between gap-4">
 			<div class="flex flex-col gap-2">
-				<p class="font-mono text-caption uppercase text-border-accent">{customerAreaLabel}</p>
 				<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+				<p class="text-body text-text-secondary">{subheading}</p>
 			</div>
-			<form method="POST" action="/logout">
-				<button type="submit" class="text-body-sm text-text-secondary underline transition-colors hover:text-text-primary">
-					{logoutLabel}
-				</button>
-			</form>
+			{
+				activeCount > 0 && (
+					<span class="inline-flex items-center gap-1.5 rounded-xs bg-success-subtle px-2 py-1 font-mono text-caption text-success">
+						<CircleCheck size={14} aria-hidden="true" />
+						{activeLicensesText(activeCount)}
+					</span>
+				)
+			}
 		</div>
 
 		{
@@ -62,40 +71,36 @@ const noticeToneClass =
 			)
 		}
 
-		{
-			view.robots.map((robot) => (
-				<section class="flex flex-col gap-6">
-					<h2 class="text-heading-2 font-bold text-text-primary">{robot.robotName}</h2>
-					{robot.licenses.map((item) => (
-						<LicenseCard item={item} />
-					))}
-				</section>
-			))
-		}
-
-		<aside class="flex gap-4 rounded-lg bg-surface-emphasis p-6">
-			<Server size={24} class="mt-0.5 shrink-0 text-brand-primary" aria-hidden="true" />
-			<div class="flex flex-col gap-1">
-				<p class="text-body font-bold text-text-primary">{backendNoteHeading.value}</p>
-				<p class="text-body-sm text-text-secondary">{backendNoteBody.value}</p>
+		<div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+			<div class="grid items-start gap-4 md:grid-cols-2">
+				{cards.map(({ robotName, item }) => <LicenseCard item={item} robotName={robotName} />)}
 			</div>
-		</aside>
+
+			<div class="flex flex-col gap-4">
+				<aside class="flex flex-col gap-4 rounded-lg border-w-1 border-border-subtle bg-surface-raised p-5 shadow-card">
+					<div class="flex items-center gap-3">
+						<Headphones size={20} class="shrink-0 text-brand-primary" aria-hidden="true" />
+						<h2 class="text-body-lg font-bold text-text-primary">{supportCardHeading.value}</h2>
+					</div>
+					<p class="text-body-sm text-text-secondary">{supportCardBody.value}</p>
+					<span
+						class="button-h-sm inline-flex cursor-not-allowed items-center justify-center rounded-md border-w-1 border-border-subtle text-body-sm font-medium text-text-tertiary"
+						aria-disabled="true"
+						title="Indisponível nesta etapa"
+					>
+						{deadLinks.suporte}
+					</span>
+				</aside>
+
+				<aside class="flex gap-3 rounded-lg bg-surface-emphasis p-5">
+					<Server size={20} class="mt-0.5 shrink-0 text-brand-primary" aria-hidden="true" />
+					<div class="flex flex-col gap-1">
+						<p class="text-body-sm font-bold text-text-primary">{backendNoteHeading.value}</p>
+						<p class="text-caption text-text-secondary">{backendNoteBody.value}</p>
+					</div>
+				</aside>
+			</div>
+		</div>
 	</section>
+	<ConfirmDialog />
 </BaseLayout>
-
-<script define:vars={{ cancelConfirmMessage, corretoraConfirmMessage }}>
-	// One click plus one confirmation (User Story 10) — a native confirm()
-	// dialog is the friction step before the cancel action fires.
-	for (const cancelForm of document.querySelectorAll('[data-cancel-form]')) {
-		cancelForm.addEventListener('submit', (event) => {
-			if (!window.confirm(cancelConfirmMessage)) event.preventDefault();
-		});
-	}
-
-	// The account number is write-once, so confirm before sending it.
-	for (const corretoraForm of document.querySelectorAll('[data-corretora-form]')) {
-		corretoraForm.addEventListener('submit', (event) => {
-			if (!window.confirm(corretoraConfirmMessage)) event.preventDefault();
-		});
-	}
-</script>

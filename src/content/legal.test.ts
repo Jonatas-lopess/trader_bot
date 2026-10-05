@@ -22,6 +22,9 @@ describe('legal pages content', () => {
 	it('footer links both pages; only Contato stays dead', () => {
 		const hrefs = supportLinks.flatMap((l) => ('href' in l ? [l.href] : []));
 		expect(hrefs).toEqual([termosDeUso.path, politicaDePrivacidade.path]);
-		expect(Object.keys(deadLinks)).toEqual(['contato']);
+		const deadLabels = supportLinks.flatMap((l) => ('dead' in l ? [l.label] : []));
+		expect(deadLabels).toEqual([deadLinks.contato]);
+		// The inventory also lists the /conta support button (same missing support channel).
+		expect(Object.keys(deadLinks)).toEqual(['contato', 'suporte']);
 	});
 });

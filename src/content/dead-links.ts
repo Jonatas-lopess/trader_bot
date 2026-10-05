@@ -3,7 +3,7 @@
  *
  * These labels have no destination in this scope (`.scratch/marketing-pages/spec.md`
  * → "Carried by the tickets, not resolved by them"). Wherever one of these
- * appears in the header or footer it renders as an inert element (a
+ * appears in the header, footer or the /conta support card it renders as an inert element (a
  * `<span>`, never `<a href="#">`) — see `src/components/site-header.astro`
  * and `src/components/site-footer.astro`.
  *
@@ -21,6 +21,8 @@
  */
 export const deadLinks = {
 	contato: 'Contato',
+	// The support card on /conta (src/pages/conta.astro) — same missing support channel as Contato.
+	suporte: 'Falar com o suporte',
 } as const;
 
 export type DeadLinkKey = keyof typeof deadLinks;

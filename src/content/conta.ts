@@ -8,13 +8,38 @@ import { LIFETIME_EXPIRY } from '../modules/licensing/license-expiry';
 import type { LicenseStatus } from '../modules/licensing/license-status';
 import { launchBlocking } from '../shared/launch-blocking';
 import type { PurchaseStatus } from '../modules/identity/customers';
+import type { OfferName } from './catalog';
 
-export const pageTitle = 'Sua conta';
+export const pageTitle = 'Meus produtos';
 export const pageDescription = 'Acompanhe o status da sua Licença e, na Oferta Mensal, gerencie sua Assinatura.';
 
-export const heading = 'Sua conta';
+export const heading = 'Meus produtos';
+export const subheading = 'Suas Licenças e Assinaturas, em um só lugar.';
 export const licenseLabel = 'Licença';
 export const assinaturaLabel = 'Assinatura';
+
+// App-shell navigation (painel-cliente wireframe's tab bar). Only "Meus produtos" has a page in
+// 0.1; the wireframe's other tabs (Downloads, Faturas, Suporte, Conta) would be dead ends.
+export const navLabel = 'Navegação da área do cliente';
+export const productsTabLabel = 'Meus produtos';
+
+// Mono subtitle under the Robô name: which Oferta this Licença came from (CONTEXT.md — Oferta),
+// so a repeat buyer can tell two cards of the same Robô apart.
+export const offerLabels: Record<OfferName, string> = {
+	one_time: 'Compra',
+	annual: 'Anual',
+	monthly: 'Mensal',
+};
+export const offerPrefix = 'Oferta';
+
+export const corretoraDataLabel = 'Conta na Corretora';
+// Shown until the Cliente has entered the account number.
+export const corretoraDataEmpty = '—';
+
+/** Status pill beside the page title: how many Licenças are usable right now. */
+export function activeLicensesText(count: number): string {
+	return count === 1 ? '1 Licença ativa' : `${count} Licenças ativas`;
+}
 
 // Ticket 04 (.scratch/customer-area/issues/04-cancel-subscription.md): the
 // page needs to reflect the Assinatura's own status too, not only the
@@ -145,6 +170,18 @@ export const backendNoteBody = launchBlocking(
 
 export const customerAreaLabel = 'Área do cliente';
 
+// Support card from the `painel-cliente` wireframe ("Precisa de ajuda?"). Trimmed to what is
+// true in 0.1: the wireframe's "suporte prioritário por e-mail e chat" is a plan claim with no
+// plan behind it. The button has no destination yet (src/content/dead-links.ts).
+export const supportCardHeading = launchBlocking(
+	'Precisa de ajuda?',
+	'Adapted from the Figma painel-cliente frame (86:1423); wording not yet approved by the owner.'
+);
+export const supportCardBody = launchBlocking(
+	'Dúvidas sobre sua Licença, o número da conta na Corretora ou o download do Robô? Fale com o nosso suporte.',
+	'Adapted from the Figma painel-cliente frame (86:1423); wording not yet approved by the owner.'
+);
+
 export const logoutLabel = 'Sair';
 
 export const cancelLabel = 'Cancelar assinatura';
@@ -155,3 +192,9 @@ export const cancelLabel = 'Cancelar assinatura';
 export const cancelConfirmMessage =
 	'Tem certeza que deseja cancelar sua Assinatura? Sua Licença continua ativa até a data ' +
 	'de expiração já definida, mas a cobrança recorrente para automaticamente.';
+// Confirmation dialog (src/components/confirm-dialog.astro) wording around the two messages above.
+export const confirmDismissLabel = 'Voltar';
+export const cancelConfirmTitle = 'Cancelar assinatura?';
+export const cancelConfirmAccept = 'Cancelar assinatura';
+export const corretoraConfirmTitle = 'Confirmar número da conta?';
+export const corretoraConfirmAccept = 'Confirmar número';

@@ -1,0 +1,48 @@
+---
+// Account header — src/components/account-header.astro
+//
+// App shell for the customer area (`painel-cliente` wireframe): brand tile, "Área do cliente"
+// label, Sair, and the tab bar. The marketing nav (Como funciona, Catálogo, FAQ, Comprar agora)
+// is for visitors, not for someone already logged in. The wireframe's avatar and name are left
+// out: the app holds no Cliente name, only an email. Copy comes from src/content/conta.ts.
+import { Bot, LogOut, Package } from '@lucide/astro';
+import { brand } from '../content/header';
+import { customerAreaLabel, logoutLabel, navLabel, productsTabLabel } from '../content/conta';
+---
+
+<header class="border-b border-border-subtle bg-surface-overlay">
+	<div class="content-row gutter-x flex items-center justify-between gap-4 py-4">
+		<div class="flex min-w-0 items-center gap-4">
+			<a href="/" class="flex items-center gap-3 font-heading text-heading-3 font-bold text-text-primary">
+				<span
+					class="flex size-8 shrink-0 items-center justify-center rounded-sm border-w-1 border-border-accent bg-surface-emphasis text-brand-primary"
+				>
+					<Bot size={18} aria-hidden="true" />
+				</span>
+				{brand.name}
+			</a>
+			<span class="hidden font-mono text-caption uppercase text-text-secondary sm:inline">{customerAreaLabel}</span>
+		</div>
+		<form method="POST" action="/logout">
+			<button
+				type="submit"
+				class="inline-flex items-center gap-2 text-body-sm text-text-secondary transition-colors hover:text-text-primary"
+			>
+				<LogOut size={16} aria-hidden="true" />
+				{logoutLabel}
+			</button>
+		</form>
+	</div>
+	<nav aria-label={navLabel} class="border-t border-border-subtle">
+		<div class="content-row gutter-x flex gap-8">
+			<a
+				href="/conta"
+				aria-current="page"
+				class="-mb-px inline-flex items-center gap-2 border-b-2 border-brand-primary py-4 text-body-sm font-medium text-brand-primary"
+			>
+				<Package size={16} aria-hidden="true" />
+				{productsTabLabel}
+			</a>
+		</div>
+	</nav>
+</header>

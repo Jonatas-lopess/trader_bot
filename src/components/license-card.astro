@@ -1,26 +1,36 @@
 ---
 // Licença product card — src/components/license-card.astro
 //
-// One card per Licença on `/conta` (.scratch/figma-restyle/issues/04-conta-restyle.md): icon tile,
-// status badge per Licença state, mono data row, and the Corretora form / cancel control that
-// the state allows. Card pattern from the `painel-cliente` / `estados-licenca` wireframes; states
-// the wireframes do not draw reuse it. Copy comes from src/content/conta.ts — see
-// docs/agents/content-files.md. Behavior (form actions, data attributes) is unchanged; the
-// confirm() script stays in the page.
+// One lean card per Licença on `/conta` (.scratch/figma-restyle/issues/04-conta-restyle.md):
+// icon tile, Robô name with its Oferta in mono, a status badge per Licença state, a compact data
+// row, and the Corretora form / cancel control the state allows. Card pattern from the
+// `painel-cliente` / `estados-licenca` wireframes; states the wireframes do not draw reuse it.
+// Copy comes from src/content/conta.ts — see docs/agents/content-files.md. Behavior (form
+// actions, data attributes) is unchanged; the confirmation is src/components/confirm-dialog.astro, driven by the `data-confirm-*` attributes.
 import { CircleX, Cog, Hourglass, KeyRound, ShieldAlert, ShieldCheck } from '@lucide/astro';
 import type { AccountLicense } from '../modules/licensing/account-page';
 import {
 	assinaturaLabel,
 	assinaturaStatusTexts,
+	cancelConfirmAccept,
+	cancelConfirmMessage,
+	cancelConfirmTitle,
 	cancelLabel,
 	corretoraAccountHint,
 	corretoraAccountLabel,
 	corretoraBannerBody,
 	corretoraBannerHeading,
+	corretoraConfirmAccept,
+	corretoraConfirmMessage,
+	corretoraConfirmTitle,
+	corretoraDataEmpty,
+	corretoraDataLabel,
 	corretoraSubmitLabel,
 	licenseBadges,
 	licenseLabel,
 	licenseStatusText,
+	offerLabels,
+	offerPrefix,
 	rejectedNoticeText,
 	type BadgeTone,
 	type LicenseBadgeIcon,
@@ -28,9 +38,10 @@ import {
 
 type Props = {
 	item: AccountLicense;
+	robotName: string;
 };
 
-const { item } = Astro.props;
+const { item, robotName } = Astro.props;
 
 const icons: Record<LicenseBadgeIcon, typeof Hourglass> = {
 	hourglass: Hourglass,
@@ -58,25 +69,33 @@ const Icon = icons[badge.icon];
 ---
 
 <article
-	class="card-p-sm flex flex-col gap-6 rounded-lg border-w-1 border-border-subtle bg-surface-raised shadow-card"
+	class:list={[
+		'flex flex-col gap-4 rounded-lg border-w-1 border-border-subtle bg-surface-raised p-5 shadow-card',
+		// The account form is the tall card; a full row keeps it from leaving a hole beside it.
+		item.license.status === 'awaiting_account' && 'md:col-span-2',
+	]}
 	data-purchase-id={item.purchaseId}
 >
-	<div class="flex flex-wrap items-center gap-4">
-		<span class={`flex size-12 shrink-0 items-center justify-center rounded-md bg-surface-emphasis ${tileToneClasses[badge.tone]}`}>
-			<Icon size={24} aria-hidden="true" />
+	<div class="flex items-center gap-3">
+		<span class={`flex size-10 shrink-0 items-center justify-center rounded-md bg-surface-emphasis ${tileToneClasses[badge.tone]}`}>
+			<Icon size={20} aria-hidden="true" />
 		</span>
-		<h3 class="min-w-0 flex-1 text-heading-3 font-bold text-text-primary">{licenseLabel}</h3>
-		<span
-			class={`inline-flex shrink-0 items-center gap-1.5 rounded-xs px-2 py-1 font-mono text-caption ${badgeToneClasses[badge.tone]}`}
-		>
-			<Icon size={14} aria-hidden="true" />
-			{badge.label}
-		</span>
+		<div class="flex min-w-0 flex-col">
+			<h3 class="text-body-lg font-bold text-text-primary">{robotName}</h3>
+			<p class="font-mono text-caption uppercase text-text-secondary">{offerPrefix} {offerLabels[item.offer]}</p>
+		</div>
 	</div>
+
+	<span
+		class={`inline-flex w-fit items-center gap-1.5 rounded-xs px-2 py-1 font-mono text-caption ${badgeToneClasses[badge.tone]}`}
+	>
+		<Icon size={14} aria-hidden="true" />
+		{badge.label}
+	</span>
 
 	{
 		item.subscriptionStatus === 'rejected' && (
-			<p class="rounded-md bg-surface-emphasis p-4 text-body text-text-primary" role="status">
+			<p class="rounded-md bg-surface-emphasis p-4 text-body-sm text-text-primary" role="status">
 				{rejectedNoticeText.value}
 			</p>
 		)
@@ -85,12 +104,21 @@ const Icon = icons[badge.icon];
 	{
 		item.license.status === 'awaiting_account' && (
 			<section
-				class="flex flex-col gap-4 rounded-md border-w-1 border-border-accent bg-surface-sunken p-4"
+				class="flex flex-col gap-3 rounded-md border-w-1 border-border-accent bg-surface-sunken p-4"
 				data-corretora-banner
 			>
-				<h4 class="text-body-lg font-bold text-text-primary">{corretoraBannerHeading}</h4>
-				<p class="text-body text-text-secondary">{corretoraBannerBody}</p>
-				<form method="POST" action="/conta/corretora" data-corretora-form class="flex max-w-sm flex-col gap-4">
+				<h4 class="text-body font-bold text-text-primary">{corretoraBannerHeading}</h4>
+				<p class="text-body-sm text-text-secondary">{corretoraBannerBody}</p>
+				<form
+					method="POST"
+					action="/conta/corretora"
+					data-corretora-form
+					data-confirm-title={corretoraConfirmTitle}
+					data-confirm-message={corretoraConfirmMessage}
+					data-confirm-accept={corretoraConfirmAccept}
+					data-confirm-tone="primary"
+					class="flex max-w-sm flex-col gap-3"
+				>
 					<input type="hidden" name="purchase_id" value={item.purchaseId} />
 					<label class="flex flex-col gap-2">
 						<span class="text-body-sm text-text-secondary">{corretoraAccountLabel}</span>
@@ -106,7 +134,7 @@ const Icon = icons[badge.icon];
 					</label>
 					<button
 						type="submit"
-						class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+						class="button-h-sm inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
 					>
 						{corretoraSubmitLabel}
 					</button>
@@ -115,24 +143,36 @@ const Icon = icons[badge.icon];
 		)
 	}
 
-	<dl class="grid gap-4 border-t border-border-subtle pt-6 sm:grid-cols-2">
-		<div class="flex flex-col gap-1">
+	<dl class="grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border-subtle pt-4">
+		<div class="col-span-2 flex flex-col gap-0.5">
 			<dt class="text-body-sm text-text-secondary">{licenseLabel}</dt>
-			<dd class="font-mono text-body text-text-primary">{licenseStatusText(item.license)}</dd>
+			<dd class="font-mono text-body-sm text-text-primary">{licenseStatusText(item.license)}</dd>
 		</div>
-		<div class="flex flex-col gap-1">
+		<div class="flex flex-col gap-0.5">
 			<dt class="text-body-sm text-text-secondary">{assinaturaLabel}</dt>
-			<dd class="font-mono text-body text-text-primary">{assinaturaStatusTexts[item.subscriptionStatus]}</dd>
+			<dd class="font-mono text-body-sm text-text-primary">{assinaturaStatusTexts[item.subscriptionStatus]}</dd>
+		</div>
+		<div class="flex flex-col gap-0.5">
+			<dt class="text-body-sm text-text-secondary">{corretoraDataLabel}</dt>
+			<dd class="font-mono text-body-sm text-text-primary">{item.corretoraAccount ?? corretoraDataEmpty}</dd>
 		</div>
 	</dl>
 
 	{
 		item.canCancel && (
-			<form method="POST" action="/conta/cancelar" data-cancel-form>
+			<form
+				method="POST"
+				action="/conta/cancelar"
+				data-cancel-form
+				data-confirm-title={cancelConfirmTitle}
+				data-confirm-message={cancelConfirmMessage}
+				data-confirm-accept={cancelConfirmAccept}
+				data-confirm-tone="danger"
+			>
 				<input type="hidden" name="purchase_id" value={item.purchaseId} />
 				<button
 					type="submit"
-					class="button-h-lg inline-flex items-center justify-center rounded-md border-w-1 border-border-strong px-6 text-body font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+					class="button-h-sm inline-flex items-center justify-center rounded-md border-w-1 border-border-strong px-5 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
 				>
 					{cancelLabel}
 				</button>

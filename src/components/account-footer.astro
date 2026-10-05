@@ -1,0 +1,56 @@
+---
+// Account footer — src/components/account-footer.astro
+//
+// Slim footer for the customer-area shell (`painel-cliente` wireframe): copyright, the two legal
+// links, and the AVISO LEGAL line that ships on every page (src/content/footer.ts). The marketing
+// footer's link columns are for visitors. Termos and Privacidade open in a modal over the page
+// (src/components/legal-dialog.astro); the links keep their `href`, so they still work without JS.
+import { copyright, legalNotice } from '../content/footer';
+import LegalDialog from './legal-dialog.astro';
+import { politicaDePrivacidade, termosDeUso } from '../content/legal';
+
+const year = new Date().getFullYear();
+const legalLinks = [termosDeUso, politicaDePrivacidade].map((page) => ({ page, dialogId: `legal-${page.path.slice(1)}` }));
+---
+
+<footer class="border-t border-border-subtle bg-surface-overlay">
+	<div class="content-row gutter-x flex flex-col gap-4 py-8">
+		<div class="flex flex-wrap items-center justify-between gap-x-8 gap-y-2">
+			<p class="text-body-sm text-text-secondary">{copyright(year)}</p>
+			<ul class="flex gap-6">
+				{
+					legalLinks.map(({ page, dialogId }) => (
+						<li>
+							<a
+								href={page.path}
+								data-legal-dialog={dialogId}
+								class="text-body-sm text-text-secondary hover:text-text-primary"
+							>
+								{page.pageTitle}
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+		<p class="max-w-3xl text-caption text-text-secondary">{legalNotice}</p>
+	</div>
+</footer>
+
+{legalLinks.map(({ page, dialogId }) => <LegalDialog page={page} id={dialogId} />)}
+
+<script>
+	for (const link of document.querySelectorAll<HTMLAnchorElement>('a[data-legal-dialog]')) {
+		const dialog = document.getElementById(link.dataset.legalDialog ?? '');
+		if (!(dialog instanceof HTMLDialogElement)) continue;
+		link.addEventListener('click', (event) => {
+			event.preventDefault();
+			dialog.showModal();
+		});
+		dialog.querySelector('[data-legal-close]')?.addEventListener('click', () => dialog.close());
+		// Click on the backdrop (the dialog element itself) dismisses; Escape is native.
+		dialog.addEventListener('click', (event) => {
+			if (event.target === dialog) dialog.close();
+		});
+	}
+</script>

@@ -1,0 +1,91 @@
+---
+// Confirmation dialog — src/components/confirm-dialog.astro
+//
+// Replaces the browser's native confirm() on /conta (cancel Assinatura, send the Corretora
+// account number). One native <dialog> in the page; any form that carries `data-confirm-message`
+// is intercepted on submit, the dialog is filled from that form's `data-confirm-*` attributes,
+// and the form is submitted for real only when the Cliente accepts. Without JS the forms submit
+// directly, as they did before the confirmation existed. Copy comes from src/content/conta.ts.
+import { confirmDismissLabel } from '../content/conta';
+---
+
+<dialog
+	id="confirm-dialog"
+	aria-labelledby="confirm-dialog-title"
+	aria-describedby="confirm-dialog-message"
+	class="m-auto w-[calc(100%-2.5rem)] max-w-md rounded-lg border-w-1 border-border-subtle bg-surface-raised p-6 text-text-primary shadow-card backdrop:bg-surface-base/80"
+>
+	<div class="flex flex-col gap-4">
+		<h2 id="confirm-dialog-title" class="text-heading-3 font-bold text-text-primary"></h2>
+		<p id="confirm-dialog-message" class="text-body text-text-secondary"></p>
+		<div class="mt-2 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+			<button
+				type="button"
+				id="confirm-dialog-dismiss"
+				autofocus
+				class="button-h-sm inline-flex items-center justify-center rounded-md border-w-1 border-border-strong px-5 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+			>
+				{confirmDismissLabel}
+			</button>
+			<button
+				type="button"
+				id="confirm-dialog-accept"
+				class="button-h-sm inline-flex items-center justify-center rounded-md px-5 text-body-sm font-medium text-text-on-brand transition-colors"
+			>
+			</button>
+		</div>
+	</div>
+</dialog>
+
+<style is:global>
+	body:has(dialog[open]) {
+		overflow: hidden;
+	}
+</style>
+
+<script>
+	const dialog = document.querySelector<HTMLDialogElement>('#confirm-dialog');
+	const title = document.querySelector<HTMLElement>('#confirm-dialog-title');
+	const message = document.querySelector<HTMLElement>('#confirm-dialog-message');
+	const accept = document.querySelector<HTMLButtonElement>('#confirm-dialog-accept');
+	const dismiss = document.querySelector<HTMLButtonElement>('#confirm-dialog-dismiss');
+
+	// Full class strings, so Tailwind's scanner sees every one.
+	const acceptTones: Record<string, string> = {
+		danger: 'bg-danger hover:opacity-90',
+		primary: 'bg-brand-primary hover:bg-brand-primary-hover',
+	};
+
+	if (dialog && title && message && accept && dismiss) {
+		let pending: HTMLFormElement | null = null;
+
+		for (const form of document.querySelectorAll<HTMLFormElement>('form[data-confirm-message]')) {
+			form.addEventListener('submit', (event) => {
+				event.preventDefault();
+				pending = form;
+				title.textContent = form.dataset.confirmTitle ?? '';
+				message.textContent = form.dataset.confirmMessage ?? '';
+				accept.textContent = form.dataset.confirmAccept ?? '';
+				for (const classes of Object.values(acceptTones)) accept.classList.remove(...classes.split(' '));
+				accept.classList.add(...(acceptTones[form.dataset.confirmTone ?? ''] ?? acceptTones.primary).split(' '));
+				dialog.showModal();
+			});
+		}
+
+		accept.addEventListener('click', () => {
+			const form = pending;
+			pending = null;
+			dialog.close();
+			// `submit()` skips the submit event, so this does not re-open the dialog.
+			form?.submit();
+		});
+		dismiss.addEventListener('click', () => dialog.close());
+		// Click on the backdrop (the dialog element itself) dismisses; Escape is native.
+		dialog.addEventListener('click', (event) => {
+			if (event.target === dialog) dialog.close();
+		});
+		dialog.addEventListener('close', () => {
+			pending = null;
+		});
+	}
+</script>

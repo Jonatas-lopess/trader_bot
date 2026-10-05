@@ -32,7 +32,7 @@ describe('resolveAccountView', () => {
 			robots: [
 				{
 					robotName: 'Robô Exemplo A',
-					licenses: [{ purchaseId: 'sub-account-1', canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' }],
+					licenses: [{ purchaseId: 'sub-account-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' }],
 				},
 			],
 		});
@@ -55,6 +55,8 @@ describe('resolveAccountView', () => {
 					licenses: [
 						{
 							purchaseId: 'sub-account-2',
+							offer: 'monthly',
+							corretoraAccount: null,
 							canCancel: true,
 							license: { status: 'active', expiresAt: '2027-06-20T00:00:00.000Z' },
 							subscriptionStatus: 'active',
@@ -101,14 +103,40 @@ describe('resolveAccountView', () => {
 				{
 					robotName: 'Robô Exemplo A',
 					licenses: [
-						{ purchaseId: 'multi-1', canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' },
-						{ purchaseId: 'multi-3', canCancel: false, license: { status: 'none' }, subscriptionStatus: 'active' },
+						{ purchaseId: 'multi-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' },
+						{ purchaseId: 'multi-3', offer: 'one_time', corretoraAccount: null, canCancel: false, license: { status: 'none' }, subscriptionStatus: 'active' },
 					],
 				},
 				{
 					robotName: 'Robô Exemplo B',
 					licenses: [
-						{ purchaseId: 'multi-2', canCancel: true, license: { status: 'awaiting_account' }, subscriptionStatus: 'active' },
+						{ purchaseId: 'multi-2', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'awaiting_account' }, subscriptionStatus: 'active' },
+					],
+				},
+			],
+		});
+	});
+
+	it("shows the Corretora account the Cliente entered, per Licença, and null before that", async () => {
+		await seedAccount({ purchaseId: 'acct-1', customerId: 'cust-acct', planId: 'robo-exemplo-a', email: 'acct@example.com' });
+		await seedAccount({ purchaseId: 'acct-2', customerId: 'cust-acct-other', planId: 'robo-exemplo-a', email: 'acct@example.com', offer: 'annual' });
+		await env.DB.prepare('INSERT INTO licenses (purchase_id, robot_id, status, corretora_account) VALUES (?, ?, ?, ?)')
+			.bind('acct-1', 'robo-exemplo-a', 'preparing', 123456)
+			.run();
+		await env.DB.prepare('INSERT INTO licenses (purchase_id, robot_id, status) VALUES (?, ?, ?)')
+			.bind('acct-2', 'robo-exemplo-a', 'awaiting_account')
+			.run();
+		const { cookieValue } = await createSession(env, 'cust-acct');
+
+		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
+
+		expect(result).toMatchObject({
+			ok: true,
+			robots: [
+				{
+					licenses: [
+						{ purchaseId: 'acct-1', offer: 'monthly', corretoraAccount: 123456 },
+						{ purchaseId: 'acct-2', offer: 'annual', corretoraAccount: null },
 					],
 				},
 			],

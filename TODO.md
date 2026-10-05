@@ -141,8 +141,9 @@ Source of truth: [ADR-0006](docs/adr/0006-catalog-pivot.md). Docs pass (CONTEXT,
 | 12 | [End-to-end verification](.scratch/catalog-pivot/issues/12-end-to-end-verification.md) | 03, 04, 07, 08 | done |
 | 13 | [Persist fiscal data on the purchase for NFS-e](.scratch/catalog-pivot/issues/13-fiscal-data-for-nfse.md) | 02, 04 | done |
 | 14 | [Identity per email — one customer, many purchases](.scratch/catalog-pivot/issues/14-identity-per-email.md) | — | done |
+| 15 | [Catalog `market` field, optional Corretoras, catalog guard tests](.scratch/catalog-pivot/issues/15-catalog-market-and-guards.md) | — | ready-for-agent |
 
-Frontier: none (all done; 11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
+Frontier: **15** (11 deferred). Supersedes `marketing-pages` 07/08 and `license-server` 05 (wontfix) / 06 (superseded).
 
 ## figma-restyle
 

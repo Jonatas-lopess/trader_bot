@@ -94,3 +94,10 @@ Decided in the 2026-10-02 grilling; each waits on a decision that isn't made yet
 - **Wireframe elements `/conta` does not have** (figma-restyle/04). Each needs something 0.1 lacks: license-key box with Copiar (no key), "Baixar novamente" and installer row (download is email-only, PLANNING §8), invoice table (no invoice data), upgrade card (no plan tiers), avatar and name (only an email is held), and the Downloads / Faturas / Suporte / Conta tabs. "Renovar licença" waits on the renewal rule above.
 - **Support channel.** The "Falar com o suporte" button on `/conta` and Contato in the footer are inert (`src/content/dead-links.ts`) until a support channel exists.
 - **Legal routes.** Termos and Privacidade also open as a modal on `/conta`; whether `/termos-de-uso` and `/privacidade` can be dropped is open (a public URL is often asked for by gateway onboarding; PLANNING §9).
+
+## Deferred from catalog-pivot 15
+
+Decided in the 2026-10-05 grilling on what a Robô record carries.
+
+- **Banner image per Robô.** Optional; without one the card renders as today. Waits on where the images are stored and served (not decided), which fixes the shape of the `banner` field. Rules already set: 16:9, `alt` required when an image exists, shown on the `/catalog` card and the landing teaser (not `/conta`), never a profit or performance chart (CDC art. 37).
+- **Long description per Robô.** Needs a per-Robô detail page, which ADR-0006 defers until a second real Robô exists.

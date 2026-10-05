@@ -13,6 +13,9 @@
  * item 3 and .scratch/backlog.md.
  */
 
+import { magicLinkEmail } from '../../content/emails';
+import { renderEmail } from '../../shared/email-template';
+
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const FROM_ADDRESS = 'Robô Trader <onboarding@resend.dev>';
 
@@ -40,6 +43,7 @@ export async function sendMagicLinkEmail(
 	env: ResendCredentials,
 	params: { to: string; magicLinkUrl: string }
 ): Promise<SendMagicLinkEmailResult> {
+	const email = renderEmail(magicLinkEmail, { url: params.magicLinkUrl });
 	const response = await fetch(RESEND_API_URL, {
 		method: 'POST',
 		headers: {
@@ -49,9 +53,7 @@ export async function sendMagicLinkEmail(
 		body: JSON.stringify({
 			from: FROM_ADDRESS,
 			to: [params.to],
-			subject: 'Seu link de acesso — Robô Trader',
-			html: `<p>Clique no link abaixo para entrar na sua área do cliente. O link expira em 15 minutos e só pode ser usado uma vez.</p><p><a href="${params.magicLinkUrl}">${params.magicLinkUrl}</a></p>`,
-			text: `Clique no link abaixo para entrar na sua área do cliente. O link expira em 15 minutos e só pode ser usado uma vez.\n\n${params.magicLinkUrl}`,
+			...email,
 		}),
 	});
 	if (response.ok) return { ok: true };

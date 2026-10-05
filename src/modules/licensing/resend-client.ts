@@ -12,6 +12,9 @@
  * blocker).
  */
 
+import { downloadLinkEmail } from '../../content/emails';
+import { renderEmail } from '../../shared/email-template';
+
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const FROM_ADDRESS = 'Robô Trader <entrega@robotrader.com.br>';
 
@@ -39,6 +42,7 @@ export async function sendDownloadLinkEmail(
 	env: ResendCredentials,
 	params: { to: string; downloadUrl: string }
 ): Promise<SendDownloadLinkEmailResult> {
+	const email = renderEmail(downloadLinkEmail, { url: params.downloadUrl });
 	const response = await fetch(RESEND_API_URL, {
 		method: 'POST',
 		headers: {
@@ -48,9 +52,7 @@ export async function sendDownloadLinkEmail(
 		body: JSON.stringify({
 			from: FROM_ADDRESS,
 			to: [params.to],
-			subject: 'Seu Robô Trader está pronto para baixar',
-			html: `<p>Clique no link abaixo para baixar o Robô Trader. O link expira em 48 horas e pode ser usado mais de uma vez dentro desse prazo.</p><p><a href="${params.downloadUrl}">${params.downloadUrl}</a></p>`,
-			text: `Clique no link abaixo para baixar o Robô Trader. O link expira em 48 horas e pode ser usado mais de uma vez dentro desse prazo.\n\n${params.downloadUrl}`,
+			...email,
 		}),
 	});
 	if (response.ok) return { ok: true };

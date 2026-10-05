@@ -42,8 +42,8 @@ const initialState: PurchaseState | null = initial.ok ? initial.state : null;
 					<p id="confirmation-message" class="text-body-lg text-text-secondary">
 						{confirmationMessages[initialState]}
 					</p>
-					{/* Login destination out of scope (checkout-confirmation.ts) — inert
-					   like src/content/dead-links.ts's `login`, never <a href="#">. */}
+					{/* Login destination out of scope (checkout-confirmation.ts) — inert,
+					   never <a href="#">. */}
 					<span
 						id="confirmation-cta"
 						class="button-h-lg mt-4 hidden items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand data-[visible]:inline-flex"

@@ -57,10 +57,9 @@ export const confirmationMessages: Record<
 };
 
 // The login destination is out of scope here (magic-link login is a
-// separate backlog item, PLANNING.md §1) — same "no destination yet" class
-// as src/content/dead-links.ts's `login` entry, rendered inert the same way
-// by src/pages/checkout/confirmacao.astro, just with this page's own wording
-// per PLANNING.md §7 rather than dead-links.ts's generic "Login".
+// separate backlog item, PLANNING.md §1) — rendered inert by
+// src/pages/checkout/confirmacao.astro, with this page's own wording per
+// PLANNING.md §7.
 export const activeCtaLabel = 'Entrar na área do cliente';
 
 export const missingReferenceMessage =

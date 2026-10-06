@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { seedCustomer } from '../../../test/customer-seed';
 import { describe, expect, it } from 'vitest';
+import { supportEmail } from '../../content/support';
 import { createSession } from '../identity/session';
 import { resolveAccountView } from './account-page';
 
@@ -32,7 +33,7 @@ describe('resolveAccountView', () => {
 			robots: [
 				{
 					robotName: 'Robô Exemplo A',
-					licenses: [{ purchaseId: 'sub-account-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' }],
+					licenses: [{ purchaseId: 'sub-account-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) }],
 				},
 			],
 		});
@@ -60,6 +61,7 @@ describe('resolveAccountView', () => {
 							canCancel: true,
 							license: { status: 'active', expiresAt: '2027-06-20T00:00:00.000Z' },
 							subscriptionStatus: 'active',
+							withdrawalMailto: expect.any(String),
 						},
 					],
 				},
@@ -103,14 +105,14 @@ describe('resolveAccountView', () => {
 				{
 					robotName: 'Robô Exemplo A',
 					licenses: [
-						{ purchaseId: 'multi-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active' },
-						{ purchaseId: 'multi-3', offer: 'one_time', corretoraAccount: null, canCancel: false, license: { status: 'none' }, subscriptionStatus: 'active' },
+						{ purchaseId: 'multi-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
+						{ purchaseId: 'multi-3', offer: 'one_time', corretoraAccount: null, canCancel: false, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
 					],
 				},
 				{
 					robotName: 'Robô Exemplo B',
 					licenses: [
-						{ purchaseId: 'multi-2', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'awaiting_account' }, subscriptionStatus: 'active' },
+						{ purchaseId: 'multi-2', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'awaiting_account' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
 					],
 				},
 			],
@@ -159,5 +161,58 @@ describe('resolveAccountView', () => {
 		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
 
 		expect(result).toEqual({ ok: false });
+	});
+
+	describe('withdrawal request (CDC art. 49, 7 days from purchase)', () => {
+		const purchasedAt = '2026-10-01T12:00:00.000Z';
+		const insideWindow = new Date('2026-10-08T12:00:00.000Z');
+		const outsideWindow = new Date('2026-10-08T12:00:00.001Z');
+
+		async function seedWithdrawal(id: string, status = 'active') {
+			await seedAccount({ purchaseId: id, customerId: `cust-${id}`, planId: 'robo-exemplo-a', email: `${id}@example.com` });
+			await env.DB.prepare('UPDATE purchases SET created_at = ?, status = ? WHERE id = ?').bind(purchasedAt, status, id).run();
+			return requestWithCookie((await createSession(env, `cust-${id}`)).cookieValue);
+		}
+
+		it('offers a mailto to support naming the purchase, the Cliente and art. 49 inside the window', async () => {
+			const request = await seedWithdrawal('wd-open');
+
+			const result = await resolveAccountView(env, request, insideWindow);
+
+			expect(result).toMatchObject({ ok: true, robots: [{ licenses: [{ purchaseId: 'wd-open', withdrawalMailto: expect.any(String) }] }] });
+			const mailto = new URL((result as { ok: true; robots: { licenses: { withdrawalMailto: string }[] }[] }).robots[0].licenses[0].withdrawalMailto);
+			expect(mailto.protocol).toBe('mailto:');
+			expect(mailto.pathname).toBe(supportEmail.value);
+			expect(mailto.searchParams.get('subject')).toContain('wd-open');
+			const body = mailto.searchParams.get('body');
+			expect(body).toContain('wd-open');
+			expect(body).toContain('wd-open@example.com');
+			expect(body).toContain('art. 49');
+			expect(body).toContain('\r\n');
+		});
+
+		it('offers nothing once the window has closed', async () => {
+			const request = await seedWithdrawal('wd-closed');
+
+			const result = await resolveAccountView(env, request, outsideWindow);
+
+			expect(result).toMatchObject({ ok: true, robots: [{ licenses: [{ withdrawalMailto: null }] }] });
+		});
+
+		it.each(['canceled', 'past_due'])('still offers it for a %s purchase inside the window', async (status) => {
+			const request = await seedWithdrawal(`wd-${status}`, status);
+
+			const result = await resolveAccountView(env, request, insideWindow);
+
+			expect(result).toMatchObject({ ok: true, robots: [{ licenses: [{ withdrawalMailto: expect.any(String) }] }] });
+		});
+
+		it.each(['pending', 'rejected', 'refunded', 'chargeback'])('offers nothing for a %s purchase even inside the window', async (status) => {
+			const request = await seedWithdrawal(`wd-${status}`, status);
+
+			const result = await resolveAccountView(env, request, insideWindow);
+
+			expect(result).toMatchObject({ ok: true, robots: [{ licenses: [{ withdrawalMailto: null }] }] });
+		});
 	});
 });

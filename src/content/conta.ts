@@ -200,3 +200,20 @@ export const cancelConfirmTitle = 'Cancelar assinatura?';
 export const cancelConfirmAccept = 'Cancelar assinatura';
 export const corretoraConfirmTitle = 'Confirmar número da conta?';
 export const corretoraConfirmAccept = 'Confirmar número';
+
+// Withdrawal request (.scratch/withdrawal-guarantee/issues/02-withdrawal-request-path.md): a
+// mailto to support, shown on each Licença inside the 7 days. `{purchaseId}` and `{email}` are
+// filled by `withdrawalRequestMailto` (src/modules/licensing/withdrawal.ts). All launch-blocking:
+// the lawyer words the right, the owner confirms the answer time (ticket 04).
+const withdrawalReason =
+	'Withdrawal copy awaits the lawyer (CDC art. 49 wording, start of the 7 days) and owner launch approval; answer time from withdrawal-guarantee/04.';
+export const withdrawalRequestLabel = launchBlocking('Solicitar arrependimento', withdrawalReason);
+export const withdrawalRequestHint = launchBlocking(
+	'Dentro de 7 dias da compra você pode desistir. Respondemos em até 2 dias úteis.',
+	withdrawalReason
+);
+export const withdrawalMailSubject = launchBlocking('Direito de arrependimento: compra {purchaseId}', withdrawalReason);
+export const withdrawalMailBody = launchBlocking(
+	'Olá,\n\nExerço o direito de arrependimento (CDC art. 49) sobre a compra {purchaseId}.\n\nE-mail da conta: {email}\n',
+	withdrawalReason
+);

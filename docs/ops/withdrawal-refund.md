@@ -7,7 +7,28 @@ placeholder until a lawyer words it).
 
 ## Steps
 
-1. Confirm the request is within 7 days of the purchase (`purchases.created_at`) and find it:
+0. **Intake.** The request arrives at the support mailbox (`suporte@…`, a plain mailbox, not
+   Resend) from the "Solicitar arrependimento" link on `/conta`, which prefills the subject and
+   body with the purchase id and the Cliente's e-mail. Answer within **2 dias úteis** (owner
+   decision, withdrawal-guarantee/04). Check that the sender is the e-mail on the purchase's
+   Cliente (`customers.email`); if not, ask the Cliente to write from it. A free-form e-mail
+   without the prefilled data counts as a request all the same: find the purchase by e-mail:
+
+   ```sql
+   SELECT p.id, p.robot_id, p.offer, p.status, p.created_at FROM purchases p JOIN customers c ON c.id = p.customer_id WHERE c.email = '<email>' ORDER BY p.created_at;
+   ```
+
+   Reply template (placeholder wording until the lawyer approves it):
+
+   > Olá! Recebemos seu pedido de arrependimento da compra `<purchase_id>`. Ele está dentro
+   > do prazo de 7 dias e o reembolso foi solicitado; o valor volta pela mesma forma de
+   > pagamento. Sua Licença foi revogada. Qualquer dúvida, responda este e-mail.
+
+   If the request is outside the 7 days, answer the same way but say it is out of the period,
+   and decide any goodwill refund by hand (it is not this path).
+
+1. Confirm the request is within 7 days of the purchase (`purchases.created_at`, day 7
+   inclusive, same rule as `withdrawalWindowOpen`) and find it:
 
    ```sql
    SELECT id, robot_id, offer, status, amount_cents, appmax_order_id, created_at FROM purchases WHERE id = '<purchase_id>';
@@ -17,6 +38,13 @@ placeholder until a lawyer words it).
    webhook maps to `refunded`. That write also sets `licenses.expires_at` to now
    (`deriveLicenseExpiry`, ticket 05), so the Licença reads `revoked` in `/conta` and any
    download link already minted returns 404.
+
+   **Mensal:** the right covers the first charge only, and a Mensal is one `purchases` row
+   across renewals (`created_at` never moves). Refund the first charge, then also cancel the
+   subscription in Appmax so no renewal charges the Cliente afterwards. Whether Appmax's
+   `estornado` on the first order already cancels the subscription is unverified: check it in
+   the test phase and drop this extra step if it does. A refund of a later renewal is outside
+   this path.
 
 3. Verify after the webhook lands:
 

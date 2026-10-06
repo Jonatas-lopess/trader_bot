@@ -24,14 +24,14 @@ export const rejectedMessage = launchBlocking(
 );
 
 // Shown under the "Pagamento confirmado!" message once the purchase is `active`
-// (withdrawal-guarantee 03). How to request: the support e-mail for now; the request link on
-// /conta is ticket 02, not built. "Desistir da compra", never "garantia".
+// (withdrawal-guarantee 03). How to request: the support e-mail, not the "Solicitar arrependimento"
+// link on /conta (ticket 02): this page is public and /conta needs a login, so the e-mail works
+// for every buyer. "Desistir da compra", never "garantia".
 export const withdrawalNotice = {
 	text: launchBlocking(
 		'Você tem 7 dias para desistir da compra. Para pedir, escreva para o suporte:',
 		'CDC art. 49 / ADR-0006 Withdrawal: tells the paid Cliente about the 7-day withdrawal and how to ' +
-			'request it; wording is a placeholder a lawyer confirms, and the request path is the support ' +
-			'e-mail until withdrawal-guarantee 02 lands.',
+			'request it; wording is a placeholder a lawyer confirms.',
 	),
 	supportLink: { label: supportEmail.value, href: supportMailto() },
 	termosLink: { label: 'Direito de arrependimento nos Termos de uso', href: withdrawalHref },

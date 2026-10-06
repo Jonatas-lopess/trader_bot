@@ -65,6 +65,12 @@ export async function getCustomerByPurchaseId(
 		.first<{ id: string; email: string }>();
 }
 
+/** The Cliente's e-mail by id (the session names the id); `null` when no such Cliente. */
+export async function getCustomerEmail(env: CustomersEnv, customerId: string): Promise<string | null> {
+	const row = await env.DB.prepare('SELECT email FROM customers WHERE id = ?').bind(customerId).first<{ email: string }>();
+	return row?.email ?? null;
+}
+
 export type { PurchaseStatus };
 
 /** One purchase a Cliente owns, as `/conta` and its actions need it. */
@@ -75,6 +81,7 @@ export type CustomerPurchase = {
 	status: PurchaseStatus;
 	provider: ProviderId;
 	appmaxSubscriptionId: string | null;
+	createdAt: string;
 };
 
 type PurchaseRow = {
@@ -84,9 +91,10 @@ type PurchaseRow = {
 	status: PurchaseStatus;
 	provider: ProviderId;
 	appmax_subscription_id: string | null;
+	created_at: string;
 };
 
-const PURCHASE_COLUMNS = `id AS purchase_id, robot_id, offer, status, provider, appmax_subscription_id`;
+const PURCHASE_COLUMNS = `id AS purchase_id, robot_id, offer, status, provider, appmax_subscription_id, created_at`;
 
 function toCustomerPurchase(row: PurchaseRow): CustomerPurchase {
 	return {
@@ -96,6 +104,7 @@ function toCustomerPurchase(row: PurchaseRow): CustomerPurchase {
 		status: row.status,
 		provider: row.provider,
 		appmaxSubscriptionId: row.appmax_subscription_id,
+		createdAt: row.created_at,
 	};
 }
 

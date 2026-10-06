@@ -32,6 +32,8 @@ import {
 	offerLabels,
 	offerPrefix,
 	rejectedNoticeText,
+	withdrawalRequestHint,
+	withdrawalRequestLabel,
 	type BadgeTone,
 	type LicenseBadgeIcon,
 } from '../content/conta';
@@ -177,6 +179,20 @@ const Icon = icons[badge.icon];
 					{cancelLabel}
 				</button>
 			</form>
+		)
+	}
+
+	{
+		item.withdrawalMailto !== null && (
+			<div class="flex flex-col gap-2 border-t border-border-subtle pt-4" data-withdrawal-request>
+				<p class="text-body-sm text-text-secondary">{withdrawalRequestHint.value}</p>
+				<a
+					href={item.withdrawalMailto}
+					class="button-h-sm inline-flex w-fit items-center justify-center rounded-md border-w-1 border-border-strong px-5 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+				>
+					{withdrawalRequestLabel.value}
+				</a>
+			</div>
 		)
 	}
 </article>

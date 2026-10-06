@@ -156,13 +156,13 @@ No spec.md — small enough to skip straight to tickets. Wayfinding from a grill
 | 03 | [Self-hosted Geist, Manrope and Geist Mono](.scratch/figma-restyle/issues/03-self-hosted-fonts.md) | — | done |
 | 04 | [`/conta` restyled from the wireframes](.scratch/figma-restyle/issues/04-conta-restyle.md) | 01, 02, 03 | done |
 | 05 | [Visual sweep of the other pages after the port](.scratch/figma-restyle/issues/05-visual-sweep.md) | 01, 02, 03 | done |
-| 06 | [Close the Figma reads the quota blocked](.scratch/figma-restyle/issues/06-close-figma-reads.md) | Figma quota reset | ready-for-human |
+| 06 | [Close the Figma reads the quota blocked](.scratch/figma-restyle/issues/06-close-figma-reads.md) | Figma quota reset | done |
 | 07 | [Fine print and labels unreadable on `text-tertiary`](.scratch/figma-restyle/issues/07-fine-print-contrast.md) | — | done |
 | 08 | [Phone layout breaks with the wider fonts](.scratch/figma-restyle/issues/08-phone-layout-with-geist.md) | — | done |
 | 09 | [`/login` field is nearly invisible; error reads as info](.scratch/figma-restyle/issues/09-login-form-and-feedback.md) | — | done |
 | 10 | [Wordmark and prices use `text-heading-*` but render in the body font](.scratch/figma-restyle/issues/10-heading-font-on-wordmark-and-prices.md) | — | done |
 
-Frontier: **06** (2026-10-06: `painel-cliente` Variables read and match, then the quota ran out again. Font weights wait for the next reset; the owner's confirmation of the derived roles remains; 05's Figma-node comparison rides with it). 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
+Frontier: none. 06 closed 2026-10-06: `painel-cliente` Variables match `global.css`, the owner confirmed the derived roles, and the Figma file has no text styles. Still open for the next Figma quota reset, in their own tickets: 05's per-node comparison and 10's Geist check on the wordmark and prices. 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
 
 ## withdrawal-guarantee
 

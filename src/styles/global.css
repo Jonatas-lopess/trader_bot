@@ -37,7 +37,7 @@
 	 * Color — Figma `--rt-color-*`. The comment on each token names the
 	 * Figma role it takes its value from. Roles tagged "derived, not in
 	 * Figma" have no Figma counterpart: they are computed from a Figma
-	 * value and wait for the owner's confirmation or redraw
+	 * value, and the owner confirmed them as they stand
 	 * (.scratch/figma-restyle/issues/06-close-figma-reads.md).
 	 * --------------------------------------------------------------- */
 

@@ -25,4 +25,5 @@
   - **Font families, match.** Heading Geist, body Manrope, mono Geist Mono.
   - **Font sizes, gap.** The frame uses 11, 12, 13, 14, 18, 36. The code scale has 12 (`caption`), 14 (`body-sm`), 18 (`body-lg`) and 36 (`display-phone`, by coincidence). Figma 11 and 13 have no token. No `.astro` file uses a one-off size; 13px only appears inline in `src/shared/email-template.ts` (email clients, outside the token scale). Decide whether `/conta` needs an 11px and a 13px step before adding either; this ticket does not add them.
   - **Spacing.** 4, 6, 8, 10, 12, 16, 20, 24, 32, 40, 80: all on Tailwind's 4px-based scale (6 = 1.5, 10 = 2.5). No change.
+  - Same day, `get_design_context` on `86:1423` (for the weights) failed: "You've reached the Figma MCP tool call limit on the Starter plan". The quota is spent again after the Variables read and `whoami`. Weights wait for the next monthly reset.
   - Still open: font weight per text style (`get_variable_defs` does not return it; needs `get_design_context` or `get_metadata`, which spends more quota) and the owner's confirmation of the derived roles.

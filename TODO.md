@@ -162,7 +162,7 @@ No spec.md — small enough to skip straight to tickets. Wayfinding from a grill
 | 09 | [`/login` field is nearly invisible; error reads as info](.scratch/figma-restyle/issues/09-login-form-and-feedback.md) | — | done |
 | 10 | [Wordmark and prices use `text-heading-*` but render in the body font](.scratch/figma-restyle/issues/10-heading-font-on-wordmark-and-prices.md) | — | done |
 
-Frontier: **06** (quota is back as of 2026-10-06; `painel-cliente` Variables read and match. Font weights and the owner's confirmation of the derived roles remain; 05's Figma-node comparison rides with it). 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
+Frontier: **06** (2026-10-06: `painel-cliente` Variables read and match, then the quota ran out again. Font weights wait for the next reset; the owner's confirmation of the derived roles remains; 05's Figma-node comparison rides with it). 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
 
 ## withdrawal-guarantee
 

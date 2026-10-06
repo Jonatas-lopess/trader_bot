@@ -27,8 +27,9 @@ placeholder until a lawyer words it).
    If the request is outside the 7 days, answer the same way but say it is out of the period,
    and decide any goodwill refund by hand (it is not this path).
 
-1. Confirm the request is within 7 days of the purchase (`purchases.created_at`, day 7
-   inclusive, same rule as `withdrawalWindowOpen`) and find it:
+1. Confirm the request is within 7 days of the purchase (`purchases.created_at`, counted
+   in calendar days in Brasília time, UTC-3: the purchase day does not count and day 7 runs to
+   its end, same rule as `withdrawalWindowOpen`; `created_at` is UTC, so subtract 3 hours first) and find it:
 
    ```sql
    SELECT id, robot_id, offer, status, amount_cents, appmax_order_id, created_at FROM purchases WHERE id = '<purchase_id>';

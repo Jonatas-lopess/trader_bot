@@ -1,19 +1,28 @@
 /**
  * The 7-day withdrawal (arrependimento) window — .scratch/withdrawal-guarantee/issues/02-withdrawal-request-path.md,
  * CDC art. 49. Counted from `purchases.created_at` (owner decision, ticket 04; the lawyer confirms
- * "assinatura ou recebimento"). A Mensal keeps one purchases row across renewals, so only its
- * first charge is ever inside the window.
+ * "assinatura ou recebimento"), in calendar days: the purchase day is excluded and day 7 runs to its
+ * end (Código Civil art. 132, the lawyer confirms). A Mensal keeps one purchases row across
+ * renewals, so only its first charge is ever inside the window.
  */
 
 import type { PurchaseStatus } from '../billing/payment-provider';
 import { withdrawalMailBody, withdrawalMailSubject } from '../../content/conta';
 import { supportMailto } from '../../content/support';
 
-const WITHDRAWAL_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Brasília time is UTC-3 all year (no daylight saving since 2019); days are counted on that clock.
+const BRASILIA_OFFSET_MS = -3 * 60 * 60 * 1000;
 
-/** Day 7 is inclusive: open up to the exact instant seven days after the purchase. */
+/**
+ * Open through the last millisecond of day 7 in Brasília time, closed from midnight starting day 8.
+ * Both instants are shifted onto the Brasília clock so the UTC fields read as Brasília wall time.
+ */
 export function withdrawalWindowOpen(createdAt: string, now: Date): boolean {
-	return now.getTime() - new Date(createdAt).getTime() <= WITHDRAWAL_WINDOW_MS;
+	const purchasedAt = new Date(createdAt).getTime() + BRASILIA_OFFSET_MS;
+	const purchaseDayStart = Math.floor(purchasedAt / DAY_MS) * DAY_MS;
+	const windowEnd = purchaseDayStart + 8 * DAY_MS;
+	return now.getTime() + BRASILIA_OFFSET_MS < windowEnd;
 }
 
 // A paid purchase the Cliente can still withdraw from (a canceled Mensal included); pending and

@@ -165,8 +165,8 @@ describe('resolveAccountView', () => {
 
 	describe('withdrawal request (CDC art. 49, 7 days from purchase)', () => {
 		const purchasedAt = '2026-10-01T12:00:00.000Z';
-		const insideWindow = new Date('2026-10-08T12:00:00.000Z');
-		const outsideWindow = new Date('2026-10-08T12:00:00.001Z');
+		const insideWindow = new Date('2026-10-09T02:59:59.999Z');
+		const outsideWindow = new Date('2026-10-09T03:00:00.000Z');
 
 		async function seedWithdrawal(id: string, status = 'active') {
 			await seedAccount({ purchaseId: id, customerId: `cust-${id}`, planId: 'robo-exemplo-a', email: `${id}@example.com` });

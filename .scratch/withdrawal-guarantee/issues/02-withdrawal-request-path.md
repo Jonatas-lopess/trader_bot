@@ -24,4 +24,4 @@
 - Built: `withdrawalWindowOpen` and `withdrawalRequestMailto` in `src/modules/licensing/withdrawal.ts`; `resolveAccountView` gives each Licença `withdrawalMailto` (null outside the window or unless the purchase is `active`/`past_due`/`canceled`; a canceled Mensal inside the window still gets it). Card block `data-withdrawal-request` in `license-card.astro`; copy (`withdrawalRequest*`, `withdrawalMail*`) in `conta.ts`, all `launchBlocking`. Runbook has the intake step, reply template and 2-day target.
 - The paid confirmation keeps the support e-mail instead of the `/conta` link 03 planned to swap in: the page is public and `/conta` needs a login.
 - Open for the test phase: whether Appmax's refund of a Mensal's first order cancels the subscription (runbook says to cancel it by hand until verified).
-- For the lawyer: the window is 168h from the instant of `created_at`, not the whole calendar day 7 (UTC or BRT); a calendar-day reading would stay open up to ~24h longer.
+- For the lawyer: the window counts calendar days in Brasília time (UTC-3): purchase day excluded, day 7 open to its last millisecond (Código Civil art. 132 reading). Confirm with the clause.

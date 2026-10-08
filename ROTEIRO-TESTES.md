@@ -1,13 +1,6 @@
 # Roteiro de testes — ver todas as telas do site
 
-Passo a passo para percorrer o site inteiro e anotar o que achar estranho. Você não precisa saber programar.
-
-## Antes de começar
-
-Peça ao Jonatas:
-
-- **Link do site** (`https://…workers.dev`). Abaixo, `<SITE>` é esse link.
-- **Chave de acesso** (`<CHAVE>`), usada para entrar na área do cliente (parte 4).
+Passo a passo para percorrer o site inteiro e anotar o que achar estranho.
 
 Use uma janela do navegador normal, em computador e depois no celular (ou reduza a janela). Várias telas mudam de layout no celular.
 
@@ -17,13 +10,11 @@ Use uma janela do navegador normal, em computador e depois no celular (ou reduza
 - Botões "Contato" e "Falar com o suporte" aparecem desativados de propósito.
 - Termos de Uso e Política de Privacidade ainda não têm o texto jurídico final.
 
-**Como anotar:** para cada problema, escreva a tela (ex.: "Catálogo"), o que você fez e o que viu. Print ajuda muito.
-
 ---
 
 ## Parte 1 — Páginas públicas
 
-1. **Página inicial** — abra `<SITE>/`. Role até o fim e confira cada bloco, na ordem:
+1. **Página inicial** — abra `https://trader-bot.jonataslopes-011.workers.dev/`. Role até o fim e confira cada bloco, na ordem:
    - [ ] Topo com título e botões
    - [ ] Vídeo
    - [ ] "Como funciona" (4 passos)
@@ -36,7 +27,7 @@ Use uma janela do navegador normal, em computador e depois no celular (ou reduza
    - [ ] "FAQ" (rola até as perguntas)
    - [ ] "Login"
    - [ ] "Comprar agora"
-3. **Catálogo** — abra `<SITE>/catalog`.
+3. **Catálogo** — abra `https://trader-bot.jonataslopes-011.workers.dev/catalog`.
    - [ ] Navegue pelo carrossel de robôs (setas, ou arraste no celular)
    - [ ] **Robô Exemplo A**: tem três ofertas (compra única, anual, mensal)
    - [ ] **Robô Exemplo B**: tem só compra única
@@ -65,7 +56,7 @@ Esta parte cria o cliente e libera a área do cliente.
    - [ ] **Não clique nesse botão ainda**: ele está desativado nesta fase. Siga para a parte 3.
 4. **Variações opcionais** (cada uma gera uma tela diferente):
    - [ ] Comece uma compra e, na tela do Stripe, clique na seta de voltar sem pagar. Você deve voltar à página inicial.
-   - [ ] Abra `<SITE>/checkout/confirmacao` sem nada depois. Deve aparecer "Não encontramos esse checkout…"
+   - [ ] Abra `https://trader-bot.jonataslopes-011.workers.dev/checkout/confirmacao` sem nada depois. Deve aparecer "Não encontramos esse checkout…"
    - [ ] Faça uma segunda compra de **outro robô** (ex.: Exemplo B, compra única) com o mesmo e-mail. Ela vira um segundo cartão na área do cliente.
    - [ ] Tente comprar o **mesmo robô** de novo (Exemplo A) enquanto a primeira compra está ativa. Deve aparecer uma mensagem simples em inglês ("You already have an active license for this robot."). É uma tela provisória, apenas anote.
 
@@ -73,11 +64,11 @@ Esta parte cria o cliente e libera a área do cliente.
 
 ## Parte 3 — Tela de login
 
-1. Abra `<SITE>/login`.
+1. Abra `https://trader-bot.jonataslopes-011.workers.dev/login`.
    - [ ] Confira título, campo de e-mail e botão
 2. Digite o e-mail da compra e envie.
    - [ ] Deve aparecer a mensagem "Se esse e-mail existir em nossa base, você receberá um link…". O texto é o mesmo para qualquer e-mail, de propósito.
-3. Abra `<SITE>/login?error=1`.
+3. Abra `https://trader-bot.jonataslopes-011.workers.dev/login?error=1`.
    - [ ] Deve aparecer a mensagem de link inválido ou expirado
 
 ## Parte 4 — Entrar na área do cliente (sem e-mail)
@@ -85,7 +76,7 @@ Esta parte cria o cliente e libera a área do cliente.
 Como o e-mail com o link não chega, use o atalho de teste. Cole no navegador, trocando as partes entre `< >`:
 
 ```
-<SITE>/login/dev?email=<SEU-EMAIL-DA-COMPRA>&key=<CHAVE>
+https://trader-bot.jonataslopes-011.workers.dev/login/dev?email=<SEU-EMAIL-DA-COMPRA>&key=SfDZbiJm933C
 ```
 
 - [ ] Você deve cair direto em **Meus produtos** (`/conta`).
@@ -108,7 +99,7 @@ Como o e-mail com o link não chega, use o atalho de teste. Cole no navegador, t
    - [ ] Confirme e veja como o cartão fica depois
 4. **Sair** — use o botão "Sair" no topo da área do cliente.
    - [ ] Você volta ao login
-   - [ ] Abra `<SITE>/conta` de novo: deve mandar para o login, porque a sessão acabou
+   - [ ] Abra `https://trader-bot.jonataslopes-011.workers.dev/conta` de novo: deve mandar para o login, porque a sessão acabou
 5. Entre de novo pelo link da parte 4 para continuar.
 
 ## Parte 6 — Estados que você não consegue gerar sozinha
@@ -122,16 +113,6 @@ Estas telas dependem de ações internas. Peça ao Jonatas para colocar a sua co
 | Licença revogada | Selo vermelho (acontece em reembolso ou contestação) |
 | Pagamento pendente | Compra ainda sem confirmação |
 | Pagamento recebido, em análise | Aviso de verificação manual |
-
-## Parte 7 — Celular
-
-Repita rapidamente no celular (ou com a janela estreita):
-
-- [ ] Menu do topo (se vira botão de menu, abra e feche)
-- [ ] Carrossel do catálogo
-- [ ] Formulário de login
-- [ ] Cartões da área do cliente
-- [ ] Nenhum texto cortado e nenhuma rolagem para os lados
 
 ## Checklist final de telas vistas
 
@@ -147,4 +128,4 @@ Repita rapidamente no celular (ou com a janela estreita):
 
 ## Para devolver ao Jonatas
 
-Lista de problemas com tela, o que você fez e o que viu. Diga também o que achou confuso, mesmo que funcione, e se algum texto soou estranho ou desconfortável.
+Diga o que achou confuso, mesmo que funcione, e se algum texto soou estranho ou desconfortável.

@@ -92,6 +92,27 @@ export const catalog: Robot[] = [
 		status: 'coming-soon',
 		offers: {},
 	},
+	{
+		slug: 'robo-exemplo-d',
+		name: launchBlocking('Robô Exemplo D', placeholderName),
+		shortDescription: launchBlocking('Descrição curta do Robô Exemplo D.', placeholderClaim),
+		strategyType: launchBlocking('Rompimento', placeholderClaim),
+		market: launchBlocking(['Mini Dólar'], placeholderClaim),
+		supportedCorretoras: launchBlocking(['Corretora Exemplo'], placeholderClaim),
+		status: 'available',
+		offers: {
+			one_time: launchBlocking(119700, placeholderPrice),
+			monthly: launchBlocking(11700, placeholderPrice),
+		},
+	},
+	{
+		slug: 'robo-exemplo-e',
+		name: launchBlocking('Robô Exemplo E', placeholderName),
+		shortDescription: launchBlocking('Em breve.', placeholderClaim),
+		strategyType: launchBlocking('Swing trade', placeholderClaim),
+		status: 'coming-soon',
+		offers: {},
+	},
 ];
 
 export type LookupOfferResult =

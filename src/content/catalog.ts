@@ -44,7 +44,12 @@ export type Robot = {
 	 * expiry), not the timeframe. Optional: the card omits the row when absent.
 	 */
 	market?: LaunchBlocking<string[]>;
-	/** Optional: the card omits the row when absent. Only `/catalog` reads it. */
+	/**
+	 * Risk and horizon profile, one free label ("Conservador / Médio Prazo"). Optional:
+	 * the card omits the row when absent. No placeholder Robô declares one yet.
+	 */
+	perfil?: LaunchBlocking<string>;
+	/** Optional. Kept as data; no card row reads it since figma-restyle 11. */
 	supportedCorretoras?: LaunchBlocking<CorretoraName[]>;
 	status: RobotStatus;
 	/** Up to three Ofertas; a robot lists only the ones it sells. */

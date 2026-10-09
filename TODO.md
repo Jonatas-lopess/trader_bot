@@ -161,11 +161,11 @@ No spec.md — small enough to skip straight to tickets. Wayfinding from a grill
 | 08 | [Phone layout breaks with the wider fonts](.scratch/figma-restyle/issues/08-phone-layout-with-geist.md) | — | done |
 | 09 | [`/login` field is nearly invisible; error reads as info](.scratch/figma-restyle/issues/09-login-form-and-feedback.md) | — | done |
 | 10 | [Wordmark and prices use `text-heading-*` but render in the body font](.scratch/figma-restyle/issues/10-heading-font-on-wordmark-and-prices.md) | — | done |
-| 11 | [Card info rows: Perfil field and the Estratégia / Mercado / Perfil shape](.scratch/figma-restyle/issues/11-card-perfil-and-info-rows.md) | — | ready-for-agent |
+| 11 | [Card info rows: Perfil field and the Estratégia / Mercado / Perfil shape](.scratch/figma-restyle/issues/11-card-perfil-and-info-rows.md) | — | done |
 | 12 | [Catalog card is a 1:1 copy of the `ipa2` wireframe](.scratch/figma-restyle/issues/12-robot-card-1to1-from-ipa2.md) | 11 | ready-for-agent |
 | 13 | [Price rows choose what the card's buy button buys](.scratch/figma-restyle/issues/13-selectable-price-rows.md) | 12 | ready-for-agent |
 
-Frontier: **11** (then 12, then 13: the catalog card from the `ipa2` wireframe, added 2026-10-09). Earlier: 06 closed 2026-10-06: `painel-cliente` Variables match `global.css`, the owner confirmed the derived roles, and the Figma file has no text styles. Still open for the next Figma quota reset, in their own tickets: 05's per-node comparison and 10's Geist check on the wordmark and prices. 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
+Frontier: **12** (then 13; 11 done: the catalog card from the `ipa2` wireframe, added 2026-10-09). Earlier: 06 closed 2026-10-06: `painel-cliente` Variables match `global.css`, the owner confirmed the derived roles, and the Figma file has no text styles. Still open for the next Figma quota reset, in their own tickets: 05's per-node comparison and 10's Geist check on the wordmark and prices. 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
 
 ## withdrawal-guarantee
 

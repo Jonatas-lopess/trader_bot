@@ -8,10 +8,10 @@ Copy goes in the typed content files, never inline in markup; anything unverifie
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A Robô can declare a `Perfil`, and it is launch-blocked like the other strategy claims
-- [ ] The card view-model yields Estratégia, then Mercado and Perfil only when present
-- [ ] "Corretoras compatíveis" is no longer an info row on the card (the Robô's supported Corretoras data is kept; only `/catalog` read it, check nothing else breaks)
-- [ ] Content tests cover the row order and the omitted-when-absent behavior
-- [ ] Typecheck and the full test suite pass
+- [x] A Robô can declare a `Perfil`, and it is launch-blocked like the other strategy claims
+- [x] The card view-model yields Estratégia, then Mercado and Perfil only when present
+- [x] "Corretoras compatíveis" is no longer an info row on the card (the Robô's supported Corretoras data is kept; only `/catalog` read it, check nothing else breaks)
+- [x] Content tests cover the row order and the omitted-when-absent behavior
+- [x] Typecheck and the full test suite pass

@@ -60,29 +60,37 @@ describe('catalogCards', () => {
 describe('card info rows', () => {
 	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
 
-	it('shows Estratégia, Mercado and Corretoras compatíveis on a Robô that fills them', () => {
-		const card = bySlug('robo-exemplo-a');
+	it('shows Estratégia, Mercado and Perfil, in that order, on a Robô that fills them', () => {
+		const card = { ...bySlug('robo-exemplo-a'), perfil: 'Conservador / Médio Prazo' };
 		expect(card.market.length).toBeGreaterThan(0);
-		expect(card.corretoras.length).toBeGreaterThan(0);
-		expect(cardInfoRows(card).map((r) => r.label)).toEqual([
-			'Estratégia',
-			'Mercado',
-			'Corretoras compatíveis',
-		]);
+		const rows = cardInfoRows(card);
+		expect(rows.map((r) => r.label)).toEqual(['Estratégia', 'Mercado', 'Perfil']);
+		expect(rows[2]?.value).toBe('Conservador / Médio Prazo');
 	});
 
-	it('omits Mercado and Corretoras compatíveis when the Robô has neither', () => {
+	it('omits Perfil when the Robô declares none (no placeholder Robô does yet)', () => {
+		for (const card of catalogCards) expect(card.perfil).toBeNull();
+		expect(cardInfoRows(bySlug('robo-exemplo-a')).map((r) => r.label)).toEqual(['Estratégia', 'Mercado']);
+	});
+
+	it('omits Mercado and Perfil when the Robô has neither', () => {
 		const card = bySlug('robo-exemplo-c');
 		expect(card.market).toEqual([]);
-		expect(card.corretoras).toEqual([]);
+		expect(card.perfil).toBeNull();
 		expect(cardInfoRows(card).map((r) => r.label)).toEqual(['Estratégia']);
 	});
 
-	it('omits a row whose list is empty, with no placeholder value', () => {
-		const card = { ...bySlug('robo-exemplo-a'), market: [], corretoras: ['X'] };
+	it('omits a row that is absent, with no placeholder value', () => {
+		const card = { ...bySlug('robo-exemplo-a'), market: [], perfil: 'Agressivo / Curto Prazo' };
 		const rows = cardInfoRows(card);
-		expect(rows.map((r) => r.label)).toEqual(['Estratégia', 'Corretoras compatíveis']);
+		expect(rows.map((r) => r.label)).toEqual(['Estratégia', 'Perfil']);
 		for (const row of rows) expect(row.value).not.toMatch(/^(-|–|—|a definir)$/i);
+	});
+
+	it('never lists Corretoras compatíveis on the card', () => {
+		for (const card of catalogCards) {
+			expect(cardInfoRows(card).map((r) => r.label)).not.toContain('Corretoras compatíveis');
+		}
 	});
 
 	it('joins list values with a comma', () => {

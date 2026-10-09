@@ -45,7 +45,7 @@ export const carouselNextLabel = 'Próximo Robô';
 export const comingSoonLabel = 'Em breve';
 export const strategyTypeLabel = 'Estratégia';
 export const marketLabel = 'Mercado';
-export const corretorasLabel = 'Corretoras compatíveis';
+export const perfilLabel = 'Perfil';
 
 // Carried over from the Plans page (marketing-pages 07). The "Economize 20%"
 // figure was a Figma frame claim with no annual price behind it, and the
@@ -120,8 +120,8 @@ export type CatalogCard = {
 	strategyType: string;
 	/** Empty when the Robô declares no market. */
 	market: string[];
-	/** Empty when the Robô declares no Corretoras. */
-	corretoras: string[];
+	/** Risk and horizon profile ("Conservador / Médio Prazo"); null when the Robô declares none. */
+	perfil: string | null;
 	status: RobotStatus;
 	/** In Compra, Anual, Mensal order; empty for a coming-soon Robô. */
 	offers: CardOffer[];
@@ -131,15 +131,13 @@ export type CardInfoRow = { label: string; value: string };
 
 /**
  * The informational rows under the description, in order: Estratégia (always),
- * then Mercado and Corretoras compatíveis only when their list is non-empty
- * (no dash, no "a definir").
+ * then Mercado and Perfil only when the Robô declares them (no dash, no
+ * "a definir"). Corretoras compatíveis is not a card row (figma-restyle 11).
  */
 export const cardInfoRows = (card: CatalogCard): CardInfoRow[] => [
 	{ label: strategyTypeLabel, value: card.strategyType },
 	...(card.market.length > 0 ? [{ label: marketLabel, value: card.market.join(', ') }] : []),
-	...(card.corretoras.length > 0
-		? [{ label: corretorasLabel, value: card.corretoras.join(', ') }]
-		: []),
+	...(card.perfil ? [{ label: perfilLabel, value: card.perfil }] : []),
 ];
 
 /** The withdrawal line for a card; null when the Robô has nothing to buy (coming soon). */
@@ -152,7 +150,7 @@ export const catalogCards: CatalogCard[] = catalog.map((robot) => ({
 	shortDescription: unwrapLaunchBlocking(robot.shortDescription),
 	strategyType: unwrapLaunchBlocking(robot.strategyType),
 	market: robot.market ? unwrapLaunchBlocking(robot.market) : [],
-	corretoras: robot.supportedCorretoras ? unwrapLaunchBlocking(robot.supportedCorretoras) : [],
+	perfil: robot.perfil ? unwrapLaunchBlocking(robot.perfil) : null,
 	status: robot.status,
 	offers:
 		robot.status === 'coming-soon'

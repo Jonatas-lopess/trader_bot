@@ -30,7 +30,7 @@ describe('checkWebhookRequest', () => {
 			if (url.includes('/oauth2/token')) {
 				return new Response(JSON.stringify({ access_token: 'test-token' }), { status: 200 });
 			}
-			return new Response(JSON.stringify({ data: { status: 'aprovado' } }), { status: 200 });
+			return new Response(JSON.stringify({ data: { order: { status: 'aprovado' } } }), { status: 200 });
 		});
 		const payload = JSON.stringify({ event: 'order.paid', order_id: 'ord_hardening_passthrough' });
 

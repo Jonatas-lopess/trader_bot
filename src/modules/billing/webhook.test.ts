@@ -11,20 +11,25 @@ function mockAppmax(status: { status: string; paymentMethod?: string; email?: st
 		if (url.includes('/oauth2/token')) {
 			return new Response(JSON.stringify({ access_token: 'test-token' }), { status: 200 });
 		}
-		if (url.includes('/orders/') || url.includes('/subscriptions/')) {
+		if (url.includes('/orders/')) {
 			return new Response(
 				JSON.stringify({
 					data: {
-						status: status.status,
-						payment_method: status.paymentMethod,
-						email: status.email,
+						order: {
+							status: status.status,
+							amounts: status.subTotal === undefined ? undefined : { sub_total: status.subTotal, installment_fee: 999 },
+						},
+						payment: status.paymentMethod === undefined ? undefined : { method: status.paymentMethod },
 						// A document keeps ticket 13's missing-document Sentry report out of these tests' assertions.
-						customer: { name: 'Test Buyer', document_number: '123.456.789-09' },
-						amounts: status.subTotal === undefined ? undefined : { sub_total: status.subTotal, installment_fee: 999 },
+						customer: { name: 'Test Buyer', email: status.email, document_number: '123.456.789-09' },
 					},
 				}),
 				{ status: 200 }
 			);
+		}
+		// Mensal's subscription resource keeps the old flat shape until ticket 09.
+		if (url.includes('/subscriptions/')) {
+			return new Response(JSON.stringify({ data: { status: status.status, email: status.email } }), { status: 200 });
 		}
 		// First activation now also sends the magic-link email (customer-area
 		// ticket 07) — same Resend seam `identity/magic-link.test.ts` mocks.

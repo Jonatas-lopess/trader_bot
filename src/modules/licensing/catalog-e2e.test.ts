@@ -51,14 +51,15 @@ function mockOutbound(orderId: string) {
 			return new Response(
 				JSON.stringify({
 					data: {
-						status: orderResponse.status,
-						payment_method: orderResponse.paymentMethod ?? 'pix',
-						email: orderResponse.email,
+						order: {
+							status: orderResponse.status,
+							amounts:
+								orderResponse.subTotalCents === undefined
+									? undefined
+									: { sub_total: orderResponse.subTotalCents, installment_fee: 0 },
+						},
+						payment: { method: orderResponse.paymentMethod ?? 'pix' },
 						customer: { name: 'Maria da Silva', email: orderResponse.email, document_number: '123.456.789-09' },
-						amounts:
-							orderResponse.subTotalCents === undefined
-								? undefined
-								: { sub_total: orderResponse.subTotalCents, installment_fee: 0 },
 					},
 				}),
 				{ status: 200 }

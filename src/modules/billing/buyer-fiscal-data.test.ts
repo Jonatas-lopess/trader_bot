@@ -20,10 +20,13 @@ function mockAppmax(order: { customer?: { name?: string; email?: string; documen
 			return new Response(
 				JSON.stringify({
 					data: {
-						status: 'aprovado',
-						payment_method: 'pix',
+						order: {
+							status: 'aprovado',
+							total_paid: 52_000,
+							amounts: { sub_total: 49_900, installment_fee: 2_100 },
+						},
+						payment: { method: 'pix' },
 						customer: order.customer,
-						amounts: { sub_total: 49_900, total_paid: 52_000, installment_fee: 2_100 },
 					},
 				}),
 				{ status: 200 }

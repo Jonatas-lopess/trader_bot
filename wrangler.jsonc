@@ -30,6 +30,12 @@
 			"migrations_dir": "migrations"
 		}
 	],
+	// Sandbox by default (modules/billing/appmax-client.ts `appmaxHosts`): only an
+	// explicit "production" reaches Appmax's production hosts, so override it at
+	// deploy time with `--var APPMAX_ENV:production`, never in this file.
+	"vars": {
+		"APPMAX_ENV": "sandbox"
+	},
 	"observability": {
 		"enabled": true
 	},

@@ -84,7 +84,7 @@ describe('customer-area end to end: login to cancel', () => {
 		mockOutboundFetch((url) => {
 			if (url.includes('/orders/ord_e2e_happy')) {
 				return new Response(
-					JSON.stringify({ data: { status: 'aprovado', payment_method: 'cartao', email: 'cliente@example.com' } }),
+					JSON.stringify({ data: { order: { status: 'aprovado' }, payment: { method: 'credit_card' }, customer: { email: 'cliente@example.com' } } }),
 					{ status: 200 }
 				);
 			}
@@ -146,7 +146,7 @@ describe('customer-area end to end: login to cancel', () => {
 		mockOutboundFetch((url) => {
 			if (url.includes('/orders/ord_e2e_token')) {
 				return new Response(
-					JSON.stringify({ data: { status: 'aprovado', email: 'tokens@example.com' } }),
+					JSON.stringify({ data: { order: { status: 'aprovado' }, customer: { email: 'tokens@example.com' } } }),
 					{ status: 200 }
 				);
 			}
@@ -184,7 +184,7 @@ describe('customer-area end to end: login to cancel', () => {
 		});
 		mockOutboundFetch((url) => {
 			if (url.includes('/orders/ord_e2e_logout')) {
-				return new Response(JSON.stringify({ data: { status: 'aprovado', email: 'logout@example.com' } }), {
+				return new Response(JSON.stringify({ data: { order: { status: 'aprovado' }, customer: { email: 'logout@example.com' } } }), {
 					status: 200,
 				});
 			}
@@ -235,7 +235,7 @@ describe('customer-area end to end: login to cancel', () => {
 		mockOutboundFetch((url) => {
 			const buy = buys.find((candidate) => url.includes(`/orders/${candidate.order}`));
 			if (buy === undefined) throw new Error(`unexpected fetch: ${url}`);
-			return new Response(JSON.stringify({ data: { status: 'aprovado', payment_method: 'cartao', email: buy.email } }), { status: 200 });
+			return new Response(JSON.stringify({ data: { order: { status: 'aprovado' }, payment: { method: 'credit_card' }, customer: { email: buy.email } } }), { status: 200 });
 		});
 
 		for (const buy of buys) {

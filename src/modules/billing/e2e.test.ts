@@ -37,7 +37,7 @@ describe('checkout-webhooks end to end', () => {
 				);
 			}
 			if (url.includes('/orders/ord_e2e_happy')) {
-				return new Response(JSON.stringify({ data: { status: 'aprovado', payment_method: 'cartao' } }), {
+				return new Response(JSON.stringify({ data: { order: { status: 'aprovado' }, payment: { method: 'credit_card' } } }), {
 					status: 200,
 				});
 			}
@@ -72,7 +72,7 @@ describe('checkout-webhooks end to end', () => {
 			// (PLANNING.md §6: Appmax documents a creation event distinct from
 			// the recurring-charge/paid one).
 			if (url.includes('/orders/ord_e2e_boleto')) {
-				return new Response(JSON.stringify({ data: { status: 'pendente', payment_method: 'boleto' } }), {
+				return new Response(JSON.stringify({ data: { order: { status: 'pendente' }, payment: { method: 'boleto' } } }), {
 					status: 200,
 				});
 			}
@@ -92,7 +92,7 @@ describe('checkout-webhooks end to end', () => {
 		vi.restoreAllMocks();
 		mockAppmaxAuth((url) => {
 			if (url.includes('/orders/ord_e2e_boleto')) {
-				return new Response(JSON.stringify({ data: { status: 'aprovado', payment_method: 'boleto' } }), {
+				return new Response(JSON.stringify({ data: { order: { status: 'aprovado' }, payment: { method: 'boleto' } } }), {
 					status: 200,
 				});
 			}
@@ -116,7 +116,7 @@ describe('checkout-webhooks end to end', () => {
 			// answer both concurrent deliveries differently, the way Appmax's own
 			// API would for an order-scoped vs. subscription-scoped query.
 			if (url.includes('/orders/ord_concurrent')) {
-				return new Response(JSON.stringify({ data: { status: 'aprovado' } }), { status: 200 });
+				return new Response(JSON.stringify({ data: { order: { status: 'aprovado' } } }), { status: 200 });
 			}
 			if (url.includes('/subscriptions/sub_concurrent')) {
 				return new Response(JSON.stringify({ data: { status: 'CANCELLED' } }), { status: 200 });

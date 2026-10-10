@@ -1,5 +1,8 @@
 APPMAX_CLIENT_ID=
 APPMAX_CLIENT_SECRET=
+# Selects Appmax's hosts (modules/billing/appmax-client.ts): only the literal
+# "production" hits production money; unset or anything else is sandbox.
+APPMAX_ENV=
 APPMAX_WEBHOOK_IPS=
 RESEND_API_KEY=
 SESSION_SECRET=

@@ -164,7 +164,7 @@ describe('cancelSubscription', () => {
 			// "still active" (e.g. a delayed renewal confirmation that predates
 			// the cancel reaching Appmax's own system).
 			if (url.includes('/orders/ord_race')) {
-				return new Response(JSON.stringify({ data: { status: 'aprovado' } }), { status: 200 });
+				return new Response(JSON.stringify({ data: { order: { status: 'aprovado' } } }), { status: 200 });
 			}
 			throw new Error(`unexpected fetch: ${url}`);
 		});

@@ -82,7 +82,10 @@ export type FetchAuthoritativeStatusResult =
 export type PaymentProviderEnv = Pick<
 	Cloudflare.Env,
 	'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'STRIPE_SECRET_KEY'
->;
+> & {
+	/** Appmax host selection (`appmax-client.ts`'s `appmaxHosts`): only `'production'` is production. */
+	APPMAX_ENV?: string;
+};
 
 /** `I` prefix per convention (projeto_ebd's own `IPaymentProvider`) — a polymorphic contract two concrete drivers implement, not a plain data shape. */
 export type IPaymentProvider = {

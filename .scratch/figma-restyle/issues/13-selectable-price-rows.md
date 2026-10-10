@@ -8,7 +8,7 @@ The checkout link keeps carrying only `robot` + `offer`; the price is still look
 
 **Blocked by:** 12.
 
-**Status:** ready-for-human
+**Status:** done
 
 - [x] Clicking a row selects it, highlights it and the button goes to that Oferta's checkout
 - [x] Default selection is Licença Perpétua, or the first existing row when the Robô has no Compra
@@ -16,7 +16,7 @@ The checkout link keeps carrying only `robot` + `offer`; the price is still look
 - [x] With JavaScript off the button buys the default Oferta
 - [x] Carousel highlight, arrows and swipe still work; selecting a row never moves the track
 - [x] Checked in the browser at 1280 and 390 on a Robô with three, two and one Ofertas
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 
@@ -32,3 +32,5 @@ Decisions and surprises:
 - A mouse click shows the focus ring too (programmatic focus counts as keyboard-ish for `:focus-visible`). Owner may prefer the ring only after a key press.
 - Selection is not remembered across reloads.
 - Typecheck (`astro check`: 0 errors) and the 45-file suite: 41 files pass, including `catalog-page.test.ts` and `radio-group.test.ts`. The "full test suite passes" box stays open: `src/modules/billing/{webhook,buyer-fiscal-data}.test.ts`, `identity/e2e.test.ts` and `licensing/account-page.test.ts` failed, first on timeouts under load, then, rerun alone, on `pending` instead of `active` after the Appmax webhook. The working tree held uncommitted edits to `src/modules/billing/appmax-client.ts` and `payment-provider.ts` (the appmax-checkout work) that this ticket does not touch. Rerun the suite once they are committed.
+
+2026-10-09 (agent): the open box is closed. With the appmax-checkout work committed, `astro check` reports 0 errors and the full suite passes (47 files, 529 tests, including `catalog-page.test.ts` and `radio-group.test.ts`); the earlier billing failures came from that uncommitted work, as suspected.

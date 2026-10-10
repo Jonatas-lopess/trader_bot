@@ -1,59 +1,76 @@
 ---
 // Catalog carousel — src/components/catalog-carousel.astro
 //
-// Lays out the Robô cards on `/catalog` as a scroll-snap track. The card
-// nearest the track's centre is highlighted like the original plans design
-// (brand border, glow, slightly larger). With few cards the track doesn't
-// overflow and the cards simply sit centred; with more, the track scrolls
-// (swipe, wheel, arrows, or keyboard) and the highlight follows the centre.
+// Lays out the Robô cards on `/catalog` as a scroll-snap track, with the prev/next
+// arrows in their own columns beside it (never on top of a card). One card is
+// "active" and highlighted like the original plans design (brand border, glow,
+// slightly larger). Active follows the card nearest the track's centre while
+// scrolling, the arrows and the track's arrow keys step it one card at a time,
+// and focusing inside a card makes it active — so every card, first and last
+// included, can take the highlight. When the cards overflow, the track gets
+// centring padding so the end cards can reach the centre too.
 // No highlight with fewer than three cards: there is no "central" one.
 //
-// Below `sm` the arrows are hidden: they would sit on the card text, and a
-// swipe scrolls the track natively.
+// Below `sm` the arrows are hidden (no room beside the cards); a swipe scrolls
+// the track natively.
 //
 // Labels come from src/content/catalog-page.ts — docs/agents/content-files.md.
 import { ChevronLeft, ChevronRight } from '@lucide/astro';
 import { carouselLabel, carouselNextLabel, carouselPrevLabel } from '../content/catalog-page';
+
+const arrowClass =
+	'hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-border-subtle bg-surface-raised text-text-primary transition-colors hover:bg-surface-overlay disabled:opacity-40 disabled:hover:bg-surface-raised sm:inline-flex';
 ---
 
-<div data-carousel class="content-row relative">
+<div data-carousel class="content-row flex items-center gap-2">
 	<button
 		type="button"
 		data-carousel-prev
 		aria-label={carouselPrevLabel}
-		class="absolute left-2 top-1/2 z-10 hidden max-sm:hidden! h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-surface-raised text-text-primary transition-colors hover:bg-surface-overlay"
+		class={arrowClass}
 	>
 		<ChevronLeft aria-hidden="true" />
 	</button>
 
-	<ul
-		data-carousel-track
-		role="list"
-		aria-label={carouselLabel}
-		tabindex="0"
-		class="carousel-track flex snap-x snap-mandatory items-stretch gap-6 overflow-x-auto scroll-smooth px-4 py-10 sm:px-8"
-	>
-		<slot />
-	</ul>
+	<div class="carousel-frame min-w-0 flex-1">
+		<ul
+			data-carousel-track
+			role="list"
+			aria-label={carouselLabel}
+			tabindex="0"
+			class="carousel-track relative flex snap-x snap-mandatory items-stretch gap-6 overflow-x-auto scroll-smooth py-10"
+		>
+			<slot />
+		</ul>
+	</div>
 
 	<button
 		type="button"
 		data-carousel-next
 		aria-label={carouselNextLabel}
-		class="absolute right-2 top-1/2 z-10 hidden max-sm:hidden! h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-border-subtle bg-surface-raised text-text-primary transition-colors hover:bg-surface-overlay"
+		class={arrowClass}
 	>
 		<ChevronRight aria-hidden="true" />
 	</button>
 </div>
 
 <style is:global>
+	.carousel-frame {
+		container-type: inline-size;
+	}
 	.carousel-track {
+		--carousel-card-w: min(85cqw, 22rem);
+		padding-inline: 0.75rem;
 		scrollbar-width: none;
 	}
 	.carousel-track::-webkit-scrollbar {
 		display: none;
 	}
-	/* margin:auto on the ends centres a short row yet keeps overflow scrollable from the start. */
+	/* Overflowing: pad so the first and last card can scroll to the centre. */
+	.carousel-track[data-overflow] {
+		padding-inline: calc(50cqw - var(--carousel-card-w) / 2);
+	}
+	/* margin:auto on the ends centres a short row. */
 	.carousel-track > li:first-child {
 		margin-inline-start: auto;
 	}
@@ -62,7 +79,7 @@ import { carouselLabel, carouselNextLabel, carouselPrevLabel } from '../content/
 	}
 	.carousel-track > li {
 		display: flex;
-		flex: 0 0 min(85%, 22rem);
+		flex: 0 0 var(--carousel-card-w);
 		scroll-snap-align: center;
 		transition:
 			transform 200ms ease,
@@ -93,36 +110,56 @@ import { carouselLabel, carouselNextLabel, carouselPrevLabel } from '../content/
 </style>
 
 <script>
+	const GAP = 24; // matches `gap-6` on the track
+
 	for (const root of document.querySelectorAll<HTMLElement>('[data-carousel]')) {
 		const track = root.querySelector<HTMLElement>('[data-carousel-track]');
 		const prev = root.querySelector<HTMLButtonElement>('[data-carousel-prev]');
 		const next = root.querySelector<HTMLButtonElement>('[data-carousel-next]');
 		if (!track) continue;
 		const items = Array.from(track.children) as HTMLElement[];
+		const highlight = items.length >= 3;
+		let active = Math.floor((items.length - 1) / 2);
 
-		const update = () => {
-			const overflowing = track.scrollWidth > track.clientWidth + 1;
-			for (const btn of [prev, next]) {
-				btn?.classList.toggle('hidden', !overflowing);
-				btn?.classList.toggle('inline-flex', overflowing);
-			}
-			if (items.length < 3) return;
-			track.toggleAttribute('data-highlight', true);
+		const centreOf = (item: HTMLElement) => item.offsetLeft + item.offsetWidth / 2;
+
+		const setActive = (index: number) => {
+			active = Math.max(0, Math.min(items.length - 1, index));
+			items.forEach((item, i) => item.toggleAttribute('data-active', i === active));
+			if (prev) prev.disabled = active <= 0;
+			if (next) next.disabled = active >= items.length - 1;
+		};
+
+		const scrollToActive = (smooth: boolean) => {
+			const item = items[active];
+			if (!item) return;
+			track.scrollTo({ left: centreOf(item) - track.clientWidth / 2, behavior: smooth ? 'smooth' : 'instant' });
+		};
+
+		const nearestToCentre = () => {
 			const mid = track.scrollLeft + track.clientWidth / 2;
-			let best = items[0];
-			for (const item of items) {
-				const d = Math.abs(item.offsetLeft + item.offsetWidth / 2 - mid);
-				if (d < Math.abs(best.offsetLeft + best.offsetWidth / 2 - mid)) best = item;
-			}
-			for (const item of items) item.toggleAttribute('data-active', item === best);
-			if (prev) prev.disabled = track.scrollLeft <= 1;
-			if (next) next.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+			let best = 0;
+			items.forEach((item, i) => {
+				if (Math.abs(centreOf(item) - mid) < Math.abs(centreOf(items[best]) - mid)) best = i;
+			});
+			return best;
+		};
+
+		const layout = () => {
+			// Measure without the centring padding, then decide.
+			track.removeAttribute('data-overflow');
+			const style = getComputedStyle(track);
+			const basePad = parseFloat(style.paddingInlineStart) + parseFloat(style.paddingInlineEnd);
+			const needed = items.reduce((sum, item) => sum + item.offsetWidth, 0) + GAP * (items.length - 1) + basePad;
+			const overflowing = needed > track.clientWidth + 1;
+			track.toggleAttribute('data-overflow', overflowing);
+			for (const btn of [prev, next]) btn?.classList.toggle('invisible', !overflowing);
+			return overflowing;
 		};
 
 		const step = (dir: 1 | -1) => {
-			const first = items[0];
-			const width = first ? first.offsetWidth + 24 : track.clientWidth;
-			track.scrollBy({ left: dir * width });
+			setActive(active + dir);
+			scrollToActive(true);
 		};
 
 		prev?.addEventListener('click', () => step(-1));
@@ -133,8 +170,22 @@ import { carouselLabel, carouselNextLabel, carouselPrevLabel } from '../content/
 			else return;
 			e.preventDefault();
 		});
-		track.addEventListener('scroll', () => requestAnimationFrame(update), { passive: true });
-		window.addEventListener('resize', update);
-		update();
+		track.addEventListener('focusin', (e) => {
+			const index = items.findIndex((item) => item.contains(e.target as Node));
+			if (index >= 0) setActive(index);
+		});
+		track.addEventListener(
+			'scroll',
+			() => requestAnimationFrame(() => setActive(nearestToCentre())),
+			{ passive: true },
+		);
+		window.addEventListener('resize', () => {
+			if (layout()) scrollToActive(false);
+		});
+
+		if (highlight) track.setAttribute('data-highlight', '');
+		const overflowing = layout();
+		setActive(active);
+		if (overflowing) scrollToActive(false);
 	}
 </script>

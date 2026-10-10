@@ -43,6 +43,8 @@ export const marketLabel = 'Mercado';
 export const perfilLabel = 'Perfil';
 export const detailsHeading = 'Detalhes do Robô';
 export const buyLabelPrefix = 'Comprar';
+// Accessible name of the price rows' radio group.
+export const priceRowsLabel = 'Forma de contratar';
 
 // One line under the buy area of every card with something to buy. Checkout is hosted by
 // Appmax, so this is the last place we control before payment (withdrawal-guarantee 03).
@@ -127,12 +129,28 @@ export const cardWithdrawalNote = (card: CatalogCard): typeof buyWithdrawalNote 
 export type CardBuy = { label: string; href: string };
 
 /**
- * The card's single buy button: "Comprar <Robô name>", going to Compra by default
- * or to the first Oferta the Robô sells when it has no Compra. Null when there is
- * nothing to buy (coming soon). Ticket 13 lets the price rows pick the Oferta.
+ * The Oferta a card selects before the Cliente picks one: Compra, or the first
+ * Oferta the Robô sells when it has no Compra. Null when there is nothing to buy
+ * (coming soon). It is also what the buy link points at without JavaScript.
+ */
+export const defaultOffer = (card: CatalogCard): CardOffer | null =>
+	card.offers.find((o) => o.offer === 'one_time') ?? card.offers[0] ?? null;
+
+export type CardPriceRow = CardOffer & { selected: boolean };
+
+/** The card's price rows in Compra, Anual, Mensal order, exactly one marked selected. */
+export const cardPriceRows = (card: CatalogCard): CardPriceRow[] => {
+	const selected = defaultOffer(card);
+	return card.offers.map((offer) => ({ ...offer, selected: offer === selected }));
+};
+
+/**
+ * The card's single buy button: "Comprar <Robô name>", pointing at the default
+ * Oferta. The price rows pick the Oferta in the browser (figma-restyle 13) by
+ * swapping this href for the row's own. Null when there is nothing to buy.
  */
 export const cardBuy = (card: CatalogCard): CardBuy | null => {
-	const offer = card.offers.find((o) => o.offer === 'one_time') ?? card.offers[0];
+	const offer = defaultOffer(card);
 	return offer ? { label: `${buyLabelPrefix} ${card.name}`, href: offer.href } : null;
 };
 

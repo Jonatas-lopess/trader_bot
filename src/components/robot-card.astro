@@ -9,17 +9,23 @@
 // A coming-soon Robô shows no price rows and no buy button. The button is
 // outline on regular cards and filled on the carousel's centre-highlighted card
 // (`li[data-active]`, set by catalog-carousel.astro). The button buys Compra by
-// default (ticket 13 makes the rows choose); every buy link carries only
-// `robot` + `offer`, the price is looked up server-side at checkout (ADR-0006).
+// default and, with JavaScript, goes to the Oferta of whichever price row is selected
+// (figma-restyle 13): the rows are a radio group (roving tabindex, arrow keys, the
+// selected row wears the highlighted look). Without JavaScript the rows stay a plain
+// list, the default row is highlighted and the button buys the default Oferta. Every
+// buy link carries only `robot` + `offer`, the price is looked up server-side at
+// checkout (ADR-0006), never read from the page.
 //
 // Content comes from src/content/catalog-page.ts — see docs/agents/content-files.md.
 import { CheckCheck } from '@lucide/astro';
 import {
 	cardBuy,
 	cardInfoRows,
+	cardPriceRows,
 	cardWithdrawalNote,
 	comingSoonLabel,
 	detailsHeading,
+	priceRowsLabel,
 	type CatalogCard,
 } from '../content/catalog-page';
 
@@ -29,10 +35,12 @@ type Props = {
 
 const { card } = Astro.props;
 const buy = cardBuy(card);
+const priceRows = cardPriceRows(card);
 const withdrawalNote = cardWithdrawalNote(card);
 ---
 
 <div
+	data-robot-card
 	class="flex w-full flex-col rounded-lg border border-border-subtle bg-surface-raised card-p-sm"
 >
 	<div class="flex items-start justify-between gap-3">
@@ -76,25 +84,28 @@ const withdrawalNote = cardWithdrawalNote(card);
 	{
 		buy && (
 			<div class="mt-auto pt-6">
-				<ul class="flex flex-col gap-2">
-					{card.offers.map((offer) => (
+				<ul
+					data-offer-rows
+					data-radiogroup-label={priceRowsLabel}
+					class="flex flex-col gap-2"
+				>
+					{priceRows.map((row) => (
 						<li
-							class:list={[
-								'flex items-center justify-between gap-3 rounded-sm px-4 py-1.5 border',
-								offer.offer === 'one_time'
-									? 'border-transparent bg-surface-emphasis'
-									: 'border-border-subtle bg-surface-sunken',
-							]}
+							data-offer-row
+							data-href={row.href}
+							data-selected={row.selected ? '' : undefined}
+							class="flex items-center justify-between gap-3 rounded-sm border border-border-subtle bg-surface-sunken px-4 py-1.5 outline-none in-data-selectable:cursor-pointer data-selected:border-transparent data-selected:bg-surface-emphasis focus-visible:shadow-focus-ring"
 						>
-							<span class="text-caption font-medium text-text-primary">{offer.label}</span>
+							<span class="text-caption font-medium text-text-primary">{row.label}</span>
 							<span class="whitespace-nowrap font-heading text-body-sm font-bold text-text-primary">
-								{offer.priceText}
+								{row.priceText}
 							</span>
 						</li>
 					))}
 				</ul>
 
 				<a
+					data-buy
 					href={buy.href}
 					class="button-h-sm mt-6 inline-flex w-full items-center justify-center rounded-sm border border-border-subtle px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay in-data-active:border-brand-primary in-data-active:bg-brand-primary in-data-active:text-text-on-brand in-data-active:hover:bg-brand-primary-hover"
 				>
@@ -115,3 +126,56 @@ const withdrawalNote = cardWithdrawalNote(card);
 		)
 	}
 </div>
+
+<script>
+	import { nextRadioIndex } from '../shared/radio-group';
+
+	// Progressive enhancement: without this script the rows are a plain list and the
+	// button buys the default Oferta (the server-rendered href and highlight).
+	for (const group of document.querySelectorAll<HTMLElement>('[data-offer-rows]')) {
+		const card = group.closest<HTMLElement>('[data-robot-card]');
+		const buy = card?.querySelector<HTMLAnchorElement>('[data-buy]');
+		const rows = Array.from(group.querySelectorAll<HTMLElement>('[data-offer-row]'));
+		if (!buy || rows.length === 0) continue;
+
+		group.setAttribute('role', 'radiogroup');
+		const label = group.dataset.radiogroupLabel;
+		if (label) group.setAttribute('aria-label', label);
+		group.toggleAttribute('data-selectable', true);
+
+		const select = (index: number, focus: boolean) => {
+			rows.forEach((row, i) => {
+				const on = i === index;
+				row.toggleAttribute('data-selected', on);
+				row.setAttribute('aria-checked', String(on));
+				row.tabIndex = on ? 0 : -1;
+			});
+			const href = rows[index]?.dataset.href;
+			if (href) buy.href = href;
+			// preventScroll: choosing a price must never move the carousel track.
+			if (focus) rows[index]?.focus({ preventScroll: true });
+		};
+
+		rows.forEach((row, i) => {
+			row.setAttribute('role', 'radio');
+			// Keep the mouse from focusing (and scrolling) natively; select() focuses without scrolling.
+			row.addEventListener('mousedown', (e) => e.preventDefault());
+			row.addEventListener('click', () => select(i, true));
+			row.addEventListener('keydown', (e) => {
+				if (e.key === ' ' || e.key === 'Enter') {
+					select(i, true);
+				} else {
+					const next = nextRadioIndex(e.key, i, rows.length);
+					if (next === null) return;
+					select(next, true);
+				}
+				// The carousel track also listens for arrow keys; the rows own them here.
+				e.preventDefault();
+				e.stopPropagation();
+			});
+		});
+
+		const initial = rows.findIndex((row) => row.hasAttribute('data-selected'));
+		select(Math.max(initial, 0), false);
+	}
+</script>

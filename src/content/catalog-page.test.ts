@@ -4,9 +4,11 @@ import {
 	buyWithdrawalNote,
 	cardBuy,
 	cardInfoRows,
+	cardPriceRows,
 	cardWithdrawalNote,
 	catalogCards,
 	checkoutHref,
+	defaultOffer,
 	formatBrl,
 	offerOrder,
 } from './catalog-page';
@@ -72,6 +74,71 @@ describe('price rows', () => {
 
 	it('carries no caption under the price', () => {
 		for (const card of catalogCards) for (const offer of card.offers) expect(offer).not.toHaveProperty('caption');
+	});
+});
+
+describe('default selection', () => {
+	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
+	const withoutCompra = (slug: string) => ({
+		...bySlug(slug),
+		offers: bySlug(slug).offers.filter((o) => o.offer !== 'one_time'),
+	});
+
+	it('is Compra (Licença Perpétua) when the Robô sells it', () => {
+		for (const slug of ['robo-exemplo-a', 'robo-exemplo-b', 'robo-exemplo-d']) {
+			expect(defaultOffer(bySlug(slug))?.offer).toBe('one_time');
+		}
+	});
+
+	it('is the first row when the Robô has no Compra', () => {
+		expect(defaultOffer(withoutCompra('robo-exemplo-a'))?.offer).toBe('annual');
+		expect(defaultOffer(withoutCompra('robo-exemplo-d'))?.offer).toBe('monthly');
+	});
+
+	it('is nothing on a coming-soon Robô', () => {
+		for (const card of catalogCards.filter((c) => c.status === 'coming-soon')) {
+			expect(defaultOffer(card)).toBeNull();
+			expect(cardPriceRows(card)).toEqual([]);
+		}
+	});
+});
+
+describe('selectable price rows', () => {
+	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
+
+	it('keeps the card order and marks exactly the default row selected', () => {
+		const rows = cardPriceRows(bySlug('robo-exemplo-a'));
+		expect(rows.map((r) => [r.offer, r.selected])).toEqual([
+			['one_time', true],
+			['annual', false],
+			['monthly', false],
+		]);
+	});
+
+	it('selects the first row when there is no Compra', () => {
+		const card = { ...bySlug('robo-exemplo-d'), offers: bySlug('robo-exemplo-d').offers.slice(1) };
+		expect(cardPriceRows(card).map((r) => r.selected)).toEqual([true]);
+	});
+
+	it('gives every row its own checkout href with only robot and offer (ADR-0006)', () => {
+		for (const card of catalogCards) {
+			for (const row of cardPriceRows(card)) {
+				expect(row.href).toBe(checkoutHref(card.slug, row.offer));
+				const params = new URL(row.href, 'https://example.com').searchParams;
+				expect([...params.keys()]).toEqual(['robot', 'offer']);
+				expect(lookupOffer(params.get('robot')!, params.get('offer')!)).toEqual({
+					kind: 'found',
+					amountCents: row.amountCents,
+				});
+			}
+		}
+	});
+
+	it('has the buy button start on the selected row', () => {
+		for (const card of catalogCards) {
+			const selected = cardPriceRows(card).find((r) => r.selected);
+			expect(cardBuy(card)?.href).toBe(selected?.href);
+		}
 	});
 });
 

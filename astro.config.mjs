@@ -27,6 +27,11 @@ export default defineConfig({
 	// Tailwind v4 is CSS-first: no tailwind.config.js. Tokens live in
 	// src/styles/global.css under an @theme block (PLANNING.md §3).
 	vite: {
+		// @lucide/astro ships raw .ts/.astro source (exports -> ./src/*.ts); the
+		// dev dep optimizer's SSR cache entry for it goes missing. Let Vite
+		// transform it directly instead of pre-bundling.
+		optimizeDeps: { exclude: ['@lucide/astro'] },
+		ssr: { noExternal: ['@lucide/astro'], optimizeDeps: { exclude: ['@lucide/astro'] } },
 		plugins: [
 			tailwindcss(),
 			...(sentryUpload

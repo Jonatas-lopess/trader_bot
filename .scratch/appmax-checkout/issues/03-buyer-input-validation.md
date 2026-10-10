@@ -11,14 +11,14 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: the whole ticket, test-first, table-driven.
 
-- [ ] Valid and invalid CPF (all-equal digits, wrong check digits, wrong length) and CNPJ cases
-- [ ] Name splitting: "Maria Silva", "Maria de Souza Silva", "Maria", extra spaces, empty
-- [ ] Phone with and without mask, with `+55`, too short, too long
-- [ ] E-mail normalization matches `modules/identity`'s for the same inputs
-- [ ] Returns every field error at once, not just the first
-- [ ] No personal data in thrown errors or messages
-- [ ] Typecheck and the full test suite pass
+- [x] Valid and invalid CPF (all-equal digits, wrong check digits, wrong length) and CNPJ cases
+- [x] Name splitting: "Maria Silva", "Maria de Souza Silva", "Maria", extra spaces, empty
+- [x] Phone with and without mask, with `+55`, too short, too long
+- [x] E-mail normalization matches `modules/identity`'s for the same inputs
+- [x] Returns every field error at once, not just the first
+- [x] No personal data in thrown errors or messages
+- [x] Typecheck and the full test suite pass

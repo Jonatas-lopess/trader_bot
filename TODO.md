@@ -190,9 +190,9 @@ Spec: [.scratch/appmax-checkout/spec.md](.scratch/appmax-checkout/spec.md). Own 
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Appmax client against the documented API](.scratch/appmax-checkout/issues/01-appmax-client-real-api.md) | — | ready-for-agent |
+| 01 | [Appmax client against the documented API](.scratch/appmax-checkout/issues/01-appmax-client-real-api.md) | — | done |
 | 02 | [Seam: a provider can use our own form instead of a redirect](.scratch/appmax-checkout/issues/02-own-form-provider-seam.md) | 01 | ready-for-agent |
-| 03 | [Buyer input: normalization and validation](.scratch/appmax-checkout/issues/03-buyer-input-validation.md) | — | ready-for-agent |
+| 03 | [Buyer input: normalization and validation](.scratch/appmax-checkout/issues/03-buyer-input-validation.md) | — | done |
 | 04 | [Checkout page form](.scratch/appmax-checkout/issues/04-checkout-page-form.md) | 02, 03 | ready-for-agent |
 | 05 | [Pay endpoint: price, customer, order, payment](.scratch/appmax-checkout/issues/05-pay-endpoint.md) | 01, 02, 03 | ready-for-agent |
 | 06 | [Confirmation page states for Pix, Boleto and card](.scratch/appmax-checkout/issues/06-confirmation-page-states.md) | 05 | ready-for-agent |

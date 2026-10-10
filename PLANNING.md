@@ -239,6 +239,12 @@ authoritative-status refetch and cancellation — webhook ingestion is deliberat
 and stays one module per gateway (see ADR-0005 for why). Revisit ADR-0005 once Appmax
 onboarding succeeds; the intent is Appmax-only, not two gateways indefinitely.
 
+`APPMAX_ENV` picks the Appmax hosts: `sandbox` by default, and only the exact string
+`production` switches (same fail-safe as `PAYMENT_PROVIDER`; a test deploy must never hit real
+money). `wrangler.jsonc` ships `sandbox`; a production deploy passes `--var APPMAX_ENV:production`.
+`appmax-client.ts` caches the OAuth token in module scope (keyed on environment and `client_id`,
+refreshed 5 minutes early; failures are not cached, a 401 drops it).
+
 **Webhook trust model, per Appmax's own documented best practices** (no HMAC signature is
 provided):
 

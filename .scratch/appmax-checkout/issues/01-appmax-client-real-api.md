@@ -12,15 +12,22 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: mocked `fetch` per function, asserting URL, method, headers, body encoding and the mapped result. Existing `webhook.test.ts`, `e2e.test.ts`, `catalog-e2e.test.ts` mocks of the order response move to the documented shape in this ticket.
 
-- [ ] `APPMAX_ENV` picks sandbox or production hosts; anything but `'production'` is sandbox; covered by a pure test
-- [ ] Token: form body and `Authorization: Bearer` on every call; cache behavior (hit, expiry, failure not cached) tested, and the decision recorded in the header
-- [ ] `createCustomer`, `createOrder`, `payCreditCard`, `payPix`, `payBoleto`, `getOrder` send the documented bodies and map `data.customer.id`, `data.order.id`, `data.order.status`, `data.pix{qr_code,emv_code,expires_at}`, `data.boleto{pdf_url,digitable_line,due_date}`
-- [ ] Card `Payment not authorized` maps to a distinct `not_authorized` result; auth failure, 5xx/network and other 4xx are distinct reasons
-- [ ] `fetchAuthoritativeStatus` reads the documented order shape and still returns `reportedAmountCents` from `amounts.sub_total`
-- [ ] No request body or card token is ever logged or put into a Sentry message
-- [ ] Header comment rewritten; unverified fields listed for 08
-- [ ] Typecheck and the full test suite pass
+- [x] `APPMAX_ENV` picks sandbox or production hosts; anything but `'production'` is sandbox; covered by a pure test
+- [x] Token: form body and `Authorization: Bearer` on every call; cache behavior (hit, expiry, failure not cached) tested, and the decision recorded in the header
+- [x] `createCustomer`, `createOrder`, `payCreditCard`, `payPix`, `payBoleto`, `getOrder` send the documented bodies and map `data.customer.id`, `data.order.id`, `data.order.status`, `data.pix{qr_code,emv_code,expires_at}`, `data.boleto{pdf_url,digitable_line,due_date}`
+- [x] Card `Payment not authorized` maps to a distinct `not_authorized` result; auth failure, 5xx/network and other 4xx are distinct reasons
+- [x] `fetchAuthoritativeStatus` reads the documented order shape and still returns `reportedAmountCents` from `amounts.sub_total`
+- [x] No request body or card token is ever logged or put into a Sentry message
+- [x] Header comment rewritten; unverified fields listed for 08
+- [x] Typecheck and the full test suite pass
+
+**Carried to later tickets:**
+
+- 05: a refused card maps to `not_authorized` only when Appmax answers 4xx with a body matching `/payment not authorized/i`. If it answers 2xx with order status `cancelado`, `payCreditCard` returns `{ok:true, orderStatus:'cancelado'}` and `pay` must treat that as a decline.
+- 05/08: `payPix` and `payBoleto` require every documented field (`qr_code`, `emv_code`, `expires_at` / `pdf_url`, `digitable_line`, `due_date`) and return `unavailable` otherwise, while a payment may already exist at Appmax. Check the real shape in 08 and decide whether to relax it so a retry cannot double-create.
+- 08: `data.payment` shape (bare string or `{method|type}` accepted), `customer_id` type (string vs number), 401 handling.
+- No fetch timeout is set; the webhook has a 5 s budget (07).

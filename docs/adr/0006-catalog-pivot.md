@@ -95,5 +95,6 @@ not by purchase, so a repeat buyer has one login reaching every Licença (ticket
 - `subscription_id` disappears as the join key; `purchase_id` replaces it everywhere.
 - PLANNING §6's "Boleto recurring" claim is dropped: recurring is card only.
 - Annual's "Economize 20%" and Pix steer survive; the price and badge remain `launchBlocking`
-  until the business sets real numbers.
+  until the business sets real numbers. (Amended 2026-10-09, figma-restyle 12: the `/catalog`
+  card no longer draws the badge, the Pix note or offer captions; their content was removed.)
 - Catalog entries are placeholders (`launchBlocking`) until real Robôs and prices exist.

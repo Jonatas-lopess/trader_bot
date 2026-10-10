@@ -25,17 +25,12 @@ export const pageHeading = 'Escolha o seu Robô';
 // Compra is the main offer (CONTEXT.md — Oferta); Anual and Mensal are secondary.
 export const offerOrder: OfferName[] = ['one_time', 'annual', 'monthly'];
 
+// Price-row labels. "Assinatura" stays reserved for the Mensal recurring agreement
+// (CONTEXT.md), so the rows are named for what the Cliente gets, not "Assinatura Anual/Mensal".
 export const offerLabels: Record<OfferName, string> = {
-	one_time: 'Comprar',
+	one_time: 'Licença Perpétua',
 	annual: 'Anual',
 	monthly: 'Mensal',
-};
-
-// Shown next to the price of each Oferta so the buyer sees what they are buying.
-export const offerCaptions: Record<OfferName, string> = {
-	one_time: 'pagamento único, Licença perpétua',
-	annual: 'pagamento único, 12 meses',
-	monthly: 'por mês, somente cartão',
 };
 
 export const carouselLabel = 'Robôs do catálogo';
@@ -46,15 +41,8 @@ export const comingSoonLabel = 'Em breve';
 export const strategyTypeLabel = 'Estratégia';
 export const marketLabel = 'Mercado';
 export const perfilLabel = 'Perfil';
-
-// Carried over from the Plans page (marketing-pages 07). The "Economize 20%"
-// figure was a Figma frame claim with no annual price behind it, and the
-// catalog's annual prices are placeholders, so no discount can be stated.
-export const annualSavingsBadge = launchBlocking(
-	'Economize 20%',
-	'Frame claim (marketing-pages 07) with no real annual price behind it: catalog annual prices are ' +
-		'placeholders (ADR-0006 "Open"). Do not compute a discount and ship it; confirm the real one first.',
-);
+export const detailsHeading = 'Detalhes do Robô';
+export const buyLabelPrefix = 'Comprar';
 
 // One line under the buy area of every card with something to buy. Checkout is hosted by
 // Appmax, so this is the last place we control before payment (withdrawal-guarantee 03).
@@ -70,13 +58,6 @@ export const buyWithdrawalNote = {
 	linkLabel: 'Saiba mais',
 	href: withdrawalHref,
 };
-
-// PLANNING.md §6: Pix is the cheaper, faster-settling method for a single annual charge.
-export const annualPixNote = launchBlocking(
-	'Anual à vista no Pix.',
-	'PLANNING.md §6 Pix steer for annual billing (Pix ~0.99%/D+1 vs card ~4.19%/D+31); wording is a ' +
-		'placeholder and Appmax onboarding is pending (PLANNING.md §12).',
-);
 
 // Real compliance copy, ships verbatim (same register as `legalNotice` in footer.ts).
 export const regulatoryNote =
@@ -107,7 +88,6 @@ export const checkoutHref = (robotSlug: string, offer: OfferName): string =>
 export type CardOffer = {
 	offer: OfferName;
 	label: string;
-	caption: string;
 	amountCents: number;
 	priceText: string;
 	href: string;
@@ -144,6 +124,18 @@ export const cardInfoRows = (card: CatalogCard): CardInfoRow[] => [
 export const cardWithdrawalNote = (card: CatalogCard): typeof buyWithdrawalNote | null =>
 	card.offers.length > 0 ? buyWithdrawalNote : null;
 
+export type CardBuy = { label: string; href: string };
+
+/**
+ * The card's single buy button: "Comprar <Robô name>", going to Compra by default
+ * or to the first Oferta the Robô sells when it has no Compra. Null when there is
+ * nothing to buy (coming soon). Ticket 13 lets the price rows pick the Oferta.
+ */
+export const cardBuy = (card: CatalogCard): CardBuy | null => {
+	const offer = card.offers.find((o) => o.offer === 'one_time') ?? card.offers[0];
+	return offer ? { label: `${buyLabelPrefix} ${card.name}`, href: offer.href } : null;
+};
+
 export const catalogCards: CatalogCard[] = catalog.map((robot) => ({
 	slug: robot.slug,
 	name: unwrapLaunchBlocking(robot.name),
@@ -162,7 +154,6 @@ export const catalogCards: CatalogCard[] = catalog.map((robot) => ({
 						{
 							offer,
 							label: offerLabels[offer],
-							caption: offerCaptions[offer],
 							amountCents: price.value,
 							priceText: formatBrl(price.value),
 							href: checkoutHref(robot.slug, offer),

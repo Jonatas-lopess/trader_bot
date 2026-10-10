@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { catalog, lookupOffer } from './catalog';
 import {
 	buyWithdrawalNote,
+	cardBuy,
 	cardInfoRows,
 	cardWithdrawalNote,
 	catalogCards,
@@ -54,6 +55,52 @@ describe('catalogCards', () => {
 		const soon = catalogCards.filter((c) => c.status === 'coming-soon');
 		expect(soon.length).toBeGreaterThan(0);
 		for (const card of soon) expect(card.offers).toEqual([]);
+	});
+});
+
+describe('price rows', () => {
+	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
+
+	it('labels the rows Licença Perpétua, Anual and Mensal, in that order', () => {
+		expect(bySlug('robo-exemplo-a').offers.map((o) => o.label)).toEqual(['Licença Perpétua', 'Anual', 'Mensal']);
+	});
+
+	it('shows only the Ofertas the Robô sells', () => {
+		expect(bySlug('robo-exemplo-b').offers.map((o) => o.label)).toEqual(['Licença Perpétua']);
+		expect(bySlug('robo-exemplo-d').offers.map((o) => o.label)).toEqual(['Licença Perpétua', 'Mensal']);
+	});
+
+	it('carries no caption under the price', () => {
+		for (const card of catalogCards) for (const offer of card.offers) expect(offer).not.toHaveProperty('caption');
+	});
+});
+
+describe('buy button', () => {
+	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
+
+	it('reads "Comprar <Robô name>" and buys Compra by default', () => {
+		const card = bySlug('robo-exemplo-a');
+		expect(cardBuy(card)).toEqual({
+			label: 'Comprar Robô Exemplo A',
+			href: '/checkout?robot=robo-exemplo-a&offer=one_time',
+		});
+	});
+
+	it('falls back to the first Oferta the Robô sells when it has no Compra', () => {
+		const card = { ...bySlug('robo-exemplo-d'), offers: bySlug('robo-exemplo-d').offers.filter((o) => o.offer !== 'one_time') };
+		expect(cardBuy(card)?.href).toBe('/checkout?robot=robo-exemplo-d&offer=monthly');
+	});
+
+	it('is absent on a coming-soon Robô', () => {
+		for (const card of catalogCards.filter((c) => c.status === 'coming-soon')) expect(cardBuy(card)).toBeNull();
+	});
+
+	it('carries only robot and offer (ADR-0006)', () => {
+		for (const card of catalogCards) {
+			const buy = cardBuy(card);
+			if (!buy) continue;
+			expect([...new URL(buy.href, 'https://example.com').searchParams.keys()]).toEqual(['robot', 'offer']);
+		}
 	});
 });
 

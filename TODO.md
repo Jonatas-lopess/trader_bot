@@ -163,9 +163,9 @@ No spec.md — small enough to skip straight to tickets. Wayfinding from a grill
 | 10 | [Wordmark and prices use `text-heading-*` but render in the body font](.scratch/figma-restyle/issues/10-heading-font-on-wordmark-and-prices.md) | — | done |
 | 11 | [Card info rows: Perfil field and the Estratégia / Mercado / Perfil shape](.scratch/figma-restyle/issues/11-card-perfil-and-info-rows.md) | — | done |
 | 12 | [Catalog card is a 1:1 copy of the `ipa2` wireframe](.scratch/figma-restyle/issues/12-robot-card-1to1-from-ipa2.md) | 11 | ready-for-human |
-| 13 | [Price rows choose what the card's buy button buys](.scratch/figma-restyle/issues/13-selectable-price-rows.md) | 12 | ready-for-agent |
+| 13 | [Price rows choose what the card's buy button buys](.scratch/figma-restyle/issues/13-selectable-price-rows.md) | 12 | ready-for-human |
 
-Frontier: **12** (built; owner browser review of the coming-soon and partial-offer cards pending), then 13 (11 done: the catalog card from the `ipa2` wireframe, added 2026-10-09). Earlier: 06 closed 2026-10-06: `painel-cliente` Variables match `global.css`, the owner confirmed the derived roles, and the Figma file has no text styles. Still open for the next Figma quota reset, in their own tickets: 05's per-node comparison and 10's Geist check on the wordmark and prices. 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
+Frontier: **12** and **13** (both built; owner browser review pending: 12's coming-soon and partial-offer cards, 13's selectable price rows) (11 done: the catalog card from the `ipa2` wireframe, added 2026-10-09). Earlier: 06 closed 2026-10-06: `painel-cliente` Variables match `global.css`, the owner confirmed the derived roles, and the Figma file has no text styles. Still open for the next Figma quota reset, in their own tickets: 05's per-node comparison and 10's Geist check on the wordmark and prices. 04 closed after the owner's browser review of every state (2026-10-05): the first build took only colors and fonts and was rejected, the second added the wireframe's app shell, two-column layout and lean cards, styled confirmation dialogs and legal modals. What the wireframe draws that 0.1 cannot back is in `.scratch/backlog.md`.
 
 ## withdrawal-guarantee
 
@@ -183,3 +183,22 @@ Frontier: none. All four done (04 closed 2026-10-06).
 ## Untracked
 
 [.scratch/backlog.md](.scratch/backlog.md) — remaining 0.1 work, the external prerequisites, and the "Open before go-live (catalog-pivot)" list: Appmax sandbox checks, owner decisions, launch-blocking copy.
+
+## appmax-checkout
+
+Spec: [.scratch/appmax-checkout/spec.md](.scratch/appmax-checkout/spec.md). Own checkout form on Appmax's API instead of a hosted checkout ([ADR-0007](docs/adr/0007-own-checkout-on-appmax.md), owner decisions of 2026-10-09). Compra and Anual first; the Stripe test driver stays until 10.
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Appmax client against the documented API](.scratch/appmax-checkout/issues/01-appmax-client-real-api.md) | — | ready-for-agent |
+| 02 | [Seam: a provider can use our own form instead of a redirect](.scratch/appmax-checkout/issues/02-own-form-provider-seam.md) | 01 | ready-for-agent |
+| 03 | [Buyer input: normalization and validation](.scratch/appmax-checkout/issues/03-buyer-input-validation.md) | — | ready-for-agent |
+| 04 | [Checkout page form](.scratch/appmax-checkout/issues/04-checkout-page-form.md) | 02, 03 | ready-for-agent |
+| 05 | [Pay endpoint: price, customer, order, payment](.scratch/appmax-checkout/issues/05-pay-endpoint.md) | 01, 02, 03 | ready-for-agent |
+| 06 | [Confirmation page states for Pix, Boleto and card](.scratch/appmax-checkout/issues/06-confirmation-page-states.md) | 05 | ready-for-agent |
+| 07 | [Webhook mapped to the real events and statuses](.scratch/appmax-checkout/issues/07-webhook-real-events.md) | 01 | ready-for-agent |
+| 08 | [Sandbox verification with real Appmax credentials](.scratch/appmax-checkout/issues/08-sandbox-verification.md) | 04, 05, 06, 07 | ready-for-human |
+| 09 | [Mensal recurrence on the own checkout](.scratch/appmax-checkout/issues/09-mensal-recurrence.md) | 05 | needs-info |
+| 10 | [Remove the Stripe test driver](.scratch/appmax-checkout/issues/10-remove-stripe-driver.md) | 08 | deferred |
+
+Frontier: 01 and 03. 08 waits on the Appmax account (PLANNING §12), a go-live gate, not on the build.

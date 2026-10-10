@@ -10,7 +10,7 @@ sentence yet, and ADR-0006 wins.
 Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
 ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
 
-Last updated: 2026-10-05 (customer-area layout, figma-restyle/04)
+Last updated: 2026-10-09 (own checkout, ADR-0007)
 
 ---
 
@@ -178,9 +178,13 @@ of the base rate). Offering "12x" would still mean deciding how a parcelled annu
 interacts with subscription renewal — that product decision is undone, so parcelamento
 stays deferred to 1.0.0 (§10) until customers actually ask, not because the API forbids it.
 
-**Hosted Checkout in 0.1.** PCI scope drops to near zero and Pix, Boleto and card arrive in
-one surface. Cost: less control over the highest-converting screen and a visual seam
-against the Figma design. Revisit with conversion data, not before.
+**Own checkout form in 0.1 (ADR-0007).** Appmax has no Stripe-style hosted checkout session
+(its payment link has no return URL or external reference), so we build the form and drive the
+API: customer, order, payment. Card data is tokenized in the browser by Appmax JS, so PAN and
+CVV never touch our Worker and PCI scope stays near zero; Pix and Boleto are created
+server-side. The form also collects the buyer's name and CPF/CNPJ for the NFS-e. Compra and
+Anual first; Mensal recurrence is a separate ticket. Specs and tickets:
+`.scratch/appmax-checkout/`.
 
 **What Appmax does not provide, and we therefore build:**
 
@@ -282,8 +286,8 @@ payment button costs conversion.
 
 **Checkout sequence**
 
-1. A provisional record is created when the checkout session is created.
-2. The customer pays and is redirected to an intermediate page: *"Aguardando confirmação do
+1. A provisional record is created when the Cliente submits our checkout form (ADR-0007).
+2. The customer pays and is sent to an intermediate page: *"Aguardando confirmação do
    pagamento…"*. The page polls a status endpoint (~2s interval; no WebSocket or Durable
    Object needed at this scale).
 3. On confirmation the page becomes *"Entrar na área do cliente"*.
@@ -385,7 +389,7 @@ routes stay for the marketing footer and direct links.
 **0.1**
 
 - Landing page and `/catalog` page, responsive
-- Hosted Checkout by `robot_id` + Oferta, webhook → provisional account → active, with amount check
+- Own checkout form by `robot_id` + Oferta (ADR-0007), webhook → provisional account → active, with amount check
 - Intermediate confirmation page, including the boleto branch
 - Magic-link login
 - Customer area: Licença status, Corretora account entry, expiry, cancel Assinatura
@@ -402,7 +406,6 @@ routes stay for the marketing footer and direct links.
 - Annual auto-renew (card) with its reminder email, 15 days before renewal
 - Automated NFS-e emission
 - Parcelamento, if demand appears
-- Custom checkout, if conversion data justifies it
 
 ---
 
@@ -486,10 +489,9 @@ on:
 - Appmax's multi-day dunning behaviour and subscription status transitions
 - Cloudflare Email Sending pricing (documentation page returns 404)
 - Whether Cloudflare imposes a free-plan restriction on Workers custom domains
-- Appmax's hosted-checkout/payment-link request and response field names (auth flow,
-  endpoint paths, `external_id` round-tripping) — no sandbox credentials were available
-  during `checkout-webhooks`; `src/modules/billing/appmax-client.ts`'s header comment has
-  the detail. **Correction, found in code review:** this was originally written as
+- Appmax's request and response field names (auth flow, endpoint paths) — no sandbox
+  credentials were available during `checkout-webhooks`; `src/modules/billing/appmax-client.ts`'s
+  header comment has the detail (superseded by the own-checkout rewrite, see the last bullet). **Correction, found in code review:** this was originally written as
   "everything downstream of that module does not depend on these exact names," which
   overstates the isolation for one specific path — `webhook.ts`'s compare-and-swap `WHERE
   (appmax_order_id = ? OR appmax_subscription_id = ?)` is the only way the webhook finds a
@@ -513,10 +515,55 @@ on:
   `customer.name`, `customer.email` and `customer.document_number`; `document_number` is
   optional on customer creation, but card (`holder_document_number`) and Pix
   (`payment_data.pix.document_number`) payments require one (Boleto not read). Unknown:
-  whether the hosted `payment-links` flow collects it for every method and whether it lands on
-  `customer.document_number` in the refetch. Confirm on a sandbox call before go-live.
+  whether it lands on `customer.document_number` in the refetch. Confirm on a sandbox call
+  before go-live. (The hosted-flow question is moot: ADR-0007's own form collects it.)
 - Subscription base orders may be card **or Pix** per the docs, against §6's "no Pix for
   recurring". Unresolved: keep Mensal card-only until a sandbox test or Appmax says otherwise.
 - Appmax's published webhook source-IP list — not findable anywhere (docs.appmax.com.br,
   help-center.appmax.com.br, general web search), so `APPMAX_WEBHOOK_IPS` ships unset;
   `src/modules/billing/webhook-hardening.ts` fails closed on that, not open.
+- Appmax API facts for the own checkout (ADR-0007), read from docs.appmax.com.br on 2026-10-09,
+  **not sandbox-verified**. Plan: `.scratch/appmax-checkout/`.
+  - Auth: `POST https://auth.sandboxappmax.com.br/oauth2/token`, form body `grant_type=client_credentials`,
+    `client_id`, `client_secret` → `access_token` (Bearer, `expires_in` 3600). API base
+    `https://api.sandboxappmax.com.br`; production replaces `sandboxappmax` with `appmax`. All paths
+    carry `/v1`.
+  - `POST /v1/customers` `{first_name, last_name, email, phone, ip, document_number, address{postcode,
+    street, number, complement, district, city, state}}` → `data.customer.id`; upsert keyed on first
+    name + last name + email + phone + ip. Which fields are mandatory is not stated (only that `ip`
+    must have been collected by Appmax JS; required-fields-only registers an abandoned cart). Whether
+    address is needed for digital goods: unknown.
+  - `POST /v1/orders` `{customer_id, products[{sku, name, quantity, unit_value, type}], shipping_value,
+    discount_value}`, money in cents → `data.order.id`, status `pendente`.
+  - Card: Appmax JS tokenizes in the browser; `externalId` is the app installation's `external_id` (UUID),
+    different per environment (wrong one: 404 "Merchant not found"); `init` once, after the form is in
+    the DOM; in a SPA `preventDefault`. Then `POST /v1/payments/credit-card` `{order_id, customer_id,
+    payment_data.credit_card{token, holder_document_number, holder_name, installments, soft_descriptor}}`
+    → `data.order.status` `autorizado` (antifraud review); final confirmation by webhook `order_approved`.
+  - Pix: `POST /v1/payments/pix` `{order_id, payment_data.pix.document_number}` → `data.pix{qr_code (image),
+    emv_code, expires_at}`; webhook `order_paid_by_pix`. Boleto: `POST /v1/payments/boleto`
+    `{order_id, payment_data.boleto.document_number}` → `data.boleto{pdf_url, digitable_line, due_date}`;
+    webhook `order_paid` on compensation.
+  - `GET /v1/orders/{id}` → `data.order{id, status, total_paid, amounts{sub_total, shipping_value,
+    discount, installment_fee}}`, `data.customer`, `data.payment`.
+  - Order statuses: `pendente`, `autorizado`, `aprovado`, `integrado`, `pendente_integracao`,
+    `pendente_integracao_em_analise`, `cancelado` (expired Pix, refused card), `recusado_por_risco`,
+    `estornado`, `chargeback_em_tratativa`/`_em_disputa`/`_perdido`/`_vencido`. Pending Pix and Boleto
+    stay `pendente`.
+  - Webhooks: 42 events (among them `order_authorized`, `order_approved`, `order_billet_created`,
+    `order_paid`, `order_pix_created`, `order_paid_by_pix`, `order_pix_expired`, `order_billet_overdue`,
+    `order_refund`, `order_refused_by_risk`, `order_chargeback_in_treatment`, `payment_not_authorized`,
+    `subscription_*`); envelope `{event, event_type, site_id, app_id, client_key, external_key, data,
+    partner_merchant}`; monetary values in reais (decimal; `withdraw_*` in cents), unlike the API's
+    cents; 5 s timeout; success codes 200-208 and 226; 4 attempts (+30 min, +2 h, +4 h); no HMAC;
+    **source IPs not published**, so the IP filter in §6 and §12 has nothing to be configured with;
+    an event is only delivered if the app holds its permission.
+  - Refund: `POST /v1/orders/refund-request` `{order_id, type, value}`. Sandbox test cards:
+    `4000000000000010` succeeds, `4000000000000028` fails ("Payment not authorized").
+  - Appmax payment link, `POST /v1/payment-link` (singular): `{name, value >= 500, description,
+    product_type, document, payments, max_installments, allow_multiple_sales}` → `data.checkout_url`;
+    no return URL or external reference documented; why ADR-0007 does not use it.
+  - Mensal: `POST /v1/subscriptions` `{order_id, interval, interval_count, max_cycles, ...}` creates the
+    subscription from an existing order that is card or Pix and already `aprovado` or `integrado`;
+    customer and card come from the order. Interval values, retry behaviour and the charge status
+    mapping are not documented on that page.

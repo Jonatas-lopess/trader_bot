@@ -230,7 +230,7 @@ describe('customer-area end to end: login to cancel', () => {
 	});
 
 	// .scratch/catalog-pivot/issues/14-identity-per-email.md
-	it('one email buying several times is one Cliente: one login reaches every Licença, and a same-Robô repeat is still reported', async () => {
+	it('one email buying several times is one Cliente: one login reaches every Licença, and a same-Robô repeat is not flagged', async () => {
 		const buys = [
 			{ id: 'rb-1', order: 'ord_rb_1', sub: 'asub_rb_1', robot: 'robo-exemplo-a', email: 'Repeat@Example.com' },
 			{ id: 'rb-2', order: 'ord_rb_2', sub: 'asub_rb_2', robot: 'robo-exemplo-b', email: ' repeat@example.com ' },
@@ -253,15 +253,11 @@ describe('customer-area end to end: login to cancel', () => {
 			.bind('repeat@example.com')
 			.all<{ id: string; email: string }>();
 		expect(customers).toHaveLength(1);
-		// Only the third purchase repeats a Robô the Cliente already holds.
+		// The third purchase repeats a Robô the Cliente holds; that is allowed (ADR-0008), so nothing is reported.
 		const duplicateReports = vi
 			.mocked(Sentry.captureMessage)
 			.mock.calls.filter(([message]) => message === 'Duplicate Licença for the same Cliente and Robô');
-		expect(duplicateReports).toHaveLength(1);
-		expect(Sentry.captureMessage).toHaveBeenCalledWith(
-			'Duplicate Licença for the same Cliente and Robô',
-			expect.objectContaining({ extra: { purchase_id: 'rb-3', existing_purchase_id: 'rb-1' } })
-		);
+		expect(duplicateReports).toHaveLength(0);
 
 		// The login the webhook mailed reaches all three Licenças on /conta.
 		await requestMagicLink(env, { email: ' REPEAT@example.com', ip: '203.0.113.20', origin: 'https://example.com' });

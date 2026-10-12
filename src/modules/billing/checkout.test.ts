@@ -224,83 +224,31 @@ describe('createCheckoutSession', () => {
 
 	});
 
-	describe('duplicate-Licença guard for an identified Cliente', () => {
-		async function seedCustomer(params: { purchaseId: string; email: string; status: string; robotId: string }) {
+	describe('repeat purchase of the same Robô (ADR-0008)', () => {
+		it('starts a checkout for a Robô the Cliente already has active, and writes a second purchase row', async () => {
 			await env.DB.prepare(
-				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'one_time', 99700, ?)"
-			)
-				.bind(params.purchaseId, params.robotId, params.status)
-				.run();
-			// Customers are keyed by email: a second purchase by the same email reuses the first id.
-			await attachCustomer({ purchaseId: params.purchaseId, customerId: `cust-${params.purchaseId}`, email: params.email });
-			const row = await env.DB.prepare('SELECT customer_id FROM purchases WHERE id = ?')
-				.bind(params.purchaseId)
-				.first<{ customer_id: string }>();
-			return row!.customer_id;
-		}
+				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES ('rep-active', 'robo-exemplo-a', 'one_time', 99700, 'active')"
+			).run();
+			await attachCustomer({ purchaseId: 'rep-active', customerId: 'cust-rep-active', email: 'repeat@example.com' });
+			mockAppmax({ ok: true, orderId: 'ord_repeat' });
 
-		it('blocks a second checkout for a Robô the Cliente already has active', async () => {
-			const customerId = await seedCustomer({
-				purchaseId: 'dup-active',
-				email: 'dup@example.com',
-				status: 'active',
-				robotId: 'robo-exemplo-a',
-			});
-			const fetchSpy = vi.spyOn(globalThis, 'fetch');
-
-			const result = await createCheckoutSession(env, {
-				robotId: 'robo-exemplo-a',
-				offer: 'annual',
-				origin,
-				customerId,
-			});
-
-			expect(result).toMatchObject({ ok: false, status: 409 });
-			expect(fetchSpy).not.toHaveBeenCalled();
-		});
-
-		it('allows a different Robô', async () => {
-			const customerId = await seedCustomer({
-				purchaseId: 'dup-other-robot',
-				email: 'other@example.com',
-				status: 'active',
-				robotId: 'robo-exemplo-a',
-			});
-			mockAppmax({ ok: true, orderId: 'ord_other_robot' });
-
-			const result = await createCheckoutSession(env, {
-				robotId: 'robo-exemplo-b',
-				offer: 'one_time',
-				origin,
-				customerId,
-			});
-
-			expect(result.ok).toBe(true);
-		});
-
-		it('a pending (abandoned or declined) purchase never blocks a new checkout', async () => {
-			const customerId = await seedCustomer({
-				purchaseId: 'dup-pending',
-				email: 'pending@example.com',
-				status: 'pending',
-				robotId: 'robo-exemplo-a',
-			});
-			mockAppmax({ ok: true, orderId: 'ord_after_pending' });
-
-			const result = await createCheckoutSession(env, {
-				robotId: 'robo-exemplo-a',
-				offer: 'one_time',
-				origin,
-				customerId,
-			});
-
-			expect(result.ok).toBe(true);
-		});
-
-		it('a guest checkout (no session) is not blocked here', async () => {
-			mockAppmax({ ok: true, orderId: 'ord_guest' });
 			const result = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+
 			expect(result.ok).toBe(true);
+			const rows = await env.DB.prepare("SELECT id FROM purchases WHERE robot_id = 'robo-exemplo-a' AND appmax_order_id = 'ord_repeat'").all();
+			expect(rows.results).toHaveLength(1);
+		});
+
+		it('two checkouts for the same Robô and Oferta yield two distinct pending purchases', async () => {
+			mockAppmax({ ok: true, orderId: 'ord_twin_1' });
+			await createCheckoutSession(env, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
+			mockAppmax({ ok: true, orderId: 'ord_twin_2' });
+			await createCheckoutSession(env, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
+
+			const rows = await env.DB.prepare("SELECT id, status FROM purchases WHERE appmax_order_id IN ('ord_twin_1', 'ord_twin_2')").all<{ id: string; status: string }>();
+			expect(rows.results).toHaveLength(2);
+			expect(new Set(rows.results.map((row) => row.id)).size).toBe(2);
+			expect(rows.results.every((row) => row.status === 'pending')).toBe(true);
 		});
 	});
 });

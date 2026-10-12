@@ -17,7 +17,6 @@ import * as Sentry from '@sentry/cloudflare';
 import { fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
-import { reportDuplicateLicense } from '../licensing/duplicate-license';
 import { licenseSyncStatement } from '../licensing/license-expiry';
 import {
 	STATUS_RIGIDITY,
@@ -140,7 +139,6 @@ async function onSubscriptionBecameActive(
 	}
 	if (!customer.created) return;
 
-	await reportDuplicateLicense(env, { purchaseId, email });
 	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
 }
 

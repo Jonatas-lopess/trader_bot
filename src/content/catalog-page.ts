@@ -36,9 +36,8 @@ export const offerLabels: Record<OfferName, string> = {
 // Shown instead of the cards when no Robô is published (a fresh install, or all hidden).
 export const emptyCatalogMessage = 'Os Robôs estão sendo preparados. Volte em breve.';
 
-export const carouselLabel = 'Robôs do catálogo';
-export const carouselPrevLabel = 'Robô anterior';
-export const carouselNextLabel = 'Próximo Robô';
+// Accessible name of the card grid.
+export const catalogListLabel = 'Robôs do catálogo';
 
 // "Saiba mais" modal (storefront-v2 06). The button's accessible name carries the Robô, so a
 // screen reader's button list does not read "Saiba mais" six times in a row.
@@ -149,6 +148,15 @@ export type CardBuy = { label: string; href: string };
  */
 export const defaultOffer = (card: CatalogCard): CardOffer | null =>
 	card.offers.find((o) => o.offer === 'one_time') ?? card.offers[0] ?? null;
+
+/**
+ * The price a compact card shows: Compra, falling back to the lowest Oferta the Robô sells.
+ * Its label is shown with it so "R$ 497" is never read as the perpetual price. Null for a
+ * coming-soon Robô (nothing to buy, so no price).
+ */
+export const cardMainPrice = (card: CatalogCard): CardOffer | null =>
+	card.offers.find((o) => o.offer === 'one_time') ??
+	card.offers.reduce<CardOffer | null>((lowest, o) => (!lowest || o.amountCents < lowest.amountCents ? o : lowest), null);
 
 export type CardPriceRow = CardOffer & { selected: boolean };
 

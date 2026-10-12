@@ -7,6 +7,7 @@ import {
 	buyWithdrawalNote,
 	cardBuy,
 	cardInfoRows,
+	cardMainPrice,
 	cardPriceRows,
 	cardWithdrawalNote,
 	checkoutHref,
@@ -171,6 +172,21 @@ describe('default selection', () => {
 			expect(defaultOffer(card)).toBeNull();
 			expect(cardPriceRows(card)).toEqual([]);
 		}
+	});
+});
+
+describe('card main price', () => {
+	it('is Compra when the Robô sells it', () => {
+		expect(cardMainPrice(bySlug('robo-exemplo-a'))).toMatchObject({ offer: 'one_time', label: 'Licença Perpétua', priceText: 'R$ 997' });
+	});
+
+	it('falls back to the lowest Oferta, with its label, when there is no Compra', () => {
+		const card = { ...bySlug('robo-exemplo-a'), offers: bySlug('robo-exemplo-a').offers.filter((o) => o.offer !== 'one_time') };
+		expect(cardMainPrice(card)).toMatchObject({ offer: 'annual', label: 'Anual', priceText: 'R$ 497' });
+	});
+
+	it('is nothing on a coming-soon Robô', () => {
+		for (const card of catalogCards.filter((c) => c.status === 'coming-soon')) expect(cardMainPrice(card)).toBeNull();
 	});
 });
 

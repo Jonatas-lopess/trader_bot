@@ -1,7 +1,7 @@
 /**
  * Keyboard model of a radio group (WAI-ARIA APG): which row a key moves to.
- * Pure so it can be unit-tested; used by the card's price rows
- * (src/components/robot-card.astro, figma-restyle 13).
+ * Pure so it can be unit-tested; used by the modal's price rows
+ * (src/shared/offer-rows.ts, figma-restyle 13, storefront-v2 06).
  */
 
 /** Index the key moves to, wrapping at both ends; null when the key is not one the group handles. */

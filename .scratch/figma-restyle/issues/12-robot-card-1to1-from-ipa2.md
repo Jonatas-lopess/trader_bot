@@ -47,3 +47,5 @@ Differences from `ipa2`, with the reason:
 - **Withdrawal note under the button** is not in the wireframe; it stays by the ticket (withdrawal-guarantee 03).
 - Only the carousel's centre card is highlighted (name, "Detalhes do Robô" and the button turn brand-coloured, with the existing border, glow and scale); with fewer than three cards none is, so every button is outline.
 - Not in the wireframe, derived from the same pattern: the coming-soon card (name, "Em breve" label, Estratégia row, no price rows or button) and the one- and two-row cards.
+
+2026-10-12 (agent): **departure from `ipa2`, owner-approved** (storefront-v2 07, ADR-0008). The 1:1 card is gone: `/catalog` is a responsive grid of compact cards (name, short description, main price, "Saiba mais", "Adicionar ao carrinho"). The "Detalhes do Robô" rows, the price rows and the withdrawal note moved into the "Saiba mais" modal, and the carousel with its centre highlight was removed. The list above is the record of the original 1:1 build, no longer how the card looks.

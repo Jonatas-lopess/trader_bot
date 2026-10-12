@@ -3,17 +3,18 @@
 //
 // Replaces `/planos` (.scratch/catalog-pivot/issues/06-catalog-page.md,
 // ADR-0006); `/planos` redirects here (astro.config.mjs). Title band, one card
-// per published Robô, and the regulatory note, wrapped in the site shell. The
+// per published Robô in a responsive grid (details in the "Saiba mais" modal), and the
+// regulatory note, wrapped in the site shell. The
 // Robôs are read from D1 on every request (ADR-0008), so the page is not
 // prerendered: a Robô published or hidden in the admin shows at once. Copy comes
 // from src/content/catalog-page.ts — see docs/agents/content-files.md.
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/base-layout.astro';
-import CatalogCarousel from '../components/catalog-carousel.astro';
 import RobotCard from '../components/robot-card.astro';
 import RobotDialog from '../components/robot-dialog.astro';
 import {
 	buildCatalogCards,
+	catalogListLabel,
 	emptyCatalogMessage,
 	pageDescription,
 	pageHeading,
@@ -37,13 +38,17 @@ const cards = buildCatalogCards(await listPublishedWithOffers(env));
 			cards.length === 0 ? (
 				<p class="content-row gutter-x py-10 text-center text-body-lg text-text-secondary">{emptyCatalogMessage}</p>
 			) : (
-				<CatalogCarousel>
+				<ul
+					role="list"
+					aria-label={catalogListLabel}
+					class="content-row gutter-x grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"
+				>
 					{cards.map((card) => (
-						<li>
+						<li class="flex">
 							<RobotCard card={card} />
 						</li>
 					))}
-				</CatalogCarousel>
+				</ul>
 			)
 		}
 	</section>

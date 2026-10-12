@@ -1,33 +1,27 @@
 ---
 // Robô card — src/components/robot-card.astro
 //
-// One card per Robô on `/catalog`, drawn 1:1 from the `ipa2` wireframe
-// (.scratch/figma-restyle/issues/12-robot-card-1to1-from-ipa2.md; layout of the
-// original in .scratch/catalog-pivot/issues/06-catalog-page.md): name, quiet
-// description, divider, "Detalhes do Robô" with check rows, one price row per
-// Oferta (Licença Perpétua highlighted), one buy button, the 7-day withdrawal note.
-// A coming-soon Robô shows no price rows and no buy button. The button is
-// outline on regular cards and filled on the carousel's centre-highlighted card
-// (`li[data-active]`, set by catalog-carousel.astro). The button buys Compra by
-// default and, with JavaScript, goes to the Oferta of whichever price row is selected
-// (figma-restyle 13): the rows are a radio group (roving tabindex, arrow keys, the
-// selected row wears the highlighted look). Without JavaScript the rows stay a plain
-// list, the default row is highlighted and the button buys the default Oferta. Every
-// buy link carries only `robot` + `offer`, the price is looked up server-side at
-// checkout (ADR-0006), never read from the page.
+// One compact card per Robô on `/catalog` (storefront-v2 07, ADR-0008; replaces the tall
+// carousel card drawn 1:1 from `ipa2` in figma-restyle 12, an owner-approved departure of
+// 2026-10-12): name, quiet short description, the main price and two actions, "Saiba mais"
+// and "Adicionar ao carrinho". The details rows, the selectable price rows and the withdrawal
+// note live in the "Saiba mais" modal (robot-details.astro, robot-dialog.astro).
+//
+// "Saiba mais" is the <summary> of the card's `<details data-robot-more>`: with JavaScript the
+// click opens the modal (robot-dialog.astro); without it the details open inline in the card, so
+// the long description is never lost. The cart button is `hidden` until the cart script
+// (src/shared/cart-client.ts) reveals it, so it is never a dead control. It names the Oferta it adds
+// (`data-offer`: Compra, else Anual), never a price (ADR-0006). A coming-soon Robô shows its
+// badge and "Saiba mais" only.
 //
 // Content comes from src/content/catalog-page.ts — see docs/agents/content-files.md.
-import { CheckCheck } from '@lucide/astro';
 import {
-	cardBuy,
-	cardInfoRows,
-	cardPriceRows,
-	cardWithdrawalNote,
+	addToCartLabel,
+	cardMainPrice,
 	comingSoonLabel,
-	detailsHeading,
+	defaultOffer,
 	learnMoreLabel,
 	learnMoreLabelFor,
-	priceRowsLabel,
 	type CatalogCard,
 } from '../content/catalog-page';
 import RobotDetails from './robot-details.astro';
@@ -37,21 +31,18 @@ type Props = {
 };
 
 const { card } = Astro.props;
-const buy = cardBuy(card);
-const priceRows = cardPriceRows(card);
-const withdrawalNote = cardWithdrawalNote(card);
+const mainPrice = cardMainPrice(card);
+// The cart button adds Compra if offered, else Anual: the card's default Oferta.
+const addOffer = defaultOffer(card);
 ---
 
 <div
+	id={card.slug}
 	data-robot-card
-	class="flex w-full flex-col rounded-lg border border-border-subtle bg-surface-raised card-p-sm"
+	class="flex h-full w-full flex-col rounded-lg border border-border-subtle bg-surface-raised card-p-sm"
 >
 	<div class="flex items-start justify-between gap-3">
-		<h2
-			class="text-body-sm font-bold uppercase tracking-wider text-text-secondary in-data-active:text-brand-primary"
-		>
-			{card.name}
-		</h2>
+		<h2 class="text-body-sm font-bold uppercase tracking-wider text-text-primary">{card.name}</h2>
 		{
 			card.status === 'coming-soon' && (
 				<span class="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-sunken px-3 py-1 text-caption font-medium text-text-secondary">
@@ -63,137 +54,44 @@ const withdrawalNote = cardWithdrawalNote(card);
 
 	<p class="mt-2 text-caption text-text-secondary">{card.shortDescription}</p>
 
-	<hr class="mt-6 border-t border-border-subtle" />
-
-	<h3
-		class="mt-6 text-caption font-bold uppercase tracking-wider text-text-secondary in-data-active:text-brand-primary"
-	>
-		{detailsHeading}
-	</h3>
-
-	<ul class="mt-3 flex flex-col gap-3 text-caption text-text-primary">
+	<div class="mt-auto pt-6">
 		{
-			cardInfoRows(card).map((row) => (
-				<li class="flex items-start gap-3">
-					<CheckCheck class="size-4 shrink-0 text-brand-primary" aria-hidden="true" />
-					<span>
-						{row.label}: {row.value}
+			mainPrice && (
+				<p class="flex items-baseline justify-between gap-3">
+					<span class="text-caption font-medium text-text-secondary">{mainPrice.label}</span>
+					<span class="whitespace-nowrap font-heading text-heading-3 font-bold text-text-primary">
+						{mainPrice.priceText}
 					</span>
-				</li>
-			))
+				</p>
+			)
 		}
-	</ul>
 
-	{
-		buy && (
-			<div class="mt-auto pt-6">
-				<ul
-					data-offer-rows
-					data-radiogroup-label={priceRowsLabel}
-					class="flex flex-col gap-2"
-				>
-					{priceRows.map((row) => (
-						<li
-							data-offer-row
-							data-href={row.href}
-							data-selected={row.selected ? '' : undefined}
-							class="flex items-center justify-between gap-3 rounded-sm border border-border-subtle bg-surface-sunken px-4 py-1.5 outline-none in-data-selectable:cursor-pointer data-selected:border-transparent data-selected:bg-surface-emphasis focus-visible:shadow-focus-ring"
-						>
-							<span class="text-caption font-medium text-text-primary">{row.label}</span>
-							<span class="whitespace-nowrap font-heading text-body-sm font-bold text-text-primary">
-								{row.priceText}
-							</span>
-						</li>
-					))}
-				</ul>
-
-				<a
-					data-buy
-					href={buy.href}
-					class="button-h-sm mt-6 inline-flex w-full items-center justify-center rounded-sm border border-border-subtle px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay in-data-active:border-brand-primary in-data-active:bg-brand-primary in-data-active:text-text-on-brand in-data-active:hover:bg-brand-primary-hover"
-				>
-					{buy.label}
-				</a>
+		<details data-robot-more data-robot-name={card.name} class:list={[mainPrice && 'mt-4']}>
+			<summary
+				data-robot-more-trigger
+				aria-label={learnMoreLabelFor(card)}
+				class="button-h-sm inline-flex w-full cursor-pointer items-center justify-center rounded-sm border border-border-subtle px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+			>
+				{learnMoreLabel}
+			</summary>
+			<div data-robot-more-body class="mt-4">
+				<RobotDetails card={card} />
 			</div>
-		)
-	}
+		</details>
 
-	{
-		withdrawalNote && (
-			<p class="mt-4 text-caption text-text-secondary">
-				{withdrawalNote.text.value}{' '}
-				<a href={withdrawalNote.href} class="font-medium text-brand-primary underline">
-					{withdrawalNote.linkLabel}
-				</a>
-			</p>
-		)
-	}
-
-	<details data-robot-more data-robot-name={card.name} class="mt-4">
-		<summary
-			data-robot-more-trigger
-			aria-label={learnMoreLabelFor(card)}
-			class="button-h-sm inline-flex w-full cursor-pointer items-center justify-center rounded-sm border border-border-subtle px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
-		>
-			{learnMoreLabel}
-		</summary>
-		<div data-robot-more-body class="mt-4">
-			<RobotDetails card={card} />
-		</div>
-	</details>
+		{
+			addOffer && (
+				<button
+					type="button"
+					hidden
+					data-add-to-cart
+					data-robot={card.slug}
+					data-offer={addOffer.offer}
+					class="button-h-sm mt-3 inline-flex w-full items-center justify-center rounded-sm bg-brand-primary px-4 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+				>
+					{addToCartLabel}
+				</button>
+			)
+		}
+	</div>
 </div>
-
-<script>
-	import { nextRadioIndex } from '../shared/radio-group';
-
-	// Progressive enhancement: without this script the rows are a plain list and the
-	// button buys the default Oferta (the server-rendered href and highlight).
-	// The rows inside `[data-robot-more]` are the modal's copy; robot-dialog.astro enhances those.
-	for (const group of document.querySelectorAll<HTMLElement>('[data-offer-rows]')) {
-		if (group.closest('[data-robot-more]')) continue;
-		const card = group.closest<HTMLElement>('[data-robot-card]');
-		const buy = card?.querySelector<HTMLAnchorElement>('[data-buy]');
-		const rows = Array.from(group.querySelectorAll<HTMLElement>('[data-offer-row]'));
-		if (!buy || rows.length === 0) continue;
-
-		group.setAttribute('role', 'radiogroup');
-		const label = group.dataset.radiogroupLabel;
-		if (label) group.setAttribute('aria-label', label);
-		group.toggleAttribute('data-selectable', true);
-
-		const select = (index: number, focus: boolean) => {
-			rows.forEach((row, i) => {
-				const on = i === index;
-				row.toggleAttribute('data-selected', on);
-				row.setAttribute('aria-checked', String(on));
-				row.tabIndex = on ? 0 : -1;
-			});
-			const href = rows[index]?.dataset.href;
-			if (href) buy.href = href;
-			// preventScroll: choosing a price must never move the carousel track.
-			if (focus) rows[index]?.focus({ preventScroll: true });
-		};
-
-		rows.forEach((row, i) => {
-			row.setAttribute('role', 'radio');
-			// Keep the mouse from focusing (and scrolling) natively; select() focuses without scrolling.
-			row.addEventListener('mousedown', (e) => e.preventDefault());
-			row.addEventListener('click', () => select(i, true));
-			row.addEventListener('keydown', (e) => {
-				if (e.key === ' ' || e.key === 'Enter') {
-					select(i, true);
-				} else {
-					const next = nextRadioIndex(e.key, i, rows.length);
-					if (next === null) return;
-					select(next, true);
-				}
-				// The carousel track also listens for arrow keys; the rows own them here.
-				e.preventDefault();
-				e.stopPropagation();
-			});
-		});
-
-		const initial = rows.findIndex((row) => row.hasAttribute('data-selected'));
-		select(Math.max(initial, 0), false);
-	}
-</script>

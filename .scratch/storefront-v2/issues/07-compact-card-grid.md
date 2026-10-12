@@ -9,9 +9,16 @@
 
 **Blocked by:** 03, 06.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Grid at 390, 768 and 1280; cards equal height, buttons aligned
-- [ ] "Saiba mais" opens the modal; the coming-soon variant is correct
-- [ ] Carousel and its script removed; no unused code left
+- [x] Grid at 390, 768 and 1280; cards equal height, buttons aligned
+- [x] "Saiba mais" opens the modal; the coming-soon variant is correct
+- [x] Carousel and its script removed; no unused code left
 - [ ] Typecheck and the full test suite pass
+
+## Comments
+
+- Viewed in headless Chromium (`astro build` + `astro preview`, local D1 seed) at 1280 (3 columns), 768 (`sm:` breakpoint gives 2 columns; `scrollWidth` equals `clientWidth`, the 768 screenshot itself was not inspected) and 390 (1 column). Cards are equal height with the price and "Saiba mais" pinned to the bottom (`mt-auto`). The coming-soon card shows the badge and "Saiba mais" only. "Adicionar ao carrinho" is on the card but `hidden` until ticket 08 reveals it, so "buttons aligned" is checked for the one visible button only.
+- The card is the `<details>` host of ticket 06: "Saiba mais" is its `<summary>`.
+- `catalog-carousel.astro` deleted; carousel copy exports replaced by `catalogListLabel`. `shared/radio-group.ts` is kept (the modal's price rows use it through `shared/offer-rows.ts`). Added `cardMainPrice` (Compra, else the lowest Oferta, shown with its label).
+- Figma departure noted in `.scratch/figma-restyle/issues/12-robot-card-1to1-from-ipa2.md`.

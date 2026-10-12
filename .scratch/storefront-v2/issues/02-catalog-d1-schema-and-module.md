@@ -10,11 +10,11 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: D1 real; each read function and each `lookupOffer` outcome, JSON array round-trip, ordering, draft/archived exclusion.
 
-- [ ] Migration applies on a fresh D1 and passes `schema.test.ts`-style checks
-- [ ] `lookupOffer` returns the price in cents for a published robot + offered offer and rejects unknown, unoffered, draft and archived
-- [ ] Seed script loads the placeholders locally; production has no seed path
-- [ ] Typecheck and the full test suite pass
+- [x] Migration applies on a fresh D1 and passes `schema.test.ts`-style checks
+- [x] `lookupOffer` returns the price in cents for a published robot + offered offer and rejects unknown, unoffered, draft and archived
+- [x] Seed script loads the placeholders locally; production has no seed path
+- [x] Typecheck and the full test suite pass

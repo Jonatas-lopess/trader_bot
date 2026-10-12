@@ -210,7 +210,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
 | 01 | [Allow buying the same Robô again](.scratch/storefront-v2/issues/01-allow-repeat-purchase-same-robo.md) | — | ready-for-agent |
-| 02 | [Catalog in D1: schema and `modules/catalog`](.scratch/storefront-v2/issues/02-catalog-d1-schema-and-module.md) | — | ready-for-agent |
+| 02 | [Catalog in D1: schema and `modules/catalog`](.scratch/storefront-v2/issues/02-catalog-d1-schema-and-module.md) | — | done |
 | 03 | [Switch the site and checkout to the D1 catalog](.scratch/storefront-v2/issues/03-catalog-consumers-on-d1.md) | 02 | ready-for-agent |
 | 04 | [Admin gate: magic-link session plus `ADMIN_EMAILS`](.scratch/storefront-v2/issues/04-admin-gate.md) | — | ready-for-agent |
 | 05 | [Admin CRUD for Robôs and Ofertas](.scratch/storefront-v2/issues/05-admin-catalog-crud.md) | 02, 04 | ready-for-agent |

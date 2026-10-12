@@ -8,7 +8,7 @@ import { LIFETIME_EXPIRY } from '../modules/licensing/license-expiry';
 import type { LicenseStatus } from '../modules/licensing/license-status';
 import { launchBlocking } from '../shared/launch-blocking';
 import type { PurchaseStatus } from '../modules/identity/customers';
-import type { OfferName } from './catalog';
+import type { PurchaseOffer } from '../modules/catalog/robots';
 
 export const pageTitle = 'Meus produtos';
 export const pageDescription = 'Acompanhe o status da sua Licença e, na Oferta Mensal, gerencie sua Assinatura.';
@@ -25,7 +25,7 @@ export const productsTabLabel = 'Meus produtos';
 
 // Mono subtitle under the Robô name: which Oferta this Licença came from (CONTEXT.md — Oferta),
 // so a repeat buyer can tell two cards of the same Robô apart.
-export const offerLabels: Record<OfferName, string> = {
+export const offerLabels: Record<PurchaseOffer, string> = {
 	one_time: 'Compra',
 	annual: 'Anual',
 	monthly: 'Mensal',

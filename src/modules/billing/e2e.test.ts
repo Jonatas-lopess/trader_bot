@@ -1,5 +1,6 @@
 import { env } from 'cloudflare:workers';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearCatalog, seedRobot } from '../catalog/test-helpers';
 import { createCheckoutSession } from './checkout';
 import { getPurchaseStatus } from './status';
 import { handleWebhook } from './webhook';
@@ -22,6 +23,11 @@ function mockAppmaxAuth(handler: (url: string, init?: RequestInit) => Response |
 }
 
 describe('checkout-webhooks end to end', () => {
+	beforeEach(async () => {
+		await clearCatalog();
+		await seedRobot({ slug: 'robo-exemplo-a', offers: { one_time: 99700 } });
+	});
+
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
@@ -44,7 +50,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'monthly', origin: 'https://example.com' });
+		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin: 'https://example.com' });
 		expect(checkout.ok).toBe(true);
 
 		const reference = new URL(capturedReturnUrl).searchParams.get('ref');
@@ -79,7 +85,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'monthly', origin: 'https://example.com' });
+		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin: 'https://example.com' });
 		expect(checkout.ok).toBe(true);
 		const reference = new URL(capturedReturnUrl).searchParams.get('ref');
 

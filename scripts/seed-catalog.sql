@@ -1,6 +1,6 @@
 -- Local-dev catalog seed — .scratch/storefront-v2/issues/02-catalog-d1-schema-and-module.md.
 --
--- The five placeholder Robôs of src/content/catalog.ts (Mensal prices dropped: ADR-0008), so
+-- The five placeholder Robôs of the retired src/content/catalog.ts (Mensal prices dropped: ADR-0008), so
 -- `/catalog` and checkout have something to show against a local D1. Every name, claim and
 -- price is a placeholder, not approved for launch (PLANNING.md §2, §12).
 --

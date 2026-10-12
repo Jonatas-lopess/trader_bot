@@ -1,6 +1,6 @@
 /**
  * `/checkout?robot=<slug>&offer=<offer>` (catalog-pivot ticket 03, ADR-0006
- * "Server-side price"): resolves the price from the catalog, writes the
+ * "Server-side price"): resolves the price from the D1 catalog (ADR-0008), writes the
  * provisional D1 row (User Story 14 — no Cliente identity, PLANNING.md §7),
  * and returns the URL to redirect the Cliente to. `src/pages/checkout.ts` is
  * the thin Astro adapter around this.
@@ -10,7 +10,7 @@
  * webhook later compares against (PLANNING.md §6 "Price integrity").
  */
 
-import { lookupOffer, type OfferName } from '../../content/catalog';
+import { lookupOffer, type OfferName } from '../catalog/robots';
 import { selectProvider } from './factory';
 import { paymentMethodsFor } from './payment-provider';
 
@@ -51,7 +51,7 @@ export async function createCheckoutSession(
 	}
 ): Promise<CheckoutSessionResult> {
 	const priced =
-		params.robotId === null || params.offer === null ? null : lookupOffer(params.robotId, params.offer);
+		params.robotId === null || params.offer === null ? null : await lookupOffer(env, params.robotId, params.offer);
 	if (priced === null || priced.kind !== 'found') {
 		return { ok: false, status: 400, message: 'Unknown or missing robot or offer.' };
 	}

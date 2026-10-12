@@ -14,7 +14,7 @@
  *   - `pending` / `rejected`: no Licença is owed.
  */
 
-import type { OfferName } from '../../content/catalog';
+import type { PurchaseOffer } from '../catalog/robots';
 import type { PurchaseStatus } from '../billing/payment-provider';
 
 /** Perpetual Licença (Compra). Defined once; `conta.ts` renders it as "Vitalícia". */
@@ -37,7 +37,7 @@ function addMonths(date: Date, months: number): Date {
 	return result;
 }
 
-export function deriveLicenseExpiry(params: { offer: OfferName; status: PurchaseStatus; now: Date }): LicenseExpiryChange {
+export function deriveLicenseExpiry(params: { offer: PurchaseOffer; status: PurchaseStatus; now: Date }): LicenseExpiryChange {
 	const { offer, status, now } = params;
 	switch (status) {
 		case 'active':
@@ -72,7 +72,7 @@ type LicensingEnv = Pick<Cloudflare.Env, 'DB'>;
  */
 export function licenseSyncStatement(
 	env: LicensingEnv,
-	params: { purchaseId: string; robotId: string; offer: OfferName; status: PurchaseStatus; now: Date }
+	params: { purchaseId: string; robotId: string; offer: PurchaseOffer; status: PurchaseStatus; now: Date }
 ): D1PreparedStatement | null {
 	const change = deriveLicenseExpiry(params);
 	if (change.kind === 'none') return null;

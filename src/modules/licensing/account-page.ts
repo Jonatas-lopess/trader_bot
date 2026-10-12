@@ -7,8 +7,7 @@
  * `src/modules/billing/status.ts`).
  */
 
-import { catalog, type OfferName } from '../../content/catalog';
-import { unwrapLaunchBlocking } from '../../shared/launch-blocking';
+import { listRobotNames, type PurchaseOffer } from '../catalog/robots';
 import { getCustomerEmail, listCustomerPurchases, type PurchaseStatus } from '../identity/customers';
 import { requireSession } from '../identity/session';
 import { getLicenseStatus, type LicenseStatus } from './license-status';
@@ -19,7 +18,7 @@ type AccountPageEnv = Pick<Cloudflare.Env, 'DB' | 'SESSION_SECRET'>;
 /** One Licença row on `/conta`: its own purchase, state and Corretora account form. */
 export type AccountLicense = {
 	purchaseId: string;
-	offer: OfferName;
+	offer: PurchaseOffer;
 	// The Corretora account the Cliente entered; null until they do.
 	corretoraAccount: number | null;
 	// Only a Mensal has a recurring Assinatura to cancel; Compra and Anual are one payment.
@@ -59,12 +58,14 @@ export async function resolveAccountView(env: AccountPageEnv, request: Request, 
 		.all<{ purchase_id: string; corretora_account: number | null }>();
 	const accountByPurchase = new Map(accounts.map((row) => [row.purchase_id, row.corretora_account]));
 
+	// Any status: an archived Robô still names the Licenças bought while it was on sale.
+	const robotNames = await listRobotNames(env);
+
 	const groups = new Map<string, AccountRobotGroup>();
 	for (const purchase of purchases) {
 		let group = groups.get(purchase.robotId);
 		if (group === undefined) {
-			const robot = catalog.find((candidate) => candidate.slug === purchase.robotId);
-			group = { robotName: robot ? unwrapLaunchBlocking(robot.name) : purchase.robotId, licenses: [] };
+			group = { robotName: robotNames.get(purchase.robotId) ?? purchase.robotId, licenses: [] };
 			groups.set(purchase.robotId, group);
 		}
 		group.licenses.push({

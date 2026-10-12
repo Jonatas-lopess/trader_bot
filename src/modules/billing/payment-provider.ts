@@ -19,10 +19,10 @@
  *   - A billing-portal / plan-listing surface. Both gateways' own
  *     self-service portals are explicitly not used (PLANNING.md §6, "A
  *     customer self-service portal. Cancellation UI is ours.") — prices are
- *     `src/content/catalog.ts`, not fetched from either provider.
+ *     the D1 catalog (`modules/catalog`), not fetched from either provider.
  */
 
-import type { OfferName } from '../../content/catalog';
+import type { PurchaseOffer } from '../catalog/robots';
 
 export type ProviderId = 'appmax' | 'stripe';
 
@@ -42,14 +42,14 @@ export type PaymentMethod = 'card' | 'boleto' | 'pix';
  * charge, so card/Boleto/Pix all work; Mensal is recurring, so card only. Checkout derives
  * this from the Oferta and hands it to the driver, which must not offer anything else.
  */
-export function paymentMethodsFor(offer: OfferName): PaymentMethod[] {
+export function paymentMethodsFor(offer: PurchaseOffer): PaymentMethod[] {
 	return offer === 'monthly' ? ['card'] : ['card', 'boleto', 'pix'];
 }
 
 export type CreateCheckoutSessionParams = {
 	reference: string;
 	robotId: string;
-	offer: OfferName;
+	offer: PurchaseOffer;
 	/** Charged as one payment for `one_time`/`annual`, recurring monthly for `monthly`. */
 	amountCents: number;
 	/** From `paymentMethodsFor(offer)`; a driver that cannot honour a method (Stripe test driver: card only) offers the intersection. */

@@ -14,7 +14,7 @@
  * this driver exists to work around not having yet) — card only.
  */
 
-import type { OfferName } from '../../content/catalog';
+import type { PurchaseOffer } from '../catalog/robots';
 import {
 	normalizeBuyerDocument,
 	normalizeBuyerName,
@@ -32,7 +32,7 @@ export type StripePurchaseStatus = PurchaseStatus;
 type CreateCheckoutSessionParams = {
 	reference: string;
 	robotId: string;
-	offer: OfferName;
+	offer: PurchaseOffer;
 	amountCents: number;
 	returnUrl: string;
 	cancelUrl: string;

@@ -1,6 +1,13 @@
 import { env } from 'cloudflare:workers';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { getPublishedBySlug, listOffersFor, listPublished, lookupOffer } from './robots';
+import {
+	getPublishedBySlug,
+	listOffersFor,
+	listPublished,
+	listPublishedWithOffers,
+	listRobotNames,
+	lookupOffer,
+} from './robots';
 import { clearCatalog, seedRobot } from './test-helpers';
 
 beforeEach(clearCatalog);
@@ -185,5 +192,45 @@ describe('lookupOffer', () => {
 
 		expect(await lookupOffer(env, 'ROBO-A', 'one_time')).toEqual({ kind: 'unknown_robot' });
 		expect(await lookupOffer(env, 'robo-%', 'one_time')).toEqual({ kind: 'unknown_robot' });
+	});
+});
+
+describe('listPublishedWithOffers', () => {
+	it('pairs each published Robô with its Ofertas, Compra first, in listing order', async () => {
+		await seedRobot({ slug: 'a-first', sortOrder: 10, offers: { annual: 49700, one_time: 99700 } });
+		await seedRobot({ slug: 'b-second', sortOrder: 20, offers: { one_time: 149700 } });
+		await seedRobot({ slug: 'c-soon', status: 'coming-soon', sortOrder: 30, offers: { one_time: 1 } });
+		await seedRobot({ slug: 'hidden-draft', status: 'draft', offers: { one_time: 1 } });
+
+		const entries = await listPublishedWithOffers(env);
+
+		expect(entries.map((e) => [e.slug, e.offers])).toEqual([
+			[
+				'a-first',
+				[
+					{ offer: 'one_time', priceCents: 99700 },
+					{ offer: 'annual', priceCents: 49700 },
+				],
+			],
+			['b-second', [{ offer: 'one_time', priceCents: 149700 }]],
+			['c-soon', []],
+		]);
+	});
+
+	it('is empty when nothing is published', async () => {
+		expect(await listPublishedWithOffers(env)).toEqual([]);
+	});
+});
+
+describe('listRobotNames', () => {
+	it('names every Robô whatever its status, so a past purchase of an archived one still resolves', async () => {
+		await seedRobot({ slug: 'live', name: 'Robô Live' });
+		await seedRobot({ slug: 'old', name: 'Robô Old', status: 'archived' });
+
+		const names = await listRobotNames(env);
+
+		expect(names.get('live')).toBe('Robô Live');
+		expect(names.get('old')).toBe('Robô Old');
+		expect(names.get('missing')).toBeUndefined();
 	});
 });

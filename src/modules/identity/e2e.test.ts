@@ -1,7 +1,8 @@
 import * as Sentry from '@sentry/cloudflare';
 import { env } from 'cloudflare:workers';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cancelSubscription } from '../billing/cancel';
+import { clearCatalog, seedRobot } from '../catalog/test-helpers';
 import { handleWebhook } from '../billing/webhook';
 import { resolveAccountView } from '../licensing/account-page';
 import { redeemMagicLink, requestMagicLink } from './magic-link';
@@ -69,6 +70,12 @@ function requestWithSessionCookie(cookieValue: string): Request {
 }
 
 describe('customer-area end to end: login to cancel', () => {
+	beforeEach(async () => {
+		await clearCatalog();
+		await seedRobot({ slug: 'robo-exemplo-a', name: 'Robô Exemplo A' });
+		await seedRobot({ slug: 'robo-exemplo-b', name: 'Robô Exemplo B' });
+	});
+
 	afterEach(() => {
 		vi.restoreAllMocks();
 		vi.clearAllMocks();

@@ -1,18 +1,44 @@
-import { describe, expect, it } from 'vitest';
-import { catalog, lookupOffer } from './catalog';
+import { env } from 'cloudflare:workers';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { listPublishedWithOffers, lookupOffer } from '../modules/catalog/robots';
+import { clearCatalog, seedRobot } from '../modules/catalog/test-helpers';
 import {
+	buildCatalogCards,
 	buyWithdrawalNote,
 	cardBuy,
 	cardInfoRows,
 	cardPriceRows,
 	cardWithdrawalNote,
-	catalogCards,
 	checkoutHref,
 	defaultOffer,
+	emptyCatalogMessage,
 	formatBrl,
 	offerOrder,
+	type CatalogCard,
 } from './catalog-page';
 import { withdrawalHref } from './legal';
+
+// The cards the page builds from a seeded D1 catalog: A sells Compra + Anual, B only Compra,
+// C and E are coming soon, D is a draft the page must never show, F is archived.
+let catalogCards: CatalogCard[];
+const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
+
+beforeEach(async () => {
+	await clearCatalog();
+	await seedRobot({
+		slug: 'robo-exemplo-a',
+		name: 'Robô Exemplo A',
+		market: ['Mini Índice', 'Mini Dólar'],
+		sortOrder: 10,
+		offers: { annual: 49700, one_time: 99700 },
+	});
+	await seedRobot({ slug: 'robo-exemplo-b', name: 'Robô Exemplo B', market: ['Mini Índice'], sortOrder: 20, offers: { one_time: 149700 } });
+	await seedRobot({ slug: 'robo-exemplo-c', status: 'coming-soon', market: null, sortOrder: 30 });
+	await seedRobot({ slug: 'robo-exemplo-d', status: 'draft', sortOrder: 40, offers: { one_time: 119700 } });
+	await seedRobot({ slug: 'robo-exemplo-e', status: 'coming-soon', perfil: 'Conservador / Médio Prazo', sortOrder: 50 });
+	await seedRobot({ slug: 'robo-exemplo-f', status: 'archived', sortOrder: 60, offers: { one_time: 1 } });
+	catalogCards = buildCatalogCards(await listPublishedWithOffers(env));
+});
 
 describe('formatBrl', () => {
 	it('formats integer cents as BRL', () => {
@@ -29,16 +55,39 @@ describe('checkoutHref', () => {
 	});
 });
 
-describe('catalogCards', () => {
-	it('has one card per catalog robot', () => {
-		expect(catalogCards.map((c) => c.slug)).toEqual(catalog.map((r) => r.slug));
+describe('emptyCatalogMessage', () => {
+	it('is real copy for the page to show when no card is built', () => {
+		expect(buildCatalogCards([])).toEqual([]);
+		expect(emptyCatalogMessage.trim()).not.toBe('');
+	});
+});
+
+describe('buildCatalogCards', () => {
+	it('has one card per published Robô, in listing order, and none for a draft or archived one', () => {
+		expect(catalogCards.map((c) => c.slug)).toEqual([
+			'robo-exemplo-a',
+			'robo-exemplo-b',
+			'robo-exemplo-c',
+			'robo-exemplo-e',
+		]);
 	});
 
-	it('every buy link resolves through lookupOffer, at the catalog price', () => {
+	it('copies the Robô facts from the row', () => {
+		expect(bySlug('robo-exemplo-a')).toMatchObject({
+			name: 'Robô Exemplo A',
+			shortDescription: 'Descrição curta de robo-exemplo-a.',
+			strategyType: 'Tendência',
+			market: ['Mini Índice', 'Mini Dólar'],
+			perfil: null,
+			status: 'available',
+		});
+	});
+
+	it('every buy link resolves through lookupOffer, at the D1 price', async () => {
 		for (const card of catalogCards) {
 			for (const offer of card.offers) {
 				const params = new URL(offer.href, 'https://example.com').searchParams;
-				expect(lookupOffer(params.get('robot')!, params.get('offer')!)).toEqual({
+				expect(await lookupOffer(env, params.get('robot')!, params.get('offer')!)).toEqual({
 					kind: 'found',
 					amountCents: offer.amountCents,
 				});
@@ -46,7 +95,7 @@ describe('catalogCards', () => {
 		}
 	});
 
-	it('lists offers in Compra, Anual, Mensal order', () => {
+	it('lists offers in Compra, Anual order', () => {
 		for (const card of catalogCards) {
 			const idx = card.offers.map((o) => offerOrder.indexOf(o.offer));
 			expect(idx).toEqual([...idx].sort((a, b) => a - b));
@@ -61,15 +110,16 @@ describe('catalogCards', () => {
 });
 
 describe('price rows', () => {
-	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
-
-	it('labels the rows Licença Perpétua, Anual and Mensal, in that order', () => {
-		expect(bySlug('robo-exemplo-a').offers.map((o) => o.label)).toEqual(['Licença Perpétua', 'Anual', 'Mensal']);
+	it('labels the rows Licença Perpétua and Anual, in that order, with the price text', () => {
+		expect(bySlug('robo-exemplo-a').offers.map((o) => [o.label, o.priceText])).toEqual([
+			['Licença Perpétua', 'R$ 997'],
+			['Anual', 'R$ 497'],
+		]);
 	});
 
-	it('shows only the Ofertas the Robô sells', () => {
+	it('shows only the Ofertas the Robô sells, and never Mensal (standby)', () => {
 		expect(bySlug('robo-exemplo-b').offers.map((o) => o.label)).toEqual(['Licença Perpétua']);
-		expect(bySlug('robo-exemplo-d').offers.map((o) => o.label)).toEqual(['Licença Perpétua', 'Mensal']);
+		for (const card of catalogCards) expect(card.offers.map((o) => o.label)).not.toContain('Mensal');
 	});
 
 	it('carries no caption under the price', () => {
@@ -78,21 +128,19 @@ describe('price rows', () => {
 });
 
 describe('default selection', () => {
-	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
 	const withoutCompra = (slug: string) => ({
 		...bySlug(slug),
 		offers: bySlug(slug).offers.filter((o) => o.offer !== 'one_time'),
 	});
 
 	it('is Compra (Licença Perpétua) when the Robô sells it', () => {
-		for (const slug of ['robo-exemplo-a', 'robo-exemplo-b', 'robo-exemplo-d']) {
+		for (const slug of ['robo-exemplo-a', 'robo-exemplo-b']) {
 			expect(defaultOffer(bySlug(slug))?.offer).toBe('one_time');
 		}
 	});
 
 	it('is the first row when the Robô has no Compra', () => {
 		expect(defaultOffer(withoutCompra('robo-exemplo-a'))?.offer).toBe('annual');
-		expect(defaultOffer(withoutCompra('robo-exemplo-d'))?.offer).toBe('monthly');
 	});
 
 	it('is nothing on a coming-soon Robô', () => {
@@ -104,29 +152,26 @@ describe('default selection', () => {
 });
 
 describe('selectable price rows', () => {
-	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
-
 	it('keeps the card order and marks exactly the default row selected', () => {
 		const rows = cardPriceRows(bySlug('robo-exemplo-a'));
 		expect(rows.map((r) => [r.offer, r.selected])).toEqual([
 			['one_time', true],
 			['annual', false],
-			['monthly', false],
 		]);
 	});
 
 	it('selects the first row when there is no Compra', () => {
-		const card = { ...bySlug('robo-exemplo-d'), offers: bySlug('robo-exemplo-d').offers.slice(1) };
+		const card = { ...bySlug('robo-exemplo-a'), offers: bySlug('robo-exemplo-a').offers.slice(1) };
 		expect(cardPriceRows(card).map((r) => r.selected)).toEqual([true]);
 	});
 
-	it('gives every row its own checkout href with only robot and offer (ADR-0006)', () => {
+	it('gives every row its own checkout href with only robot and offer (ADR-0006)', async () => {
 		for (const card of catalogCards) {
 			for (const row of cardPriceRows(card)) {
 				expect(row.href).toBe(checkoutHref(card.slug, row.offer));
 				const params = new URL(row.href, 'https://example.com').searchParams;
 				expect([...params.keys()]).toEqual(['robot', 'offer']);
-				expect(lookupOffer(params.get('robot')!, params.get('offer')!)).toEqual({
+				expect(await lookupOffer(env, params.get('robot')!, params.get('offer')!)).toEqual({
 					kind: 'found',
 					amountCents: row.amountCents,
 				});
@@ -143,8 +188,6 @@ describe('selectable price rows', () => {
 });
 
 describe('buy button', () => {
-	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
-
 	it('reads "Comprar <Robô name>" and buys Compra by default', () => {
 		const card = bySlug('robo-exemplo-a');
 		expect(cardBuy(card)).toEqual({
@@ -154,8 +197,8 @@ describe('buy button', () => {
 	});
 
 	it('falls back to the first Oferta the Robô sells when it has no Compra', () => {
-		const card = { ...bySlug('robo-exemplo-d'), offers: bySlug('robo-exemplo-d').offers.filter((o) => o.offer !== 'one_time') };
-		expect(cardBuy(card)?.href).toBe('/checkout?robot=robo-exemplo-d&offer=monthly');
+		const card = { ...bySlug('robo-exemplo-a'), offers: bySlug('robo-exemplo-a').offers.filter((o) => o.offer !== 'one_time') };
+		expect(cardBuy(card)?.href).toBe('/checkout?robot=robo-exemplo-a&offer=annual');
 	});
 
 	it('is absent on a coming-soon Robô', () => {
@@ -172,8 +215,6 @@ describe('buy button', () => {
 });
 
 describe('card info rows', () => {
-	const bySlug = (slug: string) => catalogCards.find((c) => c.slug === slug)!;
-
 	it('shows Estratégia, Mercado and Perfil, in that order, on a Robô that fills them', () => {
 		const card = { ...bySlug('robo-exemplo-a'), perfil: 'Conservador / Médio Prazo' };
 		expect(card.market.length).toBeGreaterThan(0);
@@ -182,16 +223,16 @@ describe('card info rows', () => {
 		expect(rows[2]?.value).toBe('Conservador / Médio Prazo');
 	});
 
-	it('omits Perfil when the Robô declares none (no placeholder Robô does yet)', () => {
-		for (const card of catalogCards) expect(card.perfil).toBeNull();
+	it('omits Perfil when the Robô declares none', () => {
+		expect(bySlug('robo-exemplo-a').perfil).toBeNull();
 		expect(cardInfoRows(bySlug('robo-exemplo-a')).map((r) => r.label)).toEqual(['Estratégia', 'Mercado']);
 	});
 
-	it('omits Mercado and Perfil when the Robô has neither', () => {
-		const card = bySlug('robo-exemplo-c');
-		expect(card.market).toEqual([]);
-		expect(card.perfil).toBeNull();
-		expect(cardInfoRows(card).map((r) => r.label)).toEqual(['Estratégia']);
+	it('omits Mercado when the Robô has none, and shows Perfil from the row when it has one', () => {
+		const noMarket = bySlug('robo-exemplo-c');
+		expect(noMarket.market).toEqual([]);
+		expect(cardInfoRows(noMarket).map((r) => r.label)).toEqual(['Estratégia']);
+		expect(cardInfoRows(bySlug('robo-exemplo-e')).map((r) => r.label)).toEqual(['Estratégia', 'Perfil']);
 	});
 
 	it('omits a row that is absent, with no placeholder value', () => {
@@ -208,8 +249,7 @@ describe('card info rows', () => {
 	});
 
 	it('joins list values with a comma', () => {
-		const card = { ...bySlug('robo-exemplo-a'), market: ['Mini Índice', 'Mini Dólar'] };
-		expect(cardInfoRows(card).find((r) => r.label === 'Mercado')?.value).toBe('Mini Índice, Mini Dólar');
+		expect(cardInfoRows(bySlug('robo-exemplo-a')).find((r) => r.label === 'Mercado')?.value).toBe('Mini Índice, Mini Dólar');
 	});
 });
 

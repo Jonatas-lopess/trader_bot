@@ -1,8 +1,9 @@
 import { env } from 'cloudflare:workers';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { lookupOffer } from '../../content/catalog';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ROBOT_BINARY_BYTES, putLicenseBinary } from '../../../test/robot-binary-fixture';
 import { cancelSubscription } from '../billing/cancel';
+import { lookupOffer } from '../catalog/robots';
+import { clearCatalog, seedRobot } from '../catalog/test-helpers';
 import { createCheckoutSession } from '../billing/checkout';
 import { getPurchaseStatus } from '../billing/status';
 import { handleWebhook } from '../billing/webhook';
@@ -73,7 +74,7 @@ function mockOutbound(orderId: string) {
 	});
 }
 
-async function startCheckout(orderId: string, offer: 'one_time' | 'monthly') {
+async function startCheckout(orderId: string, offer: 'one_time') {
 	const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer, origin: 'https://example.com' });
 	expect(checkout.ok).toBe(true);
 	const row = await env.DB.prepare('SELECT id, amount_cents FROM purchases WHERE appmax_order_id = ?')
@@ -83,8 +84,8 @@ async function startCheckout(orderId: string, offer: 'one_time' | 'monthly') {
 	return row;
 }
 
-function catalogPrice(offer: 'one_time' | 'monthly'): number {
-	const priced = lookupOffer('robo-exemplo-a', offer);
+async function catalogPrice(offer: 'one_time'): Promise<number> {
+	const priced = await lookupOffer(env, 'robo-exemplo-a', offer);
 	if (priced.kind !== 'found') throw new Error('robo-exemplo-a must offer ' + offer);
 	return priced.amountCents;
 }
@@ -115,6 +116,11 @@ async function licenseOf(purchaseId: string) {
 // The happy path alone takes ~14s cold (it walks the whole purchase → download chain) and
 // overruns the 15s default when the full suite loads the pool.
 describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
+	beforeEach(async () => {
+		await clearCatalog();
+		await seedRobot({ slug: 'robo-exemplo-a', offers: { one_time: 99700 } });
+	});
+
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
@@ -126,7 +132,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 
 		// 1. Checkout takes robot + offer only; the price comes from the catalog and is stored.
 		const purchase = await startCheckout(orderId, 'one_time');
-		expect(purchase.amount_cents).toBe(catalogPrice('one_time'));
+		expect(purchase.amount_cents).toBe(await catalogPrice('one_time'));
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'pending' });
 
 		// 2. Paid webhook: amount matches → active, buyer fiscal data and paid_at persisted.
@@ -222,14 +228,17 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		expect(await saveCorretoraAccount(env, purchase.id, '1234567')).toEqual({ ok: false, reason: 'no_license' });
 	});
 
-	it('mensal: card-only recurring purchase activates, /conta offers cancel, cancel flips it and keeps the Licença row', async () => {
+	it('mensal (standby, existing subscription): activates, /conta offers cancel, cancel flips it and keeps the Licença row', async () => {
 		const orderId = 'ord_cat_mensal';
 		mockOutbound(orderId);
 		const email = 'compra-mensal@example.com';
-		const purchase = await startCheckout(orderId, 'monthly');
-		expect(purchase.amount_cents).toBe(catalogPrice('monthly'));
-		await env.DB.prepare('UPDATE purchases SET appmax_subscription_id = ? WHERE id = ?')
-			.bind('asub_cat_mensal', purchase.id)
+		// Mensal is on standby (ADR-0008): the catalog no longer sells it, so there is no
+		// checkout to start. The row is seeded as an existing subscription would be.
+		const purchase = { id: 'cat-mensal', amount_cents: 9700 };
+		await env.DB.prepare(
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id, appmax_subscription_id) VALUES (?, 'robo-exemplo-a', 'monthly', ?, 'pending', ?, 'asub_cat_mensal')"
+		)
+			.bind(purchase.id, purchase.amount_cents, orderId)
 			.run();
 
 		orderResponse = { status: 'aprovado', paymentMethod: 'cartao', email, subTotalCents: purchase.amount_cents };

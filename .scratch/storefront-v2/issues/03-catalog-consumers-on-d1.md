@@ -10,11 +10,24 @@
 
 **Blocked by:** 02.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] No import of `content/catalog.ts` remains; file deleted
-- [ ] `/catalog` renders from D1; a draft Robô is absent; an empty catalog renders an explicit empty state (copy in a content file)
-- [ ] Checkout rejects draft/archived/unknown Robôs and prices from D1
-- [ ] Landing decision recorded; no regression in the prerendered pages that stay static
-- [ ] `content-files.md` and PLANNING §2/§6 wording reconciled
-- [ ] Typecheck and the full test suite pass
+- [x] No import of `content/catalog.ts` remains; file deleted
+- [x] `/catalog` renders from D1; a draft Robô is absent; an empty catalog renders an explicit empty state (copy in a content file)
+- [x] Checkout rejects draft/archived/unknown Robôs and prices from D1
+- [x] Landing decision recorded; no regression in the prerendered pages that stay static
+- [x] `content-files.md` and PLANNING §2/§6 wording reconciled
+- [x] Typecheck and the full test suite pass
+
+## Comments
+
+- **Landing teaser decision:** `/` stays prerendered; the teaser is now a plain link band (badge, heading,
+  "Ver catálogo completo" to `/catalog`) with no Robôs or prices, because D1 cannot be read at build time and
+  SSR-ing the landing for a teaser was not worth a Worker invocation per visit. `teaserCards`/`TeaserCard` are
+  gone; `/catalog` is the only listing and is `prerender = false`.
+- Mensal is dropped from the catalog UI (`offerOrder`/`offerLabels` are Compra and Anual). `PurchaseOffer`
+  (`modules/catalog/robots.ts`) keeps `monthly` for the standby subscription code that types a stored purchase.
+  The Mensal checkout cases in `checkout.test.ts` became rejection cases; the Mensal cancel e2e seeds its row directly.
+- `/conta` names Robôs through `listRobotNames` (any status), so a Licença of an archived Robô keeps its name.
+- Added to the catalog module: `listPublishedWithOffers` (the page's one read) and `listRobotNames`.
+- ADR-0007 still says checkout prices "from `src/content/catalog.ts`"; left as the historical record.

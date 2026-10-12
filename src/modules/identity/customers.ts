@@ -6,7 +6,7 @@
  * subscription first lands on `active`. Nothing else writes `customers`.
  */
 
-import type { OfferName } from '../../content/catalog';
+import type { PurchaseOffer } from '../catalog/robots';
 import { normalizeEmail } from './normalize-email';
 import type { ProviderId, PurchaseStatus } from '../billing/payment-provider';
 
@@ -77,7 +77,7 @@ export type { PurchaseStatus };
 export type CustomerPurchase = {
 	purchaseId: string;
 	robotId: string;
-	offer: OfferName;
+	offer: PurchaseOffer;
 	status: PurchaseStatus;
 	provider: ProviderId;
 	appmaxSubscriptionId: string | null;
@@ -87,7 +87,7 @@ export type CustomerPurchase = {
 type PurchaseRow = {
 	purchase_id: string;
 	robot_id: string;
-	offer: OfferName;
+	offer: PurchaseOffer;
 	status: PurchaseStatus;
 	provider: ProviderId;
 	appmax_subscription_id: string | null;

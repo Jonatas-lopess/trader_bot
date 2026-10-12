@@ -1,7 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { seedCustomer } from '../../../test/customer-seed';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { supportEmail } from '../../content/support';
+import { clearCatalog, seedRobot } from '../catalog/test-helpers';
 import { createSession } from '../identity/session';
 import { resolveAccountView } from './account-page';
 
@@ -15,6 +16,13 @@ async function seedAccount(params: { purchaseId: string; customerId: string; pla
 function requestWithCookie(cookieValue: string): Request {
 	return new Request('https://example.com/conta', { headers: { Cookie: `session=${cookieValue}` } });
 }
+
+beforeEach(async () => {
+	await clearCatalog();
+	await seedRobot({ slug: 'robo-exemplo-a', name: 'Robô Exemplo A' });
+	// Archived Robôs stay named: the Cliente still holds Licenças bought while it was on sale.
+	await seedRobot({ slug: 'robo-exemplo-b', name: 'Robô Exemplo B', status: 'archived' });
+});
 
 describe('resolveAccountView', () => {
 	it('redirects (ok: false) for an unauthenticated request — User Story 13', async () => {

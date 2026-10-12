@@ -1,37 +1,40 @@
 /**
  * `/catalog` page content — heading, offer labels, the regulatory note and the
- * per-Robô card view-models, plus the landing page's catalog teaser.
+ * per-Robô card view-models, plus the landing page's catalog band.
  *
- * `.scratch/catalog-pivot/issues/06-catalog-page.md`; ADR-0006. Robô and price
- * facts live in `src/content/catalog.ts` and are read from there, never
- * duplicated (`docs/agents/content-files.md` "Facts shared across pages").
- * Consumed by `src/pages/catalog.astro`, `src/components/robot-card.astro`
- * and `src/components/catalog-teaser.astro`.
+ * `.scratch/catalog-pivot/issues/06-catalog-page.md`; ADR-0006, ADR-0008. Robô
+ * and price facts live in D1 (`src/modules/catalog`); this file keeps only the
+ * copy and turns the rows the page loaded into cards (`buildCatalogCards`),
+ * never importing them. Consumed by `src/pages/catalog.astro`,
+ * `src/components/robot-card.astro` and `src/components/catalog-teaser.astro`.
  *
  * launch-blocking call sites in this file:
  *
  *   grep -rn "launchBlocking(" src/content/catalog-page.ts
  */
 
-import { launchBlocking, unwrapLaunchBlocking } from '../shared/launch-blocking';
-import { catalog, type OfferName, type RobotStatus } from './catalog';
+import type { OfferName, PublishedRobot, RobotStatus } from '../modules/catalog/robots';
+import { launchBlocking } from '../shared/launch-blocking';
 import { withdrawalHref } from './legal';
 
 export const pageTitle = 'Catálogo de Robôs';
 export const pageDescription =
-	'Escolha um Robô para MetaTrader 5 e a forma de contratar: compra única, anual ou mensal.';
+	'Escolha um Robô para MetaTrader 5 e a forma de contratar: compra única ou anual.';
 export const pageHeading = 'Escolha o seu Robô';
 
-// Compra is the main offer (CONTEXT.md — Oferta); Anual and Mensal are secondary.
-export const offerOrder: OfferName[] = ['one_time', 'annual', 'monthly'];
+// Compra is the main offer (CONTEXT.md — Oferta); Anual is secondary. Mensal is on standby
+// (ADR-0008), so the catalog shows neither a row nor a button for it.
+export const offerOrder: OfferName[] = ['one_time', 'annual'];
 
-// Price-row labels. "Assinatura" stays reserved for the Mensal recurring agreement
-// (CONTEXT.md), so the rows are named for what the Cliente gets, not "Assinatura Anual/Mensal".
+// Price-row labels. "Assinatura" stays reserved for the recurring agreement (CONTEXT.md),
+// so the rows are named for what the Cliente gets, not "Assinatura Anual".
 export const offerLabels: Record<OfferName, string> = {
 	one_time: 'Licença Perpétua',
 	annual: 'Anual',
-	monthly: 'Mensal',
 };
+
+// Shown instead of the cards when no Robô is published (a fresh install, or all hidden).
+export const emptyCatalogMessage = 'Os Robôs estão sendo preparados. Volte em breve.';
 
 export const carouselLabel = 'Robôs do catálogo';
 export const carouselPrevLabel = 'Robô anterior';
@@ -104,8 +107,9 @@ export type CatalogCard = {
 	market: string[];
 	/** Risk and horizon profile ("Conservador / Médio Prazo"); null when the Robô declares none. */
 	perfil: string | null;
-	status: RobotStatus;
-	/** In Compra, Anual, Mensal order; empty for a coming-soon Robô. */
+	/** Published statuses only: a draft or archived Robô never becomes a card. */
+	status: Extract<RobotStatus, 'available' | 'coming-soon'>;
+	/** In Compra, Anual order; empty for a coming-soon Robô. */
 	offers: CardOffer[];
 };
 
@@ -138,7 +142,7 @@ export const defaultOffer = (card: CatalogCard): CardOffer | null =>
 
 export type CardPriceRow = CardOffer & { selected: boolean };
 
-/** The card's price rows in Compra, Anual, Mensal order, exactly one marked selected. */
+/** The card's price rows in Compra, Anual order, exactly one marked selected. */
 export const cardPriceRows = (card: CatalogCard): CardPriceRow[] => {
 	const selected = defaultOffer(card);
 	return card.offers.map((offer) => ({ ...offer, selected: offer === selected }));
@@ -154,50 +158,38 @@ export const cardBuy = (card: CatalogCard): CardBuy | null => {
 	return offer ? { label: `${buyLabelPrefix} ${card.name}`, href: offer.href } : null;
 };
 
-export const catalogCards: CatalogCard[] = catalog.map((robot) => ({
-	slug: robot.slug,
-	name: unwrapLaunchBlocking(robot.name),
-	shortDescription: unwrapLaunchBlocking(robot.shortDescription),
-	strategyType: unwrapLaunchBlocking(robot.strategyType),
-	market: robot.market ? unwrapLaunchBlocking(robot.market) : [],
-	perfil: robot.perfil ? unwrapLaunchBlocking(robot.perfil) : null,
-	status: robot.status,
-	offers:
-		robot.status === 'coming-soon'
-			? []
-			: offerOrder.flatMap((offer) => {
-					const price = robot.offers[offer];
-					if (!price) return [];
-					return [
-						{
-							offer,
-							label: offerLabels[offer],
-							amountCents: price.value,
-							priceText: formatBrl(price.value),
-							href: checkoutHref(robot.slug, offer),
-						},
-					];
-				}),
-}));
+/** One card per published Robô, with the Ofertas it sells in Compra, Anual order. */
+export const buildCatalogCards = (robots: PublishedRobot[]): CatalogCard[] =>
+	robots.map((robot) => ({
+		slug: robot.slug,
+		name: robot.name,
+		shortDescription: robot.shortDescription,
+		strategyType: robot.strategyType,
+		market: robot.market ?? [],
+		perfil: robot.perfil,
+		status: robot.status === 'coming-soon' ? 'coming-soon' : 'available',
+		offers: offerOrder.flatMap((offer) => {
+			const sold = robot.offers.find((o) => o.offer === offer);
+			if (!sold) return [];
+			return [
+				{
+					offer,
+					label: offerLabels[offer],
+					amountCents: sold.priceCents,
+					priceText: formatBrl(sold.priceCents),
+					href: checkoutHref(robot.slug, offer),
+				},
+			];
+		}),
+	}));
 
 // ---------------------------------------------------------------------
-// Landing catalog teaser (was plan-teaser, marketing-pages 08)
+// Landing catalog band (was plan-teaser, marketing-pages 08)
 // ---------------------------------------------------------------------
 
+// A plain link band: the landing stays prerendered, and the Robôs and prices live in D1,
+// readable only per request. Listing them is `/catalog`'s job.
 export const teaserBadge = 'Catálogo';
 export const teaserHeading = 'Comece pelo Robô certo para você';
 export const teaserCtaLabel = 'Ver catálogo completo';
 export const teaserCtaHref = '/catalog';
-
-export type TeaserCard = Pick<CatalogCard, 'slug' | 'name' | 'shortDescription' | 'status'> & {
-	/** Compra price when the Robô sells one; otherwise null. */
-	fromPriceText: string | null;
-};
-
-export const teaserCards: TeaserCard[] = catalogCards.map((card) => ({
-	slug: card.slug,
-	name: card.name,
-	shortDescription: card.shortDescription,
-	status: card.status,
-	fromPriceText: card.offers.find((o) => o.offer === 'one_time')?.priceText ?? null,
-}));

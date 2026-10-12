@@ -1,7 +1,8 @@
 import { env } from 'cloudflare:workers';
 import { seedCustomer as attachCustomer } from '../../../test/customer-seed';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET } from '../../pages/checkout';
+import { clearCatalog, seedRobot } from '../catalog/test-helpers';
 import { createCheckoutSession } from './checkout';
 
 const origin = 'https://example.com';
@@ -55,6 +56,15 @@ function mockStripe(sessionId: string) {
 }
 
 describe('createCheckoutSession', () => {
+	beforeEach(async () => {
+		await clearCatalog();
+		await seedRobot({ slug: 'robo-exemplo-a', offers: { one_time: 99700, annual: 49700 } });
+		await seedRobot({ slug: 'robo-exemplo-b', offers: { one_time: 149700 } });
+		await seedRobot({ slug: 'robo-exemplo-c', status: 'coming-soon' });
+		await seedRobot({ slug: 'robo-draft', status: 'draft', offers: { one_time: 99700 } });
+		await seedRobot({ slug: 'robo-archived', status: 'archived', offers: { one_time: 99700 } });
+	});
+
 	afterEach(() => {
 		vi.restoreAllMocks();
 	});
@@ -67,6 +77,9 @@ describe('createCheckoutSession', () => {
 		['offer the robot does not sell', 'robo-exemplo-b', 'annual'],
 		['robot with no offers (coming soon)', 'robo-exemplo-c', 'one_time'],
 		['inherited object key as offer', 'robo-exemplo-a', 'constructor'],
+		['monthly offer (on standby, not in the catalog)', 'robo-exemplo-a', 'monthly'],
+		['draft robot', 'robo-draft', 'one_time'],
+		['archived robot', 'robo-archived', 'one_time'],
 	])('rejects %s without calling the gateway or writing a row', async (_label, robotId, offer) => {
 		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
@@ -78,6 +91,19 @@ describe('createCheckoutSession', () => {
 			.bind(robotId ?? '')
 			.first();
 		expect(row).toBeNull();
+	});
+
+	it('prices from D1 at checkout time: an edited price is the one charged and stored', async () => {
+		const bodies = mockAppmax({ ok: true, orderId: 'ord_repriced' });
+		await env.DB.prepare("UPDATE robot_offers SET price_cents = 88800 WHERE robot_slug = 'robo-exemplo-a' AND offer = 'one_time'").run();
+
+		await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+
+		expect(bodies[0].amount).toBe(88800);
+		const row = await env.DB.prepare('SELECT amount_cents FROM purchases WHERE appmax_order_id = ?')
+			.bind('ord_repriced')
+			.first();
+		expect(row).toEqual({ amount_cents: 88800 });
 	});
 
 	it('writes a pending purchase priced from the catalog and redirects to Appmax', async () => {
@@ -131,7 +157,6 @@ describe('createCheckoutSession', () => {
 	it.each([
 		['one_time', ['card', 'boleto', 'pix'], false, 99700],
 		['annual', ['card', 'boleto', 'pix'], false, 49700],
-		['monthly', ['card'], true, 9700],
 	])('Appmax: %s offers %j, recurring=%s', async (offer, methods, recurring, amount) => {
 		const bodies = mockAppmax({ ok: true, orderId: `ord_${offer}` });
 
@@ -197,14 +222,6 @@ describe('createCheckoutSession', () => {
 			expect(bodies[0].get('line_items[0][price_data][unit_amount]')).toBe('49700');
 		});
 
-		it('monthly is a monthly subscription, card only', async () => {
-			const bodies = mockStripe('cs_stripe_monthly');
-			await createCheckoutSession(stripeEnv, { robotId: 'robo-exemplo-a', offer: 'monthly', origin });
-			expect(bodies[0].get('mode')).toBe('subscription');
-			expect(bodies[0].get('line_items[0][price_data][recurring][interval]')).toBe('month');
-			expect(bodies[0].getAll('payment_method_types[]')).toEqual(['card']);
-			expect(bodies[0].get('line_items[0][price_data][unit_amount]')).toBe('9700');
-		});
 	});
 
 	describe('duplicate-Licença guard for an identified Cliente', () => {

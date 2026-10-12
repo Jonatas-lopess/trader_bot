@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import type { OfferName } from '../../content/catalog';
+import type { PurchaseOffer } from '../catalog/robots';
 import type { PurchaseStatus } from '../billing/payment-provider';
 import { LIFETIME_EXPIRY, deriveLicenseExpiry, licenseSyncStatement, type LicenseExpiryChange } from './license-expiry';
 
@@ -9,10 +9,10 @@ const NOW_ISO = NOW.toISOString();
 const IN_12_MONTHS = '2027-03-15T12:00:00.000Z';
 const IN_1_MONTH = '2026-04-15T12:00:00.000Z';
 
-const OFFERS: OfferName[] = ['one_time', 'annual', 'monthly'];
+const OFFERS: PurchaseOffer[] = ['one_time', 'annual', 'monthly'];
 
 // Offer × status. Only `active` depends on the offer; the others are offer-agnostic.
-const EXPECTED: Record<PurchaseStatus, Record<OfferName, LicenseExpiryChange>> = {
+const EXPECTED: Record<PurchaseStatus, Record<PurchaseOffer, LicenseExpiryChange>> = {
 	pending: { one_time: { kind: 'none' }, annual: { kind: 'none' }, monthly: { kind: 'none' } },
 	rejected: { one_time: { kind: 'none' }, annual: { kind: 'none' }, monthly: { kind: 'none' } },
 	active: {
@@ -35,7 +35,7 @@ const EXPECTED: Record<PurchaseStatus, Record<OfferName, LicenseExpiryChange>> =
 };
 
 describe('deriveLicenseExpiry', () => {
-	for (const [status, byOffer] of Object.entries(EXPECTED) as [PurchaseStatus, Record<OfferName, LicenseExpiryChange>][]) {
+	for (const [status, byOffer] of Object.entries(EXPECTED) as [PurchaseStatus, Record<PurchaseOffer, LicenseExpiryChange>][]) {
 		for (const offer of OFFERS) {
 			it(`${offer} × ${status}`, () => {
 				expect(deriveLicenseExpiry({ offer, status, now: NOW })).toEqual(byOffer[offer]);
@@ -49,7 +49,7 @@ describe('deriveLicenseExpiry', () => {
 	});
 });
 
-async function seedPurchase(id: string, offer: OfferName, status: PurchaseStatus) {
+async function seedPurchase(id: string, offer: PurchaseOffer, status: PurchaseStatus) {
 	await env.DB.prepare(
 		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, 'starter', ?, 0, ?)"
 	)
@@ -64,7 +64,7 @@ async function expiryOf(id: string): Promise<string | null | undefined> {
 	return row === null ? undefined : row.expires_at;
 }
 
-async function apply(id: string, offer: OfferName, status: PurchaseStatus, now: Date) {
+async function apply(id: string, offer: PurchaseOffer, status: PurchaseStatus, now: Date) {
 	const stmt = licenseSyncStatement(env, { purchaseId: id, robotId: 'starter', offer, status, now });
 	if (stmt !== null) await stmt.run();
 }

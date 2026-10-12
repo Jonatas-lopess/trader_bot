@@ -3,12 +3,27 @@
 //
 // Replaces `/planos` (.scratch/catalog-pivot/issues/06-catalog-page.md,
 // ADR-0006); `/planos` redirects here (astro.config.mjs). Title band, one card
-// per Robô, and the regulatory note, wrapped in the site shell. Content comes
+// per published Robô, and the regulatory note, wrapped in the site shell. The
+// Robôs are read from D1 on every request (ADR-0008), so the page is not
+// prerendered: a Robô published or hidden in the admin shows at once. Copy comes
 // from src/content/catalog-page.ts — see docs/agents/content-files.md.
+import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/base-layout.astro';
 import CatalogCarousel from '../components/catalog-carousel.astro';
 import RobotCard from '../components/robot-card.astro';
-import { catalogCards, pageDescription, pageHeading, pageTitle, regulatoryNote } from '../content/catalog-page';
+import {
+	buildCatalogCards,
+	emptyCatalogMessage,
+	pageDescription,
+	pageHeading,
+	pageTitle,
+	regulatoryNote,
+} from '../content/catalog-page';
+import { listPublishedWithOffers } from '../modules/catalog/robots';
+
+export const prerender = false;
+
+const cards = buildCatalogCards(await listPublishedWithOffers(env));
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>
@@ -17,13 +32,19 @@ import { catalogCards, pageDescription, pageHeading, pageTitle, regulatoryNote }
 	</section>
 
 	<section class="pb-10">
-		<CatalogCarousel>
-			{catalogCards.map((card) => (
-				<li>
-					<RobotCard card={card} />
-				</li>
-			))}
-		</CatalogCarousel>
+		{
+			cards.length === 0 ? (
+				<p class="content-row gutter-x py-10 text-center text-body-lg text-text-secondary">{emptyCatalogMessage}</p>
+			) : (
+				<CatalogCarousel>
+					{cards.map((card) => (
+						<li>
+							<RobotCard card={card} />
+						</li>
+					))}
+				</CatalogCarousel>
+			)
+		}
 	</section>
 
 	<section class="content-row gutter-x pb-20">

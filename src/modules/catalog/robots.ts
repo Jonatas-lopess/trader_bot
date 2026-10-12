@@ -16,6 +16,13 @@ export type RobotStatus = 'draft' | 'available' | 'coming-soon' | 'archived';
 /** Compra and Anual only: Mensal is on standby (ADR-0008) and `robot_offers` rejects it. */
 export type OfferName = 'one_time' | 'annual';
 
+/**
+ * The Oferta stored on a purchase. Wider than `OfferName`: the catalog no longer sells Mensal,
+ * but the subscription code (cancel, webhook, expiry) and any existing `monthly` row stay in
+ * place until the all-Robôs Assinatura is designed (ADR-0008 "Standby").
+ */
+export type PurchaseOffer = OfferName | 'monthly';
+
 export type Robot = {
 	/**
 	 * Kebab-case and frozen after the first Compra: it is in `/checkout?robot=`,
@@ -114,6 +121,33 @@ export async function listOffersFor(env: CatalogEnv, slug: string): Promise<Robo
 		.bind(slug)
 		.all<RobotOffer>();
 	return results;
+}
+
+/** A published Robô together with the Ofertas it sells (empty unless `available`), for the catalog page. */
+export type PublishedRobot = Robot & { offers: RobotOffer[] };
+
+/** The public catalog in one pass: every published Robô with its Ofertas, Compra first. */
+export async function listPublishedWithOffers(env: CatalogEnv): Promise<PublishedRobot[]> {
+	const [robots, { results: offerRows }] = await Promise.all([
+		listPublished(env),
+		env.DB.prepare(
+			`SELECT o.robot_slug AS slug, o.offer AS offer, o.price_cents AS priceCents
+			FROM robot_offers o JOIN robots r ON r.slug = o.robot_slug
+			WHERE r.status = 'available'
+			ORDER BY CASE o.offer WHEN 'one_time' THEN 0 ELSE 1 END`
+		).all<RobotOffer & { slug: string }>(),
+	]);
+	const bySlug = new Map<string, RobotOffer[]>();
+	for (const { slug, offer, priceCents } of offerRows) {
+		bySlug.set(slug, [...(bySlug.get(slug) ?? []), { offer, priceCents }]);
+	}
+	return robots.map((robot) => ({ ...robot, offers: bySlug.get(robot.slug) ?? [] }));
+}
+
+/** Slug to name for every Robô whatever its status: a purchase outlives the Robô being published. */
+export async function listRobotNames(env: CatalogEnv): Promise<Map<string, string>> {
+	const { results } = await env.DB.prepare('SELECT slug, name FROM robots').all<{ slug: string; name: string }>();
+	return new Map(results.map((row) => [row.slug, row.name]));
 }
 
 /**

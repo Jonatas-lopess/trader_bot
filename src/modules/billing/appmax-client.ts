@@ -61,7 +61,7 @@
  * `IPaymentProvider` seam change in ticket 02.
  */
 
-import type { OfferName } from '../../content/catalog';
+import type { PurchaseOffer } from '../catalog/robots';
 import {
 	normalizeBuyerDocument,
 	normalizeBuyerName,
@@ -387,7 +387,7 @@ export async function getOrder(env: AppmaxCredentials, orderId: string): Promise
 type CreateHostedCheckoutSessionParams = {
 	reference: string;
 	robotId: string;
-	offer: OfferName;
+	offer: PurchaseOffer;
 	amountCents: number;
 	allowedMethods: PaymentMethod[];
 	returnUrl: string;

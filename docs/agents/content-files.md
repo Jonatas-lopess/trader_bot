@@ -33,11 +33,13 @@ import { things } from '../content/<section>';
 **First real example:** `src/content/header.ts` and `src/content/footer.ts`, consumed by
 `src/components/site-header.astro` and `src/components/site-footer.astro`.
 
-One content file per section (`header.ts`, `footer.ts`, `hero.ts`, `catalog.ts`, ...). Facts
-shared across pages — e.g. Robô names and prices used by both the `/catalog` page and the
-landing teaser — live in the file owned by the ticket that introduces them (`catalog.ts`,
-read through `catalog-page.ts`) and are imported by the other, never duplicated into a
-second file.
+One content file per section (`header.ts`, `footer.ts`, `hero.ts`, `catalog-page.ts`, ...). Facts
+shared across pages live in one place and are imported by the others, never duplicated into a
+second file. The catalog (Robôs, Ofertas, prices) is not a content file: it is data in D1
+(`src/modules/catalog`, ADR-0008). `catalog-page.ts` keeps only the copy around it (headings,
+labels, the regulatory note) and builds cards from the rows the page loaded
+(`buildCatalogCards`), so it never imports Robôs. Pages that read D1 are not prerendered
+(`/catalog`); the landing's catalog band is a plain link for that reason.
 
 ## The launch-blocking marker
 
@@ -56,6 +58,11 @@ export const launchBlocking = <T>(value: T, reason: string): LaunchBlocking<T> =
 	reason,
 });
 ```
+
+`launchBlocking` covers page copy only. It no longer applies to catalog values (Robô names,
+descriptions, prices): that job belongs to the Robô's `draft` status (ADR-0008), so a Robô is
+public only once the admin publishes it. There is no catalog marker to grep for; drafts are
+listed in the admin.
 
 Rules:
 

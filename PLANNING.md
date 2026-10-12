@@ -50,7 +50,9 @@ authenticated customer area, in one codebase.
 
 ## 2. Product decisions
 
-**Language.** pt-BR only. Content is hardcoded in typed content files, not a CMS. No i18n
+**Language.** pt-BR only. Page copy is hardcoded in typed content files, not a CMS; the catalog (Robôs,
+Ofertas, prices) is data in D1, edited in the admin (ADR-0008), and `launchBlocking` does not apply to it:
+a Robô is public only once the admin publishes it (`available` or `coming-soon`). No i18n
 framework — retrofitting one is roughly a day's work if a second locale is ever needed.
 
 **Launch copy carries no fabricated social proof.** Every metric and testimonial in the
@@ -78,7 +80,7 @@ tracked as a known risk, not a solved problem.
 
 | Concern | Choice | Notes |
 | --- | --- | --- |
-| Framework | Astro + `@astrojs/cloudflare` | Marketing pages prerendered |
+| Framework | Astro + `@astrojs/cloudflare` | Marketing pages prerendered; `/catalog` is rendered per request from D1 (ADR-0008) |
 | Hosting | Cloudflare Workers with Static Assets | Not Pages — see ADR-0002 |
 | Database | D1 | Single store for all application state |
 | Object storage | R2 | Robot binary, served through a Worker binding |
@@ -109,7 +111,7 @@ bundle can exceed that, forcing a paid upgrade for bundle headroom alone.
 - **KV is not used for auth state.** The free plan allows 1,000 writes/day to distinct keys
   and is eventually consistent. "Invalidate this single-use token now" is exactly what
   eventual consistency gets wrong. Magic-link tokens and sessions live in D1.
-- **D1's primary is single-region.** Marketing pages stay fully static, and session
+- **D1's primary is single-region.** Marketing pages stay fully static (`/catalog` is the exception, one indexed read per request), and session
   validation prefers a signed cookie over a database round-trip. D1 read replication exists
   but is beta and requires the Sessions API; not used.
 - **Workers cannot open SMTP connections.** Transactional email must be an HTTP API.
@@ -165,7 +167,8 @@ ADR-0001).
 **Methods per Oferta** (ADR-0006). Compra and Anual: card, Boleto, Pix. Mensal: card only.
 Earlier drafts listed Boleto as recurring on Appmax; that is dropped — recurring Boleto would
 mean dunning around a one-business-day confirmation lag, and one-time Boleto already covers
-Boleto buyers. Checkout hides Pix and Boleto when Mensal is chosen.
+Boleto buyers. Checkout hides Pix and Boleto when Mensal is chosen. Mensal is on standby
+(ADR-0008): the catalog does not offer it, and these rules wait for the Assinatura design.
 
 **Pix is not available for recurring billing** on Appmax, Pagar.me or a Brazilian Stripe
 account. Appmax does not appear among providers with a shipped merchant-side Pix

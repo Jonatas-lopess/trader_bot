@@ -22,7 +22,7 @@ Output: findings appended to this file, then implementation tickets (pay endpoin
 
 **Blocked by:** 05 (and sandbox answers from 08 for the open questions).
 
-**Status:** needs-info
+**Status:** deferred (2026-10-12): Mensal / Assinatura is on standby while the owner moves to one Assinatura that grants access to every Robô (ADR-0008). Do not pick this up until that model is designed.
 
 - [ ] Open questions answered from the docs or the sandbox, recorded below
 - [ ] Implementation tickets written, each independently verifiable

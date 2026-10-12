@@ -3,6 +3,10 @@
 Technical contract for the Robô Trader sales site. Records the macro decisions taken
 before implementation, what was deliberately deferred, and what is still open.
 
+**Storefront v2 (ADR-0008).** Catalog in D1 with an admin area, a multi-Robô cart, repeat
+purchases of the same Robô and an Encomenda page. Where this file still says "typed catalog file",
+"no cart" or "one Licença per Robô", ADR-0008 wins.
+
 **Catalog pivot (ADR-0006).** The site sells a Catálogo of Robôs, not Planos. Read
 ADR-0006 first; where this file still says "plan" it means the pivot has not reached that
 sentence yet, and ADR-0006 wins.
@@ -10,7 +14,7 @@ sentence yet, and ADR-0006 wins.
 Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
 ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
 
-Last updated: 2026-10-09 (own checkout, ADR-0007)
+Last updated: 2026-10-12 (storefront v2, ADR-0008)
 
 ---
 
@@ -21,8 +25,10 @@ authenticated customer area, in one codebase.
 
 **In scope for 0.1**
 
-- Landing page and `/catalog` page (replaces `/planos`), from the Figma wireframes
-- Checkout by `robot_id` + Oferta (Compra, Anual, Mensal), payment confirmation, purchase lifecycle
+- Landing page and `/catalog` page (replaces `/planos`), from the Figma wireframes; compact card grid, "Saiba mais" modal, cart (ADR-0008)
+- Admin area (`/admin`) for catalog CRUD, behind magic link + `ADMIN_EMAILS` (ADR-0008)
+- Encomenda page: custom-Robô request by e-mail and WhatsApp (ADR-0008)
+- Checkout by `robot_id` + Oferta (Compra, Anual; Mensal on standby, ADR-0008), payment confirmation, purchase lifecycle
 - Magic-link authentication
 - Customer area: Licença status, expiry, Corretora account entry, cancel Assinatura
 - Email delivery of the Licença's compiled robot via a signed, expiring download link
@@ -35,7 +41,7 @@ authenticated customer area, in one codebase.
 - Live Corretora-account enforcement at check-in (1.0.0)
 - Rental-to-Compra conversion (1.0.0)
 - Annual auto-renew and its reminder email (1.0.0)
-- Cart / multi-Robô checkout
+- Mensal / Assinatura (on standby: the owner is moving to one Assinatura for all Robôs, ADR-0008), admin upload of the robot binary to R2
 - Automated NFS-e emission (1.0.0; manual issuance in 0.1 — see §9)
 - Any locale other than pt-BR
 - Paid-traffic tracking pixels and consent management
@@ -83,6 +89,7 @@ tracked as a known risk, not a solved problem.
 | Icons | `@lucide/astro` | Per-icon Astro components, tree-shaken to only what's imported. `lucide-astro` (no scope) is deprecated upstream in favour of this package — do not add it |
 | Analytics | Cloudflare Web Analytics | Cookieless, no consent banner required |
 | Video | YouTube iframe | Loaded directly |
+| Client state | `zustand` (vanilla store, `sessionStorage` persist) | Cart only (ADR-0008). `zustand/vanilla`, no UI framework; never holds prices |
 | Tests | Vitest + Playwright | See §5 |
 | CI/CD | GitHub Actions → `wrangler deploy` | |
 
@@ -120,7 +127,8 @@ src/
 ├── pages/          Astro routes (presentation)
 ├── components/
 ├── modules/
-│   ├── billing/    catalog offers, purchases, payment provider, webhooks, dunning, cancellation
+│   ├── catalog/    robots and offers in D1, admin CRUD, price lookup (ADR-0008)
+│   ├── billing/    purchases, payment provider, webhooks, dunning, cancellation
 │   ├── identity/   customers, magic-link tokens, sessions
 │   └── licensing/  licenses, expiry, Corretora account binding, binary storage, download tokens, dispatch
 └── shared/         ids, dates, environment bindings, D1 client
@@ -204,9 +212,9 @@ Anual first; Mensal recurrence is a separate ticket. Specs and tickets:
 ### Price integrity (ADR-0006)
 
 - **Before payment (blocks tampering).** Checkout accepts only `robot_id` + `offer` from the
-  client. The price comes from `src/content/catalog.ts`; unknown `robot_id` or `offer` is
-  rejected and no session is created. The catalog is bundled into the Worker, with no runtime
-  write path.
+  client. The price comes from the D1 catalog (`modules/catalog`, ADR-0008); unknown, draft or
+  archived `robot_id` or `offer` is rejected and nothing is created. Only admins write the
+  catalog. A cart carries `{robot, offer, quantity}` lines and never a price.
 - **Stored expectation.** `amount_cents` is written on the purchase row at session creation.
 - **After payment (cannot block).** The webhook compares the amount the gateway reports
   against the stored `amount_cents`, never the live catalog. Mismatch moves the purchase to

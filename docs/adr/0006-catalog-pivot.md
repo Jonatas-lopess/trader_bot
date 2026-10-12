@@ -1,6 +1,6 @@
 # Pivot from Planos to a Robô catalog
 
-Status: Accepted (2026-09-29). Supersedes the Plano model in PLANNING.md §1, §6, §8, §10
+Status: Accepted (2026-09-29). Amended by [ADR-0008](0008-catalog-in-d1-cart-and-admin.md) (2026-10-12): cart, repeat purchases, catalog in D1; Mensal on standby. Supersedes the Plano model in PLANNING.md §1, §6, §8, §10
 and CONTEXT.md. Does **not** supersede [ADR-0003](0003-appmax-como-gateway.md) (Appmax stays
 the gateway) or [ADR-0004](0004-license-verification-scheme.md) (per-license HMAC scheme
 unchanged; it now verifies per-Licença, which is what it already assumed).
@@ -26,10 +26,10 @@ intends to sell more than one Robô. The unit of sale should be the Robô, not a
 Plano is removed from the domain. Planos' entitlement axes vanish: **one Licença = one Robô =
 one Corretora account**. This resolves *Robô ativo* and *Corretora vinculada*.
 
-**One Robô per checkout.** No cart. Multi-item needs line items and partial-fulfilment rules,
+**One Robô per checkout.** No cart. _(Superseded by ADR-0008: multi-Robô cart on one Appmax order.)_ Multi-item needs line items and partial-fulfilment rules,
 and Boleto's one-day confirmation makes partial states ugly.
 
-**One active Licença per Cliente per Robô.** Rental-to-Compra conversion is deferred to 1.0.0
+**One active Licença per Cliente per Robô.** _(Superseded by ADR-0008: a Cliente may hold several, one per Corretora account.)_ Rental-to-Compra conversion is deferred to 1.0.0
 with upgrade/downgrade.
 
 **Server-side price, amount verified after payment.** Checkout accepts only `robot_id` +
@@ -53,7 +53,7 @@ derived from purchase status through one function: `canceled` keeps the term alr
 0.1, Licença revoked by expiry-to-now. Termos de uso carries the clause (placeholder text,
 real wording from a lawyer).
 
-**Catalog data is a typed content file** (`src/content/catalog.ts`), not a D1 table. It ships
+**Catalog data is a typed content file** _(Superseded by ADR-0008: D1 plus an admin area.)_ (`src/content/catalog.ts`), not a D1 table. It ships
 inside the Worker bundle with no runtime write path; only repo or CI access can change it,
 and that access already controls all code. D1 stores only `robot_id` on each purchase. Move
 to D1 only when non-developers need to edit it.

@@ -29,6 +29,16 @@ A Cliente's recurring agreement to pay for the Mensal Oferta of one Robô. Gover
 renewal, nothing else. Compra and Anual are not Assinaturas.
 _Avoid_: contrato, licença, plano
 
+**Encomenda**:
+A Cliente's request for a custom Robô that is not in the Catálogo. A form with no price and no
+payment, answered by the operator. Not a purchase: it never creates a Compra, Licença or Cliente.
+_Avoid_: pedido, compra, orçamento
+
+**Carrinho**:
+The Cliente's browser-side selection of Compra and Anual lines to pay in one checkout. Holds
+Robô, Oferta and quantity, never a price. Compra and Anual only.
+_Avoid_: sacola, pedido
+
 **Cliente**:
 A person who holds or has held a Compra, an Anual or an Assinatura.
 _Avoid_: usuário, comprador, conta
@@ -44,8 +54,8 @@ _Avoid_: bot, software, produto, algoritmo
 The right to run one Robô, bounded by an expiry date and bound to one Corretora account. A
 Compra's Licença is perpetual: its expiry is a far-future date, so it still ends early on
 refund or chargeback. Distinct from Assinatura: a Mensal payment can be made before a Licença
-is issued, and a Licença can outlive a cancelled Assinatura until its expiry date passes. One
-active Licença per Cliente per Robô.
+is issued, and a Licença can outlive a cancelled Assinatura until its expiry date passes. A Cliente may hold
+several Licenças of the same Robô, each on its own Corretora account (ADR-0008).
 _Avoid_: assinatura, chave, permissão
 
 **Chave**:

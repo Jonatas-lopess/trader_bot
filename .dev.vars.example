@@ -9,6 +9,9 @@ SESSION_SECRET=
 # Test-env-only: enables GET /login/dev?email=&key= (login without the magic-link e-mail,
 # for while Resend's shared sender only delivers to the account owner). Never set in production.
 DEV_LOGIN_KEY=
+# Comma-separated e-mails allowed into /admin (modules/identity/admin.ts); an allowlisted
+# address can request a magic link without ever having bought. Unset or empty locks everyone out.
+ADMIN_EMAILS=
 # Unset ships fine — Sentry.withSentry gates on this being present
 # (sentry.server.config.ts), same convention as Appmax/Resend above.
 SENTRY_DSN=

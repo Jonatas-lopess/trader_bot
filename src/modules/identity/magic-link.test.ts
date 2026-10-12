@@ -206,3 +206,72 @@ describe('magic-link', () => {
 		});
 	});
 });
+
+describe('magic-link for an allowlisted admin (storefront-v2 04)', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
+	});
+
+	const origin = 'https://example.com';
+	const adminEnv = { ...env, ADMIN_EMAILS: ' Boss@Example.com , other@example.com' };
+
+	it('an allowlisted address with no purchase gets its identity row, a token and an email', async () => {
+		const fetchSpy = mockResend();
+
+		await requestMagicLink(adminEnv, { email: 'boss@example.com', ip: '203.0.113.50', origin });
+
+		expect(fetchSpy).toHaveBeenCalled();
+		const customer = await env.DB.prepare('SELECT id FROM customers WHERE email = ?')
+			.bind('boss@example.com')
+			.first<{ id: string }>();
+		expect(customer).not.toBeNull();
+		const { results } = await env.DB.prepare('SELECT * FROM login_tokens WHERE customer_id = ?').bind(customer!.id).all();
+		expect(results).toHaveLength(1);
+		const purchases = await env.DB.prepare('SELECT COUNT(*) AS n FROM purchases WHERE customer_id = ?')
+			.bind(customer!.id)
+			.first<{ n: number }>();
+		expect(purchases!.n).toBe(0);
+	});
+
+	it('stores the normalized address and reuses the row on a second request', async () => {
+		mockResend();
+
+		await requestMagicLink(adminEnv, { email: '  OTHER@example.COM ', ip: '203.0.113.51', origin });
+		await requestMagicLink(adminEnv, { email: 'other@example.com', ip: '203.0.113.52', origin });
+
+		const { results } = await env.DB.prepare('SELECT id, email FROM customers WHERE email = ?').bind('other@example.com').all();
+		expect(results).toHaveLength(1);
+	});
+
+	it('the minted link redeems into a session', async () => {
+		const fetchSpy = mockResend();
+		await requestMagicLink({ ...env, ADMIN_EMAILS: 'admin-link@example.com' }, { email: 'admin-link@example.com', ip: '203.0.113.53', origin });
+		const body = (fetchSpy.mock.calls.at(-1)![1] as RequestInit).body as string;
+		const token = /token=([0-9a-f-]{36})/.exec(body)![1];
+
+		const result = await redeemMagicLink(env, token);
+
+		expect(result.ok).toBe(true);
+	});
+
+	it('an address not on the list still gets nothing, and creates no identity row', async () => {
+		const fetchSpy = mockResend();
+
+		await requestMagicLink(adminEnv, { email: 'stranger@example.com', ip: '203.0.113.54', origin });
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		const row = await env.DB.prepare('SELECT 1 FROM customers WHERE email = ?').bind('stranger@example.com').first();
+		expect(row).toBeNull();
+	});
+
+	it('an unset list creates nothing for anyone', async () => {
+		const fetchSpy = mockResend();
+
+		await requestMagicLink({ ...env, ADMIN_EMAILS: undefined }, { email: 'nobody-admin@example.com', ip: '203.0.113.55', origin });
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		const row = await env.DB.prepare('SELECT 1 FROM customers WHERE email = ?').bind('nobody-admin@example.com').first();
+		expect(row).toBeNull();
+	});
+});

@@ -33,8 +33,12 @@
 	// Sandbox by default (modules/billing/appmax-client.ts `appmaxHosts`): only an
 	// explicit "production" reaches Appmax's production hosts, so override it at
 	// deploy time with `--var APPMAX_ENV:production`, never in this file.
+	// ADMIN_EMAILS is the comma-separated admin allowlist (modules/identity/admin.ts); empty
+	// locks everyone out of /admin. Set the real list at deploy time (`--var ADMIN_EMAILS:...`),
+	// never in this file.
 	"vars": {
-		"APPMAX_ENV": "sandbox"
+		"APPMAX_ENV": "sandbox",
+		"ADMIN_EMAILS": ""
 	},
 	"observability": {
 		"enabled": true

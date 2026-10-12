@@ -1,0 +1,64 @@
+---
+// Admin header — src/components/admin-header.astro
+//
+// App shell for /admin (storefront-v2 04): brand, "Administração" label, Sair, and a tab bar
+// built from src/content/admin.ts. Mirrors account-header.astro. Later admin pages (05, 16)
+// just add themselves to `adminSections`; the active tab is read off the request path.
+import { Bot, LogOut } from '@lucide/astro';
+import { brand } from '../content/header';
+import { adminAreaLabel, adminSections, homeLink, logoutLabel, navLabel } from '../content/admin';
+
+const current = Astro.url.pathname.replace(/\/$/, '');
+
+// Only in-area links are tabs; shortcuts out of /admin (the public catalog, /conta) stay on the landing.
+const tabs = [homeLink, ...adminSections.filter((section) => section.href.startsWith('/admin/'))];
+---
+
+<header class="border-b border-border-subtle bg-surface-overlay">
+	<div class="content-row gutter-x flex items-center justify-between gap-4 py-4">
+		<div class="flex min-w-0 items-center gap-4">
+			<a href="/" class="flex items-center gap-3 font-heading text-heading-3 font-bold text-text-primary">
+				<span
+					class="flex size-8 shrink-0 items-center justify-center rounded-sm border-w-1 border-border-accent bg-surface-emphasis text-brand-primary"
+				>
+					<Bot size={18} aria-hidden="true" />
+				</span>
+				{brand.name}
+			</a>
+			<span class="hidden font-mono text-caption uppercase text-text-secondary sm:inline">{adminAreaLabel}</span>
+		</div>
+		<form method="POST" action="/logout">
+			<button
+				type="submit"
+				class="inline-flex items-center gap-2 text-body-sm text-text-secondary transition-colors hover:text-text-primary"
+			>
+				<LogOut size={16} aria-hidden="true" />
+				{logoutLabel}
+			</button>
+		</form>
+	</div>
+	<nav aria-label={navLabel} class="border-t border-border-subtle">
+		<div class="content-row gutter-x flex gap-8">
+			{
+				tabs.map((tab) =>
+					tab.href === current ? (
+						<a
+							href={tab.href}
+							aria-current="page"
+							class="-mb-px inline-flex items-center gap-2 border-b-2 border-brand-primary py-4 text-body-sm font-medium text-brand-primary"
+						>
+							{tab.label}
+						</a>
+					) : (
+						<a
+							href={tab.href}
+							class="-mb-px inline-flex items-center gap-2 border-b-2 border-transparent py-4 text-body-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+						>
+							{tab.label}
+						</a>
+					)
+				)
+			}
+		</div>
+	</nav>
+</header>

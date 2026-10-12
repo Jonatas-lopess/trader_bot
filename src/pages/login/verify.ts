@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
+import { landingPathAfterLogin } from '../../modules/identity/admin';
 import { redeemMagicLink } from '../../modules/identity/magic-link';
 import { SESSION_COOKIE_NAME } from '../../modules/identity/session';
 
@@ -25,6 +26,6 @@ export const GET: APIRoute = async ({ url, cookies }) => {
 		expires: new Date(result.expiresAt),
 	});
 
-	// /conta is ticket 03's protected customer-area route.
-	return Response.redirect(new URL('/conta', url.origin), 303);
+	// /conta is ticket 03's protected customer-area route; an admin with no purchases goes to /admin.
+	return Response.redirect(new URL(await landingPathAfterLogin(env, result.customerId), url.origin), 303);
 };

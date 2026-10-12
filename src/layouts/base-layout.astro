@@ -12,6 +12,7 @@ import SiteHeader from '../components/site-header.astro';
 import SiteFooter from '../components/site-footer.astro';
 import AccountHeader from '../components/account-header.astro';
 import AccountFooter from '../components/account-footer.astro';
+import AdminHeader from '../components/admin-header.astro';
 import { cfBeaconToken } from '../shared/analytics';
 // Above-the-fold weights (hero headline, body, buttons) are preloaded; the
 // rest load on demand through the @font-face rules in global.css.
@@ -22,11 +23,13 @@ import manrope500 from '@fontsource/manrope/files/manrope-latin-500-normal.woff2
 export type Props = {
 	title: string;
 	description: string;
-	// `account` swaps the marketing header and footer for the customer-area shell (/conta).
-	shell?: 'site' | 'account';
+	// `account` swaps the marketing header and footer for the customer-area shell (/conta);
+	// `admin` for the admin shell (/admin, storefront-v2 04), which is also kept out of search.
+	shell?: 'site' | 'account' | 'admin';
 };
 
 const { title, description, shell = 'site' } = Astro.props;
+const appShell = shell !== 'site';
 
 const siteName = 'Robô Trader';
 const fullTitle = `${title} · ${siteName}`;
@@ -40,6 +43,7 @@ const fullTitle = `${title} · ${siteName}`;
 
 		<title>{fullTitle}</title>
 		<meta name="description" content={description} />
+		{shell === 'admin' && <meta name="robots" content="noindex, nofollow" />}
 
 		<meta property="og:title" content={fullTitle} />
 		<meta property="og:description" content={description} />
@@ -70,10 +74,10 @@ const fullTitle = `${title} · ${siteName}`;
 		}
 	</head>
 	<body class="bg-surface-base font-sans text-text-primary">
-		{shell === 'account' ? <AccountHeader /> : <SiteHeader />}
+		{shell === 'account' ? <AccountHeader /> : shell === 'admin' ? <AdminHeader /> : <SiteHeader />}
 		<main>
 			<slot />
 		</main>
-		{shell === 'account' ? <AccountFooter /> : <SiteFooter />}
+		{appShell ? <AccountFooter /> : <SiteFooter />}
 	</body>
 </html>

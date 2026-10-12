@@ -479,6 +479,13 @@ External, none of them code. Split by what they actually block.
    closed until then; `/billing/webhook` rejects every delivery, Appmax's included, so this
    blocks the webhook actually working in production, not just a hardening nicety.
 
+**Settings (not blockers):** `ADMIN_EMAILS` (storefront-v2 04, ADR-0008) is the comma-separated
+allowlist for `/admin`. Normalized like Cliente e-mails; unset or empty means nobody is admin.
+`wrangler.jsonc` ships it empty; a deploy supplies the list with `--var ADMIN_EMAILS:...` (the CI
+deploy reads it from the `dev` Environment variable of the same name). An allowlisted address can
+request a magic link at `/login` without a purchase (a bare `customers` row is created); every
+other visitor to `/admin` gets a 404.
+
 **Done:**
 
 5. **Contador engaged** for NFS-e.

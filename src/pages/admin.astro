@@ -1,0 +1,47 @@
+---
+// /admin — the admin landing, behind the admin gate.
+//
+// .scratch/storefront-v2/issues/04-admin-gate.md. Every non-admin result, signed in or not, is
+// the same empty 404, so the area's existence is not revealed (no redirect to /login either:
+// that would tell an anonymous visitor something is here). Admins reach the area by logging in
+// at /login. Tickets 05 and 16 add their pages under /admin/* and to `adminSections`.
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../layouts/base-layout.astro';
+import { requireAdmin } from '../modules/identity/admin';
+import { adminSections, heading, pageDescription, pageTitle, sectionsHeading, signedInAs } from '../content/admin';
+
+export const prerender = false;
+
+const admin = await requireAdmin(Astro.request, env);
+if (!admin.ok) return new Response(null, { status: 404 });
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} shell="admin">
+	<section class="content-row gutter-x flex flex-col gap-8 py-12 sm:py-16">
+		<div class="flex flex-col gap-2">
+			<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+			<p class="text-body text-text-secondary">{signedInAs(admin.email)}</p>
+		</div>
+
+		<div class="flex flex-col gap-4">
+			<h2 class="text-body-lg font-bold text-text-primary">{sectionsHeading}</h2>
+			<ul class="grid gap-4 md:grid-cols-2">
+				{
+					adminSections.map((section) => (
+						<li>
+							<a
+								href={section.href}
+								class="flex h-full flex-col gap-1 rounded-lg border-w-1 border-border-subtle bg-surface-raised p-5 shadow-card transition-colors hover:bg-surface-overlay"
+							>
+								<span class="text-body font-medium text-text-primary">{section.label}</span>
+								<span class="text-body-sm text-text-secondary">{section.description}</span>
+							</a>
+						</li>
+					))
+				}
+			</ul>
+		</div>
+	</section>
+</BaseLayout>

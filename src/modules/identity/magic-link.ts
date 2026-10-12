@@ -10,13 +10,14 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
+import { isAdminEmail } from './admin';
 import { sendMagicLinkEmail } from './resend-client';
 import { normalizeEmail } from './normalize-email';
 import { createSession, timingSafeEqual } from './session';
 
 const TOKEN_TTL_MS = 15 * 60 * 1000;
 
-type RequestEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY' | 'LOGIN_RATE_LIMITER'>;
+type RequestEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY' | 'LOGIN_RATE_LIMITER'> & { ADMIN_EMAILS?: string };
 type RedeemEnv = Pick<Cloudflare.Env, 'DB' | 'SESSION_SECRET'>;
 type IssueEnv = Pick<Cloudflare.Env, 'DB' | 'RESEND_API_KEY'>;
 
@@ -106,13 +107,25 @@ export async function requestMagicLink(
 	const customer = await env.DB.prepare('SELECT id FROM customers WHERE email = ?')
 		.bind(email)
 		.first<{ id: string }>();
-	if (customer === null) return;
+	if (customer !== null) {
+		await issueMagicLink(env, { customerId: customer.id, email, origin: params.origin });
+		return;
+	}
 
-	await issueMagicLink(env, { customerId: customer.id, email, origin: params.origin });
+	// An allowlisted admin who never bought has no `customers` row, and login is keyed by it
+	// (storefront-v2 ticket 04). Create the bare identity row, exactly what `provisionCustomer`
+	// inserts, with no purchase: `/conta` still bounces a Cliente with no purchases to `/login`,
+	// so nothing Cliente-facing appears. Anyone else stays a silent non-match.
+	if (!isAdminEmail(env, email)) return;
+	await env.DB.prepare('INSERT INTO customers (id, email) VALUES (?, ?) ON CONFLICT(email) DO NOTHING')
+		.bind(crypto.randomUUID(), email)
+		.run();
+	const admin = await env.DB.prepare('SELECT id FROM customers WHERE email = ?').bind(email).first<{ id: string }>();
+	await issueMagicLink(env, { customerId: admin!.id, email, origin: params.origin });
 }
 
 export type RedeemMagicLinkResult =
-	| { ok: true; cookieValue: string; expiresAt: string }
+	| { ok: true; customerId: string; cookieValue: string; expiresAt: string }
 	| { ok: false };
 
 export async function redeemMagicLink(env: RedeemEnv, token: string): Promise<RedeemMagicLinkResult> {
@@ -136,7 +149,7 @@ export async function redeemMagicLink(env: RedeemEnv, token: string): Promise<Re
 	if (row === null) return { ok: false };
 
 	const session = await createSession(env, row.customer_id);
-	return { ok: true, ...session };
+	return { ok: true, customerId: row.customer_id, ...session };
 }
 
 /**

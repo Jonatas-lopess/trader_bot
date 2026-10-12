@@ -1,5 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
+import checkoutIdMigration from '../../../migrations/0013_purchase_checkout_id.sql?raw';
+import { findByCheckout } from './purchase-lookup';
 
 // Proves the real D1 binding (migrations/0001_billing_schema.sql) round-trips
 // under @cloudflare/vitest-pool-workers — the pattern later billing tickets
@@ -110,5 +112,52 @@ describe('catalog-pivot schema (migrations/0008_catalog_pivot.sql)', () => {
 				"INSERT INTO licenses (purchase_id, robot_id, status) VALUES ('lic-schema-2', 'starter', 'made-up')"
 			).run()
 		).rejects.toThrow();
+	});
+});
+
+// migrations/0013_purchase_checkout_id.sql (storefront-v2 ticket 10, ADR-0008): one row per Licença,
+// the rows of a cart checkout share `checkout_id`. The migration already ran on an empty table, so
+// the backfill is exercised by re-running its UPDATE over rows written the old way.
+describe('purchases.checkout_id (migration 0013)', () => {
+	const insertRow = (id: string, checkoutId: string | null, status = 'pending') =>
+		env.DB.prepare(
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, checkout_id) VALUES (?, 'starter', 'one_time', 100, ?, ?)"
+		)
+			.bind(id, status, checkoutId)
+			.run();
+
+	it('backfills old rows with their own id and leaves grouped rows alone', async () => {
+		await insertRow('old-1', null, 'active');
+		await insertRow('old-2', null);
+		await insertRow('grouped-1', 'grouped-1');
+		await insertRow('grouped-2', 'grouped-1');
+
+		const backfill = checkoutIdMigration.match(/^UPDATE purchases SET checkout_id = id[^;]*;/m)?.[0];
+		expect(backfill).toBeDefined();
+		await env.DB.exec((backfill as string).replaceAll('\n', ' '));
+
+		const { results } = await env.DB.prepare(
+			"SELECT id, checkout_id FROM purchases WHERE id IN ('old-1', 'old-2', 'grouped-1', 'grouped-2') ORDER BY id"
+		).all();
+		expect(results).toEqual([
+			{ id: 'grouped-1', checkout_id: 'grouped-1' },
+			{ id: 'grouped-2', checkout_id: 'grouped-1' },
+			{ id: 'old-1', checkout_id: 'old-1' },
+			{ id: 'old-2', checkout_id: 'old-2' },
+		]);
+	});
+
+	it('finds the rows of a checkout, and a lone purchase by its own id even with no checkout_id', async () => {
+		await insertRow('find-grp', 'find-grp');
+		await insertRow('find-grp-2', 'find-grp');
+		await insertRow('find-other', 'find-other');
+		await insertRow('find-legacy', null, 'active');
+
+		expect((await findByCheckout(env, 'find-grp')).map((row) => row.id).sort()).toEqual(['find-grp', 'find-grp-2']);
+		expect(await findByCheckout(env, 'find-legacy')).toEqual([
+			{ id: 'find-legacy', robotId: 'starter', offer: 'one_time', amountCents: 100, status: 'active', paymentMethod: null },
+		]);
+		expect(await findByCheckout(env, 'find-grp-2')).toEqual([]);
+		expect(await findByCheckout(env, 'nope')).toEqual([]);
 	});
 });

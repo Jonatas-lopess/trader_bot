@@ -5,7 +5,7 @@ import { getPurchaseStatus } from '../../modules/billing/status';
 export const prerender = false;
 
 export const GET: APIRoute = async ({ url }) => {
-	const result = await getPurchaseStatus(env, url.searchParams.get('ref'));
+	const result = await getPurchaseStatus(env, url.searchParams.get('checkout_id') ?? url.searchParams.get('ref'));
 	if (!result.ok) {
 		return new Response(JSON.stringify({ error: 'not_found' }), {
 			status: result.status,

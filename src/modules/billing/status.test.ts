@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { getPurchaseStatus } from './status';
+import type { PurchaseStatus } from './payment-provider';
+import { aggregateCheckoutStatus, getPurchaseStatus } from './status';
 
 async function seed(row: {
 	id: string;
@@ -45,5 +46,85 @@ describe('getPurchaseStatus', () => {
 
 	it('returns not-found for a missing reference', async () => {
 		expect(await getPurchaseStatus(env, null)).toEqual({ ok: false, status: 404 });
+	});
+});
+
+describe('aggregateCheckoutStatus (pure, ADR-0006 ranking)', () => {
+	const rows = (...statuses: PurchaseStatus[]) => statuses.map((status) => ({ status, paymentMethod: 'card' }));
+
+	it('has no state for no rows', () => {
+		expect(aggregateCheckoutStatus([])).toBeNull();
+	});
+
+	it('returns a single row own status, whatever it is', () => {
+		for (const status of ['pending', 'rejected', 'active', 'past_due', 'canceled', 'refunded', 'chargeback'] as const) {
+			expect(aggregateCheckoutStatus(rows(status))).toBe(status);
+		}
+	});
+
+	it('reports a uniform group as that status', () => {
+		for (const status of ['pending', 'rejected', 'active', 'refunded', 'chargeback'] as const) {
+			expect(aggregateCheckoutStatus(rows(status, status, status))).toBe(status);
+		}
+	});
+
+	it('lets any rejected row win over every other combination', () => {
+		expect(aggregateCheckoutStatus(rows('active', 'rejected'))).toBe('rejected');
+		expect(aggregateCheckoutStatus(rows('pending', 'rejected'))).toBe('rejected');
+		expect(aggregateCheckoutStatus(rows('rejected', 'refunded', 'active'))).toBe('rejected');
+	});
+
+	it('is not active while any row is still pending', () => {
+		expect(aggregateCheckoutStatus(rows('active', 'pending', 'active'))).toBe('pending');
+		expect(aggregateCheckoutStatus(rows('refunded', 'pending'))).toBe('pending');
+	});
+
+	it('keeps the boleto wait for a group with a pending boleto row', () => {
+		expect(
+			aggregateCheckoutStatus([
+				{ status: 'pending', paymentMethod: 'boleto' },
+				{ status: 'pending', paymentMethod: 'boleto' },
+			])
+		).toBe('awaiting_boleto');
+		expect(aggregateCheckoutStatus([{ status: 'active', paymentMethod: 'boleto' }])).toBe('active');
+	});
+
+	it('surfaces the highest-ranked status once every row is past payment', () => {
+		expect(aggregateCheckoutStatus(rows('active', 'refunded'))).toBe('refunded');
+		expect(aggregateCheckoutStatus(rows('refunded', 'chargeback', 'active'))).toBe('chargeback');
+		expect(aggregateCheckoutStatus(rows('active', 'past_due'))).toBe('past_due');
+		expect(aggregateCheckoutStatus(rows('canceled', 'active'))).toBe('canceled');
+	});
+
+	it('does not depend on row order', () => {
+		expect(aggregateCheckoutStatus(rows('refunded', 'active'))).toBe(aggregateCheckoutStatus(rows('active', 'refunded')));
+	});
+});
+
+describe('getPurchaseStatus over a checkout group', () => {
+	async function seedGroup(checkoutId: string, statuses: string[], paymentMethod: string | null = 'card') {
+		for (const [index, status] of statuses.entries()) {
+			await env.DB.prepare(
+				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, payment_method, checkout_id) VALUES (?, 'starter', 'one_time', 100, ?, ?, ?)"
+			)
+				.bind(index === 0 ? checkoutId : `${checkoutId}-${index}`, status, paymentMethod, checkoutId)
+				.run();
+		}
+	}
+
+	it('answers for all the rows sharing the checkout id', async () => {
+		await seedGroup('grp-active', ['active', 'active', 'active']);
+		expect(await getPurchaseStatus(env, 'grp-active')).toEqual({ ok: true, state: 'active' });
+		await seedGroup('grp-pending', ['pending', 'pending'], 'boleto');
+		expect(await getPurchaseStatus(env, 'grp-pending')).toEqual({ ok: true, state: 'awaiting_boleto' });
+		await seedGroup('grp-held', ['rejected', 'rejected']);
+		expect(await getPurchaseStatus(env, 'grp-held')).toEqual({ ok: true, state: 'rejected' });
+	});
+
+	it('does not mix up two checkouts', async () => {
+		await seedGroup('grp-one', ['active', 'active']);
+		await seedGroup('grp-two', ['pending']);
+		expect(await getPurchaseStatus(env, 'grp-one')).toEqual({ ok: true, state: 'active' });
+		expect(await getPurchaseStatus(env, 'grp-two')).toEqual({ ok: true, state: 'pending' });
 	});
 });

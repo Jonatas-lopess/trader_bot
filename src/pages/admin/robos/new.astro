@@ -1,0 +1,52 @@
+---
+// /admin/robos/new — create a Robô (always as a draft).
+//
+// .scratch/storefront-v2/issues/05-admin-catalog-crud.md. GET shows the empty form; POST
+// validates on the server and either redirects to the edit page with a flash (303) or
+// re-renders this form with the typed values and the field errors (422). Order of checks on a
+// POST: not an admin is an empty 404, then a foreign Origin is 403.
+import { env } from 'cloudflare:workers';
+import AdminRobotForm from '../../../components/admin-robot-form.astro';
+import BaseLayout from '../../../layouts/base-layout.astro';
+import { createRobot, emptyRobotForm, readRobotForm, type FieldErrors } from '../../../modules/catalog/admin';
+import { assertSameOrigin, requireAdmin } from '../../../modules/identity/admin';
+import {
+	backToListLabel,
+	createSubmitLabel,
+	newRobotHeading,
+	newRobotIntro,
+	newRobotTitle,
+	robotsPageDescription,
+} from '../../../content/admin';
+
+export const prerender = false;
+
+const admin = await requireAdmin(Astro.request, env);
+if (!admin.ok) return new Response(null, { status: 404 });
+if (!assertSameOrigin(Astro.request).ok) return new Response(null, { status: 403 });
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+let values = emptyRobotForm;
+let errors: FieldErrors = {};
+
+if (Astro.request.method === 'POST') {
+	values = readRobotForm(await Astro.request.formData());
+	const result = await createRobot(env, values);
+	if (result.ok) return Astro.redirect(`/admin/robos/${result.slug}?ok=created`, 303);
+	errors = result.errors;
+	Astro.response.status = 422;
+}
+---
+
+<BaseLayout title={newRobotTitle} description={robotsPageDescription} shell="admin">
+	<section class="content-row gutter-x flex flex-col gap-8 py-12 sm:py-16">
+		<div class="flex flex-col gap-2">
+			<a href="/admin/robos" class="w-fit text-body-sm text-text-secondary transition-colors hover:text-text-primary">{backToListLabel}</a>
+			<h1 class="text-heading-1 font-bold text-text-primary">{newRobotHeading}</h1>
+			<p class="text-body text-text-secondary">{newRobotIntro}</p>
+		</div>
+
+		<AdminRobotForm values={values} errors={errors} mode="create" submitLabel={createSubmitLabel} />
+	</section>
+</BaseLayout>

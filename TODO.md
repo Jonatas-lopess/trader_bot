@@ -213,7 +213,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 | 02 | [Catalog in D1: schema and `modules/catalog`](.scratch/storefront-v2/issues/02-catalog-d1-schema-and-module.md) | — | done |
 | 03 | [Switch the site and checkout to the D1 catalog](.scratch/storefront-v2/issues/03-catalog-consumers-on-d1.md) | 02 | done |
 | 04 | [Admin gate: magic-link session plus `ADMIN_EMAILS`](.scratch/storefront-v2/issues/04-admin-gate.md) | — | done |
-| 05 | [Admin CRUD for Robôs and Ofertas](.scratch/storefront-v2/issues/05-admin-catalog-crud.md) | 02, 04 | ready-for-agent |
+| 05 | [Admin CRUD for Robôs and Ofertas](.scratch/storefront-v2/issues/05-admin-catalog-crud.md) | 02, 04 | done |
 | 06 | ["Saiba mais" modal on `/catalog`](.scratch/storefront-v2/issues/06-saiba-mais-modal.md) | 03 | ready-for-agent |
 | 07 | [Compact catalog cards in a grid](.scratch/storefront-v2/issues/07-compact-card-grid.md) | 03, 06 | ready-for-agent |
 | 08 | [Cart store, header icon and "Adicionar ao carrinho"](.scratch/storefront-v2/issues/08-cart-store-and-add-to-cart.md) | 07 | ready-for-agent |

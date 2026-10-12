@@ -12,6 +12,9 @@ const current = Astro.url.pathname.replace(/\/$/, '');
 
 // Only in-area links are tabs; shortcuts out of /admin (the public catalog, /conta) stay on the landing.
 const tabs = [homeLink, ...adminSections.filter((section) => section.href.startsWith('/admin/'))];
+
+// Sub-pages (/admin/robos/new) keep their section's tab lit; the home tab is the landing only.
+const isActive = (href: string) => current === href || (href !== homeLink.href && current.startsWith(`${href}/`));
 ---
 
 <header class="border-b border-border-subtle bg-surface-overlay">
@@ -41,7 +44,7 @@ const tabs = [homeLink, ...adminSections.filter((section) => section.href.starts
 		<div class="content-row gutter-x flex gap-8">
 			{
 				tabs.map((tab) =>
-					tab.href === current ? (
+					isActive(tab.href) ? (
 						<a
 							href={tab.href}
 							aria-current="page"

@@ -25,6 +25,7 @@ import {
 	cardWithdrawalNote,
 	comingSoonLabel,
 	detailsHeading,
+	draftLabel,
 	priceRowsLabel,
 	type CatalogCard,
 } from '../content/catalog-page';
@@ -49,6 +50,13 @@ const withdrawalNote = cardWithdrawalNote(card);
 		>
 			{card.name}
 		</h2>
+		{
+			card.draft && (
+				<span class="inline-flex w-fit shrink-0 items-center rounded-full border border-accent bg-surface-sunken px-3 py-1 text-caption font-medium text-accent">
+					{draftLabel}
+				</span>
+			)
+		}
 		{
 			card.status === 'coming-soon' && (
 				<span class="inline-flex w-fit shrink-0 items-center rounded-full border border-border-subtle bg-surface-sunken px-3 py-1 text-caption font-medium text-text-secondary">

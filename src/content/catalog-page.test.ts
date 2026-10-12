@@ -11,6 +11,7 @@ import {
 	cardWithdrawalNote,
 	checkoutHref,
 	defaultOffer,
+	draftLabel,
 	emptyCatalogMessage,
 	formatBrl,
 	offerOrder,
@@ -59,6 +60,20 @@ describe('emptyCatalogMessage', () => {
 	it('is real copy for the page to show when no card is built', () => {
 		expect(buildCatalogCards([])).toEqual([]);
 		expect(emptyCatalogMessage.trim()).not.toBe('');
+	});
+});
+
+describe('draft preview (admin)', () => {
+	it('marks a draft card, with its Ofertas, only when drafts were loaded', async () => {
+		expect(catalogCards.some((c) => c.draft)).toBe(false);
+
+		const preview = buildCatalogCards(await listPublishedWithOffers(env, { includeDrafts: true }));
+
+		expect(preview.filter((c) => c.draft).map((c) => [c.slug, c.offers.map((o) => o.priceText)])).toEqual([
+			['robo-exemplo-d', ['R$ 1.197']],
+		]);
+		expect(preview.find((c) => c.slug === 'robo-exemplo-f')).toBeUndefined();
+		expect(draftLabel.trim()).not.toBe('');
 	});
 });
 

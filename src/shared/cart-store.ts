@@ -17,6 +17,7 @@
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { OfferName } from '../modules/catalog/robots';
+import { MAX_CART_LINES, MAX_LINE_QUANTITY, isCartOffer, isCartSlug } from '../modules/catalog/price-cart';
 
 /** The Ofertas a cart line can hold: the catalog's Compra and Anual, never `monthly`. */
 export type CartOffer = OfferName;
@@ -35,17 +36,11 @@ export type CartState = {
 
 export const CART_STORAGE_KEY = 'rt-cart-v1';
 const CART_VERSION = 1;
-export const MAX_QUANTITY = 5;
-/** Distinct Robô + Oferta lines. The cart endpoint enforces the same limit (modules/catalog/price-cart.ts). */
-export const MAX_LINES = 20;
-
-const OFFERS: readonly CartOffer[] = ['one_time', 'annual'];
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const MAX_SLUG_LENGTH = 64;
-
-export const isCartOffer = (value: unknown): value is CartOffer => OFFERS.includes(value as CartOffer);
-const isSlug = (value: unknown): value is string =>
-	typeof value === 'string' && value.length <= MAX_SLUG_LENGTH && SLUG.test(value);
+// The caps and the shape checks are the cart endpoint's own (modules/catalog/price-cart.ts), so
+// what the store keeps is always something `POST /cart/summary` accepts.
+export const MAX_QUANTITY = MAX_LINE_QUANTITY;
+export const MAX_LINES = MAX_CART_LINES;
+export { isCartOffer };
 
 const clampQuantity = (quantity: number): number => Math.min(MAX_QUANTITY, Math.floor(quantity));
 
@@ -60,7 +55,7 @@ export const sanitizeLines = (raw: unknown): CartLine[] => {
 	for (const item of raw) {
 		if (typeof item !== 'object' || item === null) continue;
 		const { robot, offer, quantity } = item as Record<string, unknown>;
-		if (!isSlug(robot) || !isCartOffer(offer)) continue;
+		if (!isCartSlug(robot) || !isCartOffer(offer)) continue;
 		if (typeof quantity !== 'number' || !Number.isFinite(quantity) || quantity < 1) continue;
 		const existing = lines.find((l) => l.robot === robot && l.offer === offer);
 		if (existing) existing.quantity = clampQuantity(existing.quantity + quantity);

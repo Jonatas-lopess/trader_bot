@@ -91,6 +91,17 @@
 				"limit": 30,
 				"period": 10
 			}
+		},
+		// `POST /cart/summary` (modules/catalog/price-cart.ts): public and unauthenticated, so
+		// throttled per source IP. Generous for a Cliente stepping a quantity up and down, small
+		// enough that a script cannot turn it into a catalog crawler (storefront-v2 09).
+		{
+			"name": "CART_RATE_LIMITER",
+			"namespace_id": "4",
+			"simple": {
+				"limit": 20,
+				"period": 10
+			}
 		}
 	]
 }

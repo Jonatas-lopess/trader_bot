@@ -36,9 +36,15 @@
 	// ADMIN_EMAILS is the comma-separated admin allowlist (modules/identity/admin.ts); empty
 	// locks everyone out of /admin. Set the real list at deploy time (`--var ADMIN_EMAILS:...`),
 	// never in this file.
+	// ORDER_NOTIFY_EMAIL is where Encomenda requests are e-mailed (modules/orders/encomenda.ts);
+	// empty still stores the lead and logs. WHATSAPP_NUMBER (digits, country code first) is the
+	// "Continuar no WhatsApp" target; empty falls back to the placeholder in
+	// src/content/encomenda.ts. Set both at deploy time, never in this file.
 	"vars": {
 		"APPMAX_ENV": "sandbox",
-		"ADMIN_EMAILS": ""
+		"ADMIN_EMAILS": "",
+		"ORDER_NOTIFY_EMAIL": "",
+		"WHATSAPP_NUMBER": ""
 	},
 	"observability": {
 		"enabled": true
@@ -90,6 +96,16 @@
 			"simple": {
 				"limit": 30,
 				"period": 10
+			}
+		},
+		// POST /encomenda (modules/orders/encomenda.ts), keyed `ip:<address>`. Only a
+		// valid, non-honeypot submission spends a hit; it is the last gate before D1 and Resend.
+		{
+			"name": "ENCOMENDA_RATE_LIMITER",
+			"namespace_id": "4",
+			"simple": {
+				"limit": 3,
+				"period": 60
 			}
 		}
 	]

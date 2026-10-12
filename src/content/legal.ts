@@ -67,13 +67,21 @@ export const termosDeUso: LegalPage = {
 /** Link target for every "7 dias para desistir da compra" statement. */
 export const withdrawalHref = `${termosDeUso.path}#${withdrawalAnchor}`;
 
+// Includes the Encomenda data (storefront-v2 14): name, e-mail and/or phone, the strategy text,
+// market and Corretora, stored in `custom_orders` and e-mailed to the operator, collected on
+// the basis of the contact consent ticked on /encomenda.
+const dadosColetadosBody = launchBlocking(
+	'TODO — dados coletados pendentes de redação jurídica, incluindo os dados da Encomenda (nome, e-mail ou telefone, descrição da estratégia, mercado e Corretora), seu prazo de retenção e a forma de exclusão.',
+	'Placeholder — privacy text must come from the owner or a lawyer (PLANNING.md §9); must cover the Encomenda data stored in custom_orders (storefront-v2 14, ADR-0008)',
+);
+
 export const politicaDePrivacidade: LegalPage = {
 	path: '/privacidade',
 	pageTitle: 'Política de privacidade',
 	pageDescription: 'Política de privacidade do Robô Trader.',
 	heading: 'Política de privacidade',
 	sections: [
-		{ heading: 'Dados coletados', body: placeholderBody('Política de privacidade') },
+		{ heading: 'Dados coletados', body: dadosColetadosBody },
 		{ heading: 'Finalidade e base legal', body: placeholderBody('Política de privacidade') },
 		{ heading: 'Compartilhamento com terceiros', body: placeholderBody('Política de privacidade') },
 		{ heading: 'Retenção e exclusão', body: placeholderBody('Política de privacidade') },

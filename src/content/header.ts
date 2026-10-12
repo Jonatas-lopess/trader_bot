@@ -28,6 +28,7 @@ export const brand = {
 export const primaryNav: NavLink[] = [
 	{ label: 'Como funciona', href: '/#como-funciona' },
 	{ label: 'Catálogo', href: '/catalog' },
+	{ label: 'Encomenda', href: '/encomenda' },
 	{ label: 'FAQ', href: '/#faq' },
 ];
 

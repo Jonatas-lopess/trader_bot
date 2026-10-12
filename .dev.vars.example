@@ -25,3 +25,9 @@ SENTRY_ENVIRONMENT=
 PAYMENT_PROVIDER=
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
+# Where Encomenda (custom-Robô) requests are e-mailed (modules/orders/encomenda.ts). Unset
+# still stores the lead and logs a warning.
+ORDER_NOTIFY_EMAIL=
+# Digits only, country code first (5511999999999). Target of the "Continuar no WhatsApp" link;
+# unset falls back to the launch-blocking placeholder in src/content/encomenda.ts.
+WHATSAPP_NUMBER=

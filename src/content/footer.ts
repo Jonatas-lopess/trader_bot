@@ -26,6 +26,7 @@ export const supportLinksHeading = 'Suporte & Termos';
 export const usefulLinks: FooterLink[] = [
 	{ label: 'Como funciona', href: '/#como-funciona' },
 	{ label: 'Catálogo & Preços', href: '/catalog' },
+	{ label: 'Encomenda', href: '/encomenda' },
 	{ label: 'FAQ', href: '/#faq' },
 ];
 

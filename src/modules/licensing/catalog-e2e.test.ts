@@ -267,4 +267,105 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		});
 		expect(await licenseOf(purchase.id)).not.toBeNull();
 	});
+
+	// ADR-0008: the one-Licença-per-Cliente-per-Robô rule is gone; a second Licença is the way
+	// to run the same Robô on a second Corretora account.
+	it('repeat purchase: the same email buys the same Robô twice and gets two independent Licenças', async () => {
+		const email = 'compra-repeat@example.com';
+		const purchases: { id: string; amount: number }[] = [];
+		for (const orderId of ['ord_cat_repeat_1', 'ord_cat_repeat_2']) {
+			mockOutbound(orderId);
+			const purchase = await startCheckout(orderId, 'one_time');
+			orderResponse = { status: 'aprovado', email, subTotalCents: purchase.amount_cents };
+			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));
+			expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'active' });
+			purchases.push({ id: purchase.id, amount: purchase.amount_cents });
+		}
+		const [first, second] = purchases;
+
+		// One Cliente, two Licenças of one Robô, both on /conta and distinguishable by their own account.
+		const customers = await env.DB.prepare('SELECT id FROM customers WHERE email = ?').bind(email).all();
+		expect(customers.results).toHaveLength(1);
+		expect(first.id).not.toBe(second.id);
+		expect((await licenseOf(first.id))?.status).toBe('awaiting_account');
+		expect((await licenseOf(second.id))?.status).toBe('awaiting_account');
+
+		// Each Licença takes its own Corretora account.
+		expect(await saveCorretoraAccount(env, first.id, '1111111')).toEqual({ ok: true });
+		expect(await saveCorretoraAccount(env, second.id, '2222222')).toEqual({ ok: true });
+		const cookie = await loginCookie(email);
+		const view = await resolveAccountView(env, accountRequest(cookie));
+		expect(view).toMatchObject({
+			ok: true,
+			robots: [
+				{
+					robotName: 'Robô Exemplo A',
+					licenses: [
+						{ purchaseId: first.id, corretoraAccount: 1111111 },
+						{ purchaseId: second.id, corretoraAccount: 2222222 },
+					],
+				},
+			],
+		});
+
+		// Each Licença is activated and mailed its own download link.
+		const tokens: string[] = [];
+		for (const purchase of purchases) {
+			await putLicenseBinary(purchase.id);
+			const activated = await activateLicense(env, { licenseId: purchase.id, origin: 'https://example.com' });
+			if (!activated.ok) throw new Error('expected activation to succeed');
+			tokens.push(/\/download\/([^/?#]+)/.exec(activated.downloadUrl)![1]);
+		}
+		expect(tokens[0]).not.toBe(tokens[1]);
+
+		// Revoking one Licença (refund of its order) leaves the other's link working.
+		mockOutbound('ord_cat_repeat_1');
+		orderResponse = { status: 'estornado', email, subTotalCents: first.amount };
+		await handleWebhook(env, JSON.stringify({ event: 'order.refunded', order_id: 'ord_cat_repeat_1' }));
+		expect(await resolveDownload(env, tokens[0])).toEqual({ ok: false, status: 404 });
+		expect((await resolveDownload(env, tokens[1])).ok).toBe(true);
+	});
+
+	it('repeat purchase: canceling one Mensal leaves the other Mensal of the same Robô cancelable', async () => {
+		const email = 'compra-repeat-mensal@example.com';
+		const purchases: { id: string }[] = [];
+		for (const n of [1, 2]) {
+			const orderId = `ord_cat_repeat_m${n}`;
+			mockOutbound(orderId);
+			const purchase = await startCheckout(orderId, 'monthly');
+			await env.DB.prepare('UPDATE purchases SET appmax_subscription_id = ? WHERE id = ?')
+				.bind(`asub_cat_repeat_m${n}`, purchase.id)
+				.run();
+			orderResponse = { status: 'aprovado', paymentMethod: 'cartao', email, subTotalCents: purchase.amount_cents };
+			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));
+			purchases.push(purchase);
+		}
+
+		const cookie = await loginCookie(email);
+		vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+			const url = typeof input === 'string' ? input : input.toString();
+			if (url.includes('/oauth2/token')) return new Response(JSON.stringify({ access_token: 't' }), { status: 200 });
+			if (url.includes('/subscriptions/asub_cat_repeat_m1/cancel')) return new Response(null, { status: 200 });
+			throw new Error(`unexpected fetch: ${url}`);
+		});
+		expect(
+			await cancelSubscription(env, {
+				purchaseId: purchases[0].id,
+				provider: 'appmax',
+				providerSubscriptionId: 'asub_cat_repeat_m1',
+			})
+		).toEqual({ ok: true });
+
+		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({
+			ok: true,
+			robots: [
+				{
+					licenses: [
+						{ purchaseId: purchases[0].id, canCancel: false, subscriptionStatus: 'canceled' },
+						{ purchaseId: purchases[1].id, canCancel: true, subscriptionStatus: 'active' },
+					],
+				},
+			],
+		});
+	});
 });

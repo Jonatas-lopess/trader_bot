@@ -224,7 +224,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 | 13 | [Confirmation page and delivery for several Licenças](.scratch/storefront-v2/issues/13-confirmation-and-delivery-for-n-licenses.md) | 11, 12, appmax-checkout 06 | ready-for-agent |
 | 14 | [Encomenda page: custom-Robô request](.scratch/storefront-v2/issues/14-encomenda-page.md) | 16 | ready-for-agent |
 | 15 | [End-to-end verification](.scratch/storefront-v2/issues/15-end-to-end-verification.md) | 01, 05, 07, 09, 13, 14, 16 | ready-for-agent |
-| 16 | [E-mail dead letter and admin resend](.scratch/storefront-v2/issues/16-email-dead-letter.md) | 04 | ready-for-agent |
+| 16 | [E-mail dead letter and admin resend](.scratch/storefront-v2/issues/16-email-dead-letter.md) | 04 | done |
 
 Mensal / Assinatura is on standby (ADR-0008); `appmax-checkout` 09 is deferred with it.
 

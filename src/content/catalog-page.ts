@@ -40,6 +40,14 @@ export const carouselLabel = 'Robôs do catálogo';
 export const carouselPrevLabel = 'Robô anterior';
 export const carouselNextLabel = 'Próximo Robô';
 
+// "Saiba mais" modal (storefront-v2 06). The button's accessible name carries the Robô, so a
+// screen reader's button list does not read "Saiba mais" six times in a row.
+export const learnMoreLabel = 'Saiba mais';
+export const learnMoreLabelFor = (card: Pick<CatalogCard, 'name'>): string =>
+	`${learnMoreLabel} sobre ${card.name}`;
+export const dialogCloseLabel = 'Fechar';
+export const addToCartLabel = 'Adicionar ao carrinho';
+
 export const comingSoonLabel = 'Em breve';
 export const strategyTypeLabel = 'Estratégia';
 export const marketLabel = 'Mercado';
@@ -102,6 +110,8 @@ export type CatalogCard = {
 	slug: string;
 	name: string;
 	shortDescription: string;
+	/** Shown in the "Saiba mais" modal; admin-entered plain text, line breaks kept. */
+	longDescription: string;
 	strategyType: string;
 	/** Empty when the Robô declares no market. */
 	market: string[];
@@ -164,6 +174,7 @@ export const buildCatalogCards = (robots: PublishedRobot[]): CatalogCard[] =>
 		slug: robot.slug,
 		name: robot.name,
 		shortDescription: robot.shortDescription,
+		longDescription: robot.longDescription,
 		strategyType: robot.strategyType,
 		market: robot.market ?? [],
 		perfil: robot.perfil,

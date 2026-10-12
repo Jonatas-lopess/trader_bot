@@ -13,6 +13,7 @@ import {
 	defaultOffer,
 	emptyCatalogMessage,
 	formatBrl,
+	learnMoreLabelFor,
 	offerOrder,
 	type CatalogCard,
 } from './catalog-page';
@@ -70,6 +71,28 @@ describe('buildCatalogCards', () => {
 			'robo-exemplo-c',
 			'robo-exemplo-e',
 		]);
+	});
+
+	it('carries the long description for the "Saiba mais" modal, untouched', () => {
+		expect(bySlug('robo-exemplo-a').longDescription).toBe('Descrição longa de robo-exemplo-a.');
+		const markup = '<img src=x onerror=alert(1)> & "quotes"';
+		const [card] = buildCatalogCards([
+			{
+				slug: 'x',
+				name: 'X',
+				shortDescription: 's',
+				longDescription: markup,
+				strategyType: 't',
+				market: null,
+				perfil: null,
+				supportedCorretoras: null,
+				status: 'available',
+				sortOrder: 0,
+				offers: [],
+			},
+		]);
+		// Escaping is the template's job (Astro text nodes); the content layer must not pre-encode it.
+		expect(card?.longDescription).toBe(markup);
 	});
 
 	it('copies the Robô facts from the row', () => {
@@ -184,6 +207,12 @@ describe('selectable price rows', () => {
 			const selected = cardPriceRows(card).find((r) => r.selected);
 			expect(cardBuy(card)?.href).toBe(selected?.href);
 		}
+	});
+});
+
+describe('"Saiba mais" button', () => {
+	it('names the Robô so a screen-reader button list is not six identical entries', () => {
+		expect(learnMoreLabelFor(bySlug('robo-exemplo-a'))).toBe('Saiba mais sobre Robô Exemplo A');
 	});
 });
 

@@ -12,10 +12,18 @@
 
 **Blocked by:** 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Opens from each card with that Robô's data; Esc, backdrop click and close button dismiss; focus returns
-- [ ] Admin-entered text is escaped (a name containing markup renders as text)
-- [ ] Coming-soon variant has no prices or buy controls; buy links carry only `robot` + `offer`
-- [ ] Works at 390 and 1280; degrades without JavaScript
+- [x] Opens from each card with that Robô's data; Esc, backdrop click and close button dismiss; focus returns
+- [x] Admin-entered text is escaped (a name containing markup renders as text)
+- [x] Coming-soon variant has no prices or buy controls; buy links carry only `robot` + `offer`
+- [x] Works at 390 and 1280; degrades without JavaScript
 - [ ] Typecheck and the full test suite pass
+
+## Comments
+
+- **Verified in headless Chromium** against `astro build` + `astro preview` with the local D1 seed: opens from a card with that Robô's data, Esc, backdrop click and the close button dismiss it, focus returns to the pressed button, `body` overflow is locked while open, coming-soon opens with no price rows, buy link or cart button, buy link follows the selected price row (`robot` + `offer` only). A Robô named `<img src=x onerror=alert(1)>` with a `<script>` in its long description renders as text (no `img`/`script` node in the dialog, no alert). The dialog was seen at 390 and 1280. Not verified: iOS Safari scroll lock (real device).
+- **How the long description stays reachable without JavaScript:** the "Saiba mais" button is the `<summary>` of a `<details data-robot-more>` in the card; the modal body (`robot-details.astro`) is its content. Without JS the details opens inline in the card (verified with JavaScript disabled); with JS the click is intercepted and the body is cloned into the one `<dialog>` (DOM nodes, no `innerHTML`, no fetch). This replaces the ticket's "anchor to `/catalog#<slug>`" idea. Without JS the buy link points at the default Oferta only, as the price rows did in figma-restyle 13.
+- Shared blocks extracted from the card: `robot-info-rows.astro`, `robot-price-rows.astro`; the radio behaviour moved to `shared/offer-rows.ts` (still using `nextRadioIndex`).
+- `body:has(dialog[open])` scroll lock moved from `confirm-dialog.astro` to `global.css`, now also on `html` (iOS).
+- "Adicionar ao carrinho" is in the modal markup but `hidden` until ticket 08 wires and reveals it, so it is never a dead control.

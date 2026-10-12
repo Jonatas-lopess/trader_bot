@@ -25,9 +25,12 @@ import {
 	cardWithdrawalNote,
 	comingSoonLabel,
 	detailsHeading,
+	learnMoreLabel,
+	learnMoreLabelFor,
 	priceRowsLabel,
 	type CatalogCard,
 } from '../content/catalog-page';
+import RobotDetails from './robot-details.astro';
 
 type Props = {
 	card: CatalogCard;
@@ -125,6 +128,19 @@ const withdrawalNote = cardWithdrawalNote(card);
 			</p>
 		)
 	}
+
+	<details data-robot-more data-robot-name={card.name} class="mt-4">
+		<summary
+			data-robot-more-trigger
+			aria-label={learnMoreLabelFor(card)}
+			class="button-h-sm inline-flex w-full cursor-pointer items-center justify-center rounded-sm border border-border-subtle px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+		>
+			{learnMoreLabel}
+		</summary>
+		<div data-robot-more-body class="mt-4">
+			<RobotDetails card={card} />
+		</div>
+	</details>
 </div>
 
 <script>
@@ -132,7 +148,9 @@ const withdrawalNote = cardWithdrawalNote(card);
 
 	// Progressive enhancement: without this script the rows are a plain list and the
 	// button buys the default Oferta (the server-rendered href and highlight).
+	// The rows inside `[data-robot-more]` are the modal's copy; robot-dialog.astro enhances those.
 	for (const group of document.querySelectorAll<HTMLElement>('[data-offer-rows]')) {
+		if (group.closest('[data-robot-more]')) continue;
 		const card = group.closest<HTMLElement>('[data-robot-card]');
 		const buy = card?.querySelector<HTMLAnchorElement>('[data-buy]');
 		const rows = Array.from(group.querySelectorAll<HTMLElement>('[data-offer-row]'));

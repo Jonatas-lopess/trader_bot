@@ -1,0 +1,28 @@
+---
+// Robô info rows — src/components/robot-info-rows.astro
+//
+// The check rows under "Detalhes do Robô" (Estratégia, then Mercado and Perfil when the Robô
+// declares them). Shared markup: shown in the "Saiba mais" modal body (robot-details.astro),
+// extracted from the card per storefront-v2 06. Values are admin-entered; Astro escapes them.
+import { CheckCheck } from '@lucide/astro';
+import { cardInfoRows, type CatalogCard } from '../content/catalog-page';
+
+type Props = {
+	card: CatalogCard;
+};
+
+const { card } = Astro.props;
+---
+
+<ul class="flex flex-col gap-3 text-caption text-text-primary">
+	{
+		cardInfoRows(card).map((row) => (
+			<li class="flex items-start gap-3">
+				<CheckCheck class="size-4 shrink-0 text-brand-primary" aria-hidden="true" />
+				<span>
+					{row.label}: {row.value}
+				</span>
+			</li>
+		))
+	}
+</ul>

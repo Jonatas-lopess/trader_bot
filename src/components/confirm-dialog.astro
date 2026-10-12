@@ -37,12 +37,6 @@ import { confirmDismissLabel } from '../content/conta';
 	</div>
 </dialog>
 
-<style is:global>
-	body:has(dialog[open]) {
-		overflow: hidden;
-	}
-</style>
-
 <script>
 	const dialog = document.querySelector<HTMLDialogElement>('#confirm-dialog');
 	const title = document.querySelector<HTMLElement>('#confirm-dialog-title');

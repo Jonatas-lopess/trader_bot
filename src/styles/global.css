@@ -252,3 +252,10 @@
 @utility border-w-2 {
 	border-width: var(--border-width-2);
 }
+
+/* The page behind an open modal <dialog> does not scroll (confirm-dialog.astro, robot-dialog.astro).
+ * Both html and body: iOS Safari scrolls the root when only the body is locked. */
+html:has(dialog[open]),
+body:has(dialog[open]) {
+	overflow: hidden;
+}

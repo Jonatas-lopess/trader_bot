@@ -1,0 +1,89 @@
+---
+// "Saiba mais" modal — src/components/robot-dialog.astro
+//
+// The one native <dialog> on `/catalog` (storefront-v2 06, ADR-0008), same pattern as
+// confirm-dialog.astro and legal-dialog.astro: platform focus trap, Esc closes, a click on the
+// backdrop closes, a close button. No per-Robô route (ADR-0006 stands).
+//
+// It is empty until a card's "Saiba mais" is pressed. Each card carries its own details in the
+// HTML (`<details data-robot-more>` with `[data-robot-more-body]`, robot-card.astro and
+// robot-details.astro); the script below clones that body in with DOM nodes, never innerHTML, so
+// admin-entered text can only ever be text. No fetch. The "Saiba mais" button is the
+// <summary> of that <details>: without JavaScript it simply opens the details inline in the
+// card, so the long description stays reachable. Focus goes back to the pressed button on close.
+//
+// Copy comes from src/content/catalog-page.ts — see docs/agents/content-files.md.
+import { dialogCloseLabel } from '../content/catalog-page';
+---
+
+<dialog
+	id="robot-dialog"
+	aria-labelledby="robot-dialog-title"
+	class="m-auto max-h-[85dvh] w-[calc(100%-2.5rem)] max-w-2xl overflow-y-auto overscroll-contain rounded-lg border-w-1 border-border-subtle bg-surface-raised p-0 text-text-primary shadow-card backdrop:bg-surface-base/80"
+>
+	<div
+		class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border-subtle bg-surface-raised px-6 py-4"
+	>
+		<h2 id="robot-dialog-title" class="text-heading-3 font-bold text-text-primary"></h2>
+		<button
+			type="button"
+			data-robot-dialog-close
+			class="button-h-sm inline-flex shrink-0 items-center justify-center rounded-md border-w-1 border-border-strong px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+		>
+			{dialogCloseLabel}
+		</button>
+	</div>
+	<div data-robot-dialog-body class="px-6 py-6"></div>
+</dialog>
+
+<script>
+	import { enhanceOfferRows } from '../shared/offer-rows';
+
+	const dialog = document.querySelector<HTMLDialogElement>('#robot-dialog');
+	const title = document.querySelector<HTMLElement>('#robot-dialog-title');
+	const body = document.querySelector<HTMLElement>('[data-robot-dialog-body]');
+	const close = document.querySelector<HTMLButtonElement>('[data-robot-dialog-close]');
+
+	if (dialog && title && body && close) {
+		let opener: HTMLElement | null = null;
+
+		const open = (details: HTMLElement, trigger: HTMLElement) => {
+			const source = details.querySelector<HTMLElement>('[data-robot-more-body]');
+			if (!source) return;
+			opener = trigger;
+			title.textContent = details.dataset.robotName ?? '';
+			body.replaceChildren(...Array.from(source.children, (child) => child.cloneNode(true)));
+
+			// The cloned rows are fresh nodes, so they are enhanced here, not at page load.
+			const buy = body.querySelector<HTMLAnchorElement>('[data-buy]');
+			const add = body.querySelector<HTMLElement>('[data-add-to-cart]');
+			for (const group of body.querySelectorAll<HTMLElement>('[data-offer-rows]')) {
+				enhanceOfferRows(group, (row) => {
+					if (buy && row.dataset.href) buy.href = row.dataset.href;
+					if (add && row.dataset.offer) add.dataset.offer = row.dataset.offer;
+				});
+			}
+			dialog.showModal();
+		};
+
+		// One delegated listener: the "Saiba mais" button is the <summary> of its card's <details>.
+		document.addEventListener('click', (event) => {
+			const trigger = (event.target as Element).closest<HTMLElement>('summary[data-robot-more-trigger]');
+			const details = trigger?.closest<HTMLElement>('[data-robot-more]');
+			if (!trigger || !details) return;
+			event.preventDefault(); // keep the <details> closed; the dialog shows its content instead
+			open(details, trigger);
+		});
+
+		close.addEventListener('click', () => dialog.close());
+		// Click on the backdrop (the dialog element itself) dismisses; Escape is native.
+		dialog.addEventListener('click', (event) => {
+			if (event.target === dialog) dialog.close();
+		});
+		dialog.addEventListener('close', () => {
+			body.replaceChildren();
+			opener?.focus();
+			opener = null;
+		});
+	}
+</script>

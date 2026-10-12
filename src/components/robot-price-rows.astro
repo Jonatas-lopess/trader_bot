@@ -1,0 +1,38 @@
+---
+// Robô price rows — src/components/robot-price-rows.astro
+//
+// One row per Oferta the Robô sells (Licença Perpétua, Anual), the default row highlighted.
+// Shared markup: used in the "Saiba mais" modal body (robot-details.astro), extracted from the
+// card per storefront-v2 06. With JavaScript the rows become a radio group
+// (src/shared/offer-rows.ts, figma-restyle 13): the selected row sets the modal's buy link and
+// the Oferta "Adicionar ao carrinho" adds. Without it they stay a plain list and the default
+// row is the one the buy link points at. Rows carry `data-offer` and `data-href` (robot + offer
+// only, ADR-0006), never a price to be read back.
+import { cardPriceRows, priceRowsLabel, type CatalogCard } from '../content/catalog-page';
+
+type Props = {
+	card: CatalogCard;
+};
+
+const { card } = Astro.props;
+const rows = cardPriceRows(card);
+---
+
+<ul data-offer-rows data-radiogroup-label={priceRowsLabel} class="flex flex-col gap-2">
+	{
+		rows.map((row) => (
+			<li
+				data-offer-row
+				data-offer={row.offer}
+				data-href={row.href}
+				data-selected={row.selected ? '' : undefined}
+				class="flex items-center justify-between gap-3 rounded-sm border border-border-subtle bg-surface-sunken px-4 py-1.5 outline-none in-data-selectable:cursor-pointer data-selected:border-transparent data-selected:bg-surface-emphasis focus-visible:shadow-focus-ring"
+			>
+				<span class="text-caption font-medium text-text-primary">{row.label}</span>
+				<span class="whitespace-nowrap font-heading text-body-sm font-bold text-text-primary">
+					{row.priceText}
+				</span>
+			</li>
+		))
+	}
+</ul>

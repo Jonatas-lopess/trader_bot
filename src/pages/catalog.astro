@@ -11,6 +11,7 @@ import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/base-layout.astro';
 import CatalogCarousel from '../components/catalog-carousel.astro';
 import RobotCard from '../components/robot-card.astro';
+import RobotDialog from '../components/robot-dialog.astro';
 import {
 	buildCatalogCards,
 	emptyCatalogMessage,
@@ -50,4 +51,6 @@ const cards = buildCatalogCards(await listPublishedWithOffers(env));
 	<section class="content-row gutter-x pb-20">
 		<p class="mx-auto max-w-3xl text-center text-caption text-text-secondary">{regulatoryNote}</p>
 	</section>
+
+	<RobotDialog />
 </BaseLayout>

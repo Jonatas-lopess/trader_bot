@@ -8,7 +8,8 @@
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../layouts/base-layout.astro';
 import { requireAdmin } from '../modules/identity/admin';
-import { adminSections, heading, pageDescription, pageTitle, sectionsHeading, signedInAs } from '../content/admin';
+import { countUnresolvedDeadLetters } from '../modules/identity/send-with-dead-letter';
+import { adminSections, deadLettersCount, heading, pageDescription, pageTitle, sectionsHeading, signedInAs } from '../content/admin';
 
 export const prerender = false;
 
@@ -16,6 +17,8 @@ const admin = await requireAdmin(Astro.request, env);
 if (!admin.ok) return new Response(null, { status: 404 });
 
 Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const pendingEmails = await countUnresolvedDeadLetters(env);
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription} shell="admin">
@@ -23,6 +26,9 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 		<div class="flex flex-col gap-2">
 			<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
 			<p class="text-body text-text-secondary">{signedInAs(admin.email)}</p>
+			<a href="/admin/emails" class={`text-body-sm font-medium ${pendingEmails > 0 ? 'text-danger' : 'text-text-secondary'}`}>
+				{deadLettersCount(pendingEmails)}
+			</a>
 		</div>
 
 		<div class="flex flex-col gap-4">

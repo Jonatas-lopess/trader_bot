@@ -39,23 +39,43 @@ async function readRejectionDetail(response: Response): Promise<string> {
 	}
 }
 
-export async function sendMagicLinkEmail(
-	env: ResendCredentials,
-	params: { to: string; magicLinkUrl: string }
-): Promise<SendMagicLinkEmailResult> {
-	const email = renderEmail(magicLinkEmail, { url: params.magicLinkUrl });
+export type SendEmailResult = { ok: boolean; detail?: string };
+
+/** A plain-text message to one recipient; `replyTo` is the address a reply should go to. */
+export type OutboundEmail = { to: string; replyTo?: string; subject: string; body: string };
+
+async function postToResend(env: ResendCredentials, payload: Record<string, unknown>): Promise<SendEmailResult> {
 	const response = await fetch(RESEND_API_URL, {
 		method: 'POST',
 		headers: {
 			Authorization: `Bearer ${env.RESEND_API_KEY}`,
 			'Content-Type': 'application/json',
 		},
-		body: JSON.stringify({
-			from: FROM_ADDRESS,
-			to: [params.to],
-			...email,
-		}),
+		body: JSON.stringify({ from: FROM_ADDRESS, ...payload }),
 	});
 	if (response.ok) return { ok: true };
 	return { ok: false, detail: await readRejectionDetail(response) };
+}
+
+export async function sendMagicLinkEmail(
+	env: ResendCredentials,
+	params: { to: string; magicLinkUrl: string }
+): Promise<SendMagicLinkEmailResult> {
+	const email = renderEmail(magicLinkEmail, { url: params.magicLinkUrl });
+	return postToResend(env, { to: [params.to], ...email });
+}
+
+/**
+ * A free-form plain-text message (operator notifications such as an Encomenda). Callers that
+ * must not lose the message go through `sendOrParkEmail` instead of calling this directly.
+ * The body is sent as `text` only, so user-supplied content is never interpreted as markup,
+ * and the recipient and reply-to are separate fields, never spliced into a header string.
+ */
+export async function sendEmail(env: ResendCredentials, message: OutboundEmail): Promise<SendEmailResult> {
+	return postToResend(env, {
+		to: [message.to],
+		...(message.replyTo === undefined ? {} : { reply_to: message.replyTo }),
+		subject: message.subject,
+		text: message.body,
+	});
 }

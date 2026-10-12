@@ -26,6 +26,20 @@ application state, R2 for the robot binary, Resend for transactional email, Tail
 for styling. Tests with Vitest (webhook/token/session logic) and Playwright (one
 checkout-to-customer-area happy path).
 
+## Local catalog seed
+
+The catalog lives in D1 (`robots`, `robot_offers`; ADR-0008) and ships empty: real Robôs are
+created from the admin. For local development, load the five placeholder Robôs after applying
+the migrations:
+
+```
+pnpm exec wrangler d1 migrations apply trader-bot-db --local
+pnpm exec wrangler d1 execute trader-bot-db --local --file=scripts/seed-catalog.sql
+```
+
+`scripts/seed-catalog.sql` is dev-only and re-runnable. It is never a migration and has no
+production path.
+
 ## Docs
 
 - `PLANNING.md` — technical contract: scope, stack, payments, auth, licensing, compliance.

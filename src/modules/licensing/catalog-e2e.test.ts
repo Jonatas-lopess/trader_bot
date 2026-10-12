@@ -299,7 +299,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 			ok: true,
 			robots: [
 				{
-					robotName: 'Robô Exemplo A',
+					robotName: 'Robô robo-exemplo-a',
 					licenses: [
 						{ purchaseId: first.id, corretoraAccount: 1111111 },
 						{ purchaseId: second.id, corretoraAccount: 2222222 },

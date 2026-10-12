@@ -216,7 +216,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 | 05 | [Admin CRUD for Robôs and Ofertas](.scratch/storefront-v2/issues/05-admin-catalog-crud.md) | 02, 04 | ready-for-agent |
 | 06 | ["Saiba mais" modal on `/catalog`](.scratch/storefront-v2/issues/06-saiba-mais-modal.md) | 03 | done |
 | 07 | [Compact catalog cards in a grid](.scratch/storefront-v2/issues/07-compact-card-grid.md) | 03, 06 | done |
-| 08 | [Cart store, header icon and "Adicionar ao carrinho"](.scratch/storefront-v2/issues/08-cart-store-and-add-to-cart.md) | 07 | ready-for-agent |
+| 08 | [Cart store, header icon and "Adicionar ao carrinho"](.scratch/storefront-v2/issues/08-cart-store-and-add-to-cart.md) | 07 | done |
 | 09 | [Cart page `/carrinho` and `POST /cart/summary`](.scratch/storefront-v2/issues/09-cart-page.md) | 03, 08 | ready-for-agent |
 | 10 | [Schema and pricing for multi-line purchases](.scratch/storefront-v2/issues/10-multi-item-purchases-schema.md) | 03 | ready-for-agent |
 | 11 | [Checkout and pay for a cart](.scratch/storefront-v2/issues/11-checkout-from-cart.md) | 09, 10, appmax-checkout 04, 05 | ready-for-agent |

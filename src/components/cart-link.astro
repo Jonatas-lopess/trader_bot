@@ -1,0 +1,27 @@
+---
+// Cart icon link — src/components/cart-link.astro
+//
+// The header's shopping-cart icon with a count badge, linking to `/carrinho` (storefront-v2 08).
+// The count lives in the browser's sessionStorage, so it is not rendered here: the badge starts
+// hidden and absolutely positioned (reserved by the icon box, so nothing shifts when it fills),
+// and src/shared/cart-client.ts fills it and sets the aria-label after load. Used twice in
+// site-header.astro (desktop nav and the mobile bar); the script updates every `[data-cart-link]`.
+// Labels come from src/content/header.ts — see docs/agents/content-files.md.
+import { ShoppingCart } from '@lucide/astro';
+import { cartLabelFor, cartLink } from '../content/header';
+---
+
+<a
+	href={cartLink.href}
+	data-cart-link
+	aria-label={cartLabelFor(0)}
+	class="relative inline-flex size-11 items-center justify-center rounded-md text-text-secondary transition-colors hover:text-text-primary"
+>
+	<ShoppingCart size={22} aria-hidden="true" />
+	<span
+		data-cart-count
+		hidden
+		aria-hidden="true"
+		class="absolute right-0.5 top-0.5 inline-flex min-w-5 items-center justify-center rounded-full bg-brand-primary px-1 text-caption font-bold leading-5 text-text-on-brand"
+	></span>
+</a>

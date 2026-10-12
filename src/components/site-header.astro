@@ -2,13 +2,15 @@
 // Site header — src/components/site-header.astro
 //
 // Brand lockup, primary nav (Como funciona / Catálogo / FAQ), the "Login"
-// link (src/content/header.ts, /login since ticket 02), a "Comprar agora"
+// link (src/content/header.ts, /login since ticket 02), the cart icon with its count
+// (cart-link.astro; also in the mobile bar, next to the menu button), a "Comprar agora"
 // CTA, and an
 // accessible mobile disclosure (no mobile artboard in Figma — derived per
 // ticket .scratch/marketing-pages/issues/03-site-shell.md). Content comes
 // from src/content/header.ts — see docs/agents/content-files.md.
 import { Menu, X } from '@lucide/astro';
 import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
+import CartLink from './cart-link.astro';
 ---
 
 <header class="sticky top-0 z-50 border-b border-border-subtle bg-surface-overlay">
@@ -34,6 +36,7 @@ import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
 			>
 				{loginLink.label}
 			</a>
+			<CartLink />
 			<a
 				href={ctaLink.href}
 				class="button-h-lg inline-flex items-center rounded-md bg-brand-primary px-6 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
@@ -42,18 +45,24 @@ import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
 			</a>
 		</nav>
 
-		<button
-			id="nav-toggle"
-			type="button"
-			class="button-h-sm inline-flex items-center justify-center rounded-md border border-border-subtle px-3 text-text-primary md:hidden"
-			aria-expanded="false"
-			aria-controls="mobile-nav"
-			aria-label="Abrir menu"
-		>
-			<Menu id="nav-toggle-icon-open" size={20} />
-			<X id="nav-toggle-icon-close" size={20} class="hidden" />
-		</button>
+		<div class="flex items-center gap-2 md:hidden">
+			<CartLink />
+			<button
+				id="nav-toggle"
+				type="button"
+				class="button-h-sm inline-flex items-center justify-center rounded-md border border-border-subtle px-3 text-text-primary"
+				aria-expanded="false"
+				aria-controls="mobile-nav"
+				aria-label="Abrir menu"
+			>
+				<Menu id="nav-toggle-icon-open" size={20} />
+				<X id="nav-toggle-icon-close" size={20} class="hidden" />
+			</button>
+		</div>
 	</div>
+
+	<!-- Announces "added to cart" to screen readers (src/shared/cart-client.ts). -->
+	<div data-cart-live aria-live="polite" class="sr-only"></div>
 
 	<nav
 		id="mobile-nav"
@@ -86,6 +95,11 @@ import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
 </header>
 
 <script>
+	// The cart count and every "Adicionar ao carrinho" button (storefront-v2 08).
+	import { initCart } from '../shared/cart-client';
+
+	initCart();
+
 	// Accessible disclosure: aria-expanded on the trigger, aria-controls
 	// pointing at the panel it owns, operable from click and keyboard
 	// (native <button> gives Enter/Space for free).

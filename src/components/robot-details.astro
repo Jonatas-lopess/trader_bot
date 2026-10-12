@@ -10,8 +10,8 @@
 // the details block opens inline, so the long description is never lost; with it, the dialog
 // script (robot-dialog.astro) clones this markup into the one <dialog> on demand. No fetch and
 // no JSON: every value reaches the page as escaped text from the D1 rows. The buy link carries
-// only `robot` + `offer` (ADR-0006). The cart button is hidden until robot-dialog.astro's script
-// reveals it, so it is never a dead control.
+// only `robot` + `offer` (ADR-0006). The cart button stays hidden until the cart script
+// (src/shared/cart-client.ts) marks the page cart-ready, so it is never a dead control.
 //
 // Content comes from src/content/catalog-page.ts — see docs/agents/content-files.md.
 import {
@@ -54,17 +54,16 @@ const withdrawalNote = cardWithdrawalNote(card);
 					<a
 						data-buy
 						href={buy.href}
-						class="button-h-sm inline-flex shrink-0 items-center sm:flex-1 justify-center rounded-sm bg-brand-primary px-4 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+						class="button-h-sm inline-flex shrink-0 items-center justify-center rounded-sm bg-brand-primary px-4 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover sm:flex-1"
 					>
 						{buy.label}
 					</a>
 					<button
 						type="button"
-						hidden
 						data-add-to-cart
 						data-robot={card.slug}
 						data-offer={offer.offer}
-						class="button-h-sm inline-flex shrink-0 items-center sm:flex-1 justify-center rounded-sm border border-border-subtle px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay"
+						class="button-h-sm hidden shrink-0 items-center justify-center rounded-sm border border-border-subtle px-4 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay sm:flex-1 in-data-cart-ready:inline-flex"
 					>
 						{addToCartLabel}
 					</button>

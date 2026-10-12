@@ -9,7 +9,7 @@
 //
 // "Saiba mais" is the <summary> of the card's `<details data-robot-more>`: with JavaScript the
 // click opens the modal (robot-dialog.astro); without it the details open inline in the card, so
-// the long description is never lost. The cart button is `hidden` until the cart script
+// the long description is never lost. The cart button stays hidden until the cart script
 // (src/shared/cart-client.ts) reveals it, so it is never a dead control. It names the Oferta it adds
 // (`data-offer`: Compra, else Anual), never a price (ADR-0006). A coming-soon Robô shows its
 // badge and "Saiba mais" only.
@@ -83,11 +83,10 @@ const addOffer = defaultOffer(card);
 			addOffer && (
 				<button
 					type="button"
-					hidden
 					data-add-to-cart
 					data-robot={card.slug}
 					data-offer={addOffer.offer}
-					class="button-h-sm mt-3 inline-flex w-full items-center justify-center rounded-sm bg-brand-primary px-4 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+					class="button-h-sm mt-3 hidden w-full items-center justify-center rounded-sm bg-brand-primary px-4 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover in-data-cart-ready:inline-flex"
 				>
 					{addToCartLabel}
 				</button>

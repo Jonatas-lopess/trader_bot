@@ -332,9 +332,12 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		for (const n of [1, 2]) {
 			const orderId = `ord_cat_repeat_m${n}`;
 			mockOutbound(orderId);
-			const purchase = await startCheckout(orderId, 'monthly');
-			await env.DB.prepare('UPDATE purchases SET appmax_subscription_id = ? WHERE id = ?')
-				.bind(`asub_cat_repeat_m${n}`, purchase.id)
+			// Mensal is on standby (ADR-0008): no checkout sells it, so seed existing subscriptions.
+			const purchase = { id: `cat-repeat-m${n}`, amount_cents: 9700 };
+			await env.DB.prepare(
+				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, appmax_order_id, appmax_subscription_id) VALUES (?, 'robo-exemplo-a', 'monthly', ?, 'pending', ?, ?)"
+			)
+				.bind(purchase.id, purchase.amount_cents, orderId, `asub_cat_repeat_m${n}`)
 				.run();
 			orderResponse = { status: 'aprovado', paymentMethod: 'cartao', email, subTotalCents: purchase.amount_cents };
 			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));

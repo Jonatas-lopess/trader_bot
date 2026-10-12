@@ -8,10 +8,10 @@
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A logged-in Cliente holding an `active` purchase can start a checkout for the same Robô (no 409)
-- [ ] The webhook no longer reports duplicates; the module and its tests are gone
-- [ ] A second purchase by the same email creates a second Licença under the same Cliente; both show in `/conta`, distinguishable
-- [ ] Corretora account entry, download and cancel work per Licença when two share a Robô
-- [ ] Typecheck and the full test suite pass
+- [x] A logged-in Cliente holding an `active` purchase can start a checkout for the same Robô (no 409)
+- [x] The webhook no longer reports duplicates; the module and its tests are gone
+- [x] A second purchase by the same email creates a second Licença under the same Cliente; both show in `/conta`, distinguishable
+- [x] Corretora account entry, download and cancel work per Licença when two share a Robô
+- [x] Typecheck and the full test suite pass

@@ -66,6 +66,18 @@ export const successMessage = launchBlocking(
 );
 export const whatsappLinkLabel = 'Continuar no WhatsApp';
 
+/**
+ * No-JS fallback (`/encomenda/resultado`): a plain form post lands on this page, success or error.
+ * Field errors reuse `fieldErrors`; the codes below cover failures that are not a field.
+ */
+export const resultPageTitle = 'Resultado da encomenda';
+export const resultErrorHeading = 'Não foi possível enviar a encomenda';
+export const backToFormLabel = 'Voltar ao formulário';
+export const resultErrorCodes = {
+	'rate-limited': rateLimitedMessage,
+	server: serverErrorMessage,
+} as const;
+
 /** WhatsApp number (digits, country code first) used until the `WHATSAPP_NUMBER` setting is set. */
 export const whatsappNumber = launchBlocking(
 	'5500000000000',

@@ -170,6 +170,11 @@ function resolveWhatsappNumber(env: Pick<EncomendaEnv, 'WHATSAPP_NUMBER'>): stri
 	return setting === undefined || setting === '' ? whatsappNumber.value : setting;
 }
 
+/** The "Continuar no WhatsApp" link without the lead's content (the no-JS result page carries none). */
+export function genericWhatsappHref(env: Pick<EncomendaEnv, 'WHATSAPP_NUMBER'>): string | null {
+	return buildWhatsappHref(resolveWhatsappNumber(env), whatsappText(null));
+}
+
 function whatsappText(input: EncomendaInput | null): string {
 	if (input === null) return whatsappSummary.intro;
 	const lines = [whatsappSummary.intro, `${whatsappSummary.name}: ${input.name}`];

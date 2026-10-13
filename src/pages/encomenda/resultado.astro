@@ -1,0 +1,67 @@
+---
+// /encomenda/resultado — src/pages/encomenda/resultado.astro
+//
+// storefront-v2 14, no-JS fallback. `POST /encomenda/enviar` redirects a plain browser form post
+// here: no `erro` means the Encomenda was received, otherwise `erro` lists field error codes (or
+// `rate-limited` / `server`). Server-rendered because it reads the query and the WHATSAPP_NUMBER
+// setting; the page carries none of the visitor's text. All copy comes from src/content/encomenda.ts.
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../../layouts/base-layout.astro';
+import {
+	backToFormLabel,
+	fieldErrors,
+	formErrorSummary,
+	pageDescription,
+	resultErrorCodes,
+	resultErrorHeading,
+	resultPageTitle,
+	successHeading,
+	successMessage,
+	whatsappLinkLabel,
+} from '../../content/encomenda';
+import { genericWhatsappHref } from '../../modules/orders/encomenda';
+
+export const prerender = false;
+
+const known: Record<string, string> = { ...fieldErrors, ...resultErrorCodes };
+const codes = (Astro.url.searchParams.get('erro') ?? '').split(',').filter((code) => Object.hasOwn(known, code));
+const failed = codes.length > 0;
+const messages = [...new Set(codes.map((code) => known[code]))];
+const whatsappHref = failed ? null : genericWhatsappHref(env);
+
+const buttonClass =
+	'button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover';
+---
+
+<BaseLayout title={resultPageTitle} description={pageDescription}>
+	<section class="content-row gutter-x mx-auto flex max-w-2xl flex-col items-start gap-6 py-12 md:py-20">
+		{
+			failed ? (
+				<>
+					<h1 class="text-heading-1 font-bold text-text-primary">{resultErrorHeading}</h1>
+					<div role="alert" class="flex flex-col gap-2 rounded-md bg-danger-subtle px-4 py-3 text-body-sm text-danger">
+						{codes.some((code) => Object.hasOwn(fieldErrors, code)) && <p>{formErrorSummary}</p>}
+						<ul class="list-disc pl-5">
+							{messages.map((message) => (
+								<li>{message}</li>
+							))}
+						</ul>
+					</div>
+					<a href="/encomenda" class={buttonClass}>
+						{backToFormLabel}
+					</a>
+				</>
+			) : (
+				<>
+					<h1 class="text-heading-1 font-bold text-text-primary">{successHeading}</h1>
+					<p class="text-body text-text-secondary">{successMessage.value}</p>
+					{whatsappHref && (
+						<a href={whatsappHref} rel="noopener noreferrer" class={buttonClass}>
+							{whatsappLinkLabel}
+						</a>
+					)}
+				</>
+			)
+		}
+	</section>
+</BaseLayout>

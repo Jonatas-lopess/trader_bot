@@ -8,12 +8,11 @@ import { env } from 'cloudflare:workers';
 import BaseLayout from '../../../layouts/base-layout.astro';
 import { formatBrl } from '../../../content/catalog-page';
 import { listAllRobots } from '../../../modules/catalog/admin';
-import { requireAdmin } from '../../../modules/identity/admin';
+import { gateAdmin } from '../../../modules/identity/admin';
 import {
 	draftPreviewNote,
 	editLabel,
-	flashKeys,
-	flashTexts,
+	flashText,
 	newRobotLabel,
 	notOffered,
 	offerFieldLabels,
@@ -27,26 +26,20 @@ import {
 	sortOrderColumn,
 	statusActions,
 	statusColumn,
-	statusErrorTexts,
+	statusErrorText,
 	statusLabels,
 	viewPublicLabel,
-	type FlashKey,
-	type StatusErrorKey,
 } from '../../../content/admin';
 
 export const prerender = false;
 
-const admin = await requireAdmin(Astro.request, env);
-if (!admin.ok) return new Response(null, { status: 404 });
-
-Astro.response.headers.set('Cache-Control', 'private, no-store');
+const gate = await gateAdmin(Astro.request, env, { headers: Astro.response.headers });
+if (!gate.ok) return gate.response;
 
 const robots = await listAllRobots(env);
 
-const okParam = Astro.url.searchParams.get('ok');
-const flash = okParam !== null && (flashKeys as string[]).includes(okParam) ? flashTexts[okParam as FlashKey] : null;
-const errorParam = Astro.url.searchParams.get('error');
-const failure = errorParam !== null && errorParam in statusErrorTexts ? statusErrorTexts[errorParam as StatusErrorKey] : null;
+const flash = flashText(Astro.url.searchParams.get('ok'));
+const failure = statusErrorText(Astro.url.searchParams.get('error'));
 ---
 
 <BaseLayout title={robotsPageTitle} description={robotsPageDescription} shell="admin">

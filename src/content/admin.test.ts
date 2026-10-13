@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { adminSections, ageLabel, deadLettersCount, emails } from './admin';
+import { adminSections, ageLabel, deadLettersCount, emails, flashText, statusErrorText } from './admin';
 
 describe('admin content', () => {
 	it('registers the dead-letter page as an in-area section', () => {
@@ -20,6 +20,15 @@ describe('admin content', () => {
 	it('has a flash line for every resend outcome', () => {
 		for (const key of ['ok', 'failed', 'busy', 'already-resolved', 'no-body', 'not-found']) {
 			expect(emails.flash).toHaveProperty(key);
+		}
+	});
+
+	it('looks up the robos flash and failure lines, null for absent or unknown keys', () => {
+		expect(flashText('created')).toMatch(/criado/);
+		expect(statusErrorText('not-found')).toMatch(/não encontrado/);
+		for (const key of [null, '', 'nope', 'toString']) {
+			expect(flashText(key)).toBeNull();
+			expect(statusErrorText(key)).toBeNull();
 		}
 	});
 

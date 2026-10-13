@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { setRobotStatus } from '../../../../modules/catalog/admin';
-import { assertSameOrigin, requireAdmin } from '../../../../modules/identity/admin';
+import { gateAdmin } from '../../../../modules/identity/admin';
 
 export const prerender = false;
 
@@ -9,9 +9,8 @@ export const prerender = false;
 // (storefront-v2 05). POST only, so a cross-site GET can never change a status. Not an admin is
 // an empty 404 (the area's existence stays hidden); a foreign Origin is 403.
 export const POST: APIRoute = async ({ request, params, url }) => {
-	const admin = await requireAdmin(request, env);
-	if (!admin.ok) return new Response(null, { status: 404 });
-	if (!assertSameOrigin(request).ok) return new Response(null, { status: 403 });
+	const gate = await gateAdmin(request, env, { checkOrigin: true });
+	if (!gate.ok) return gate.response;
 
 	const form = await request.formData();
 	const status = form.get('status');

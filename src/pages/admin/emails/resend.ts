@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
-import { assertSameOrigin, requireAdmin } from '../../../modules/identity/admin';
+import { gateAdmin } from '../../../modules/identity/admin';
 import { resendDeadLetter } from '../../../modules/identity/send-with-dead-letter';
 
 export const prerender = false;
@@ -9,9 +9,8 @@ export const prerender = false;
 // of /admin; an admin whose Origin does not match gets 403 (see `assertSameOrigin`). Redirects
 // back to the list with the outcome, so a reload does not resend (POST, redirect, GET).
 export const POST: APIRoute = async ({ request, url }) => {
-	const admin = await requireAdmin(request, env);
-	if (!admin.ok) return new Response(null, { status: 404 });
-	if (!assertSameOrigin(request).ok) return new Response(null, { status: 403 });
+	const gate = await gateAdmin(request, env, { checkOrigin: true });
+	if (!gate.ok) return gate.response;
 
 	const form = await request.formData();
 	const id = form.get('id');

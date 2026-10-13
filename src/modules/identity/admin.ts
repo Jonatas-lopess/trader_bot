@@ -70,6 +70,25 @@ export function assertSameOrigin(request: Request): { ok: true } | { ok: false }
 }
 
 /**
+ * The preamble every admin page and route shares: `requireAdmin` (any non-admin is an empty
+ * 404), then, when `checkOrigin` is set, `assertSameOrigin` (a foreign Origin is 403, so the
+ * order stays "not admin" before "wrong origin"). On success `headers` (a page's
+ * `Astro.response.headers`) gets `Cache-Control: private, no-store`. A caller returns
+ * `gate.response` as is when `gate.ok` is false.
+ */
+export async function gateAdmin(
+	request: Request,
+	env: AdminEnv,
+	options: { checkOrigin?: boolean; headers?: Headers } = {}
+): Promise<{ ok: true; admin: { customerId: string; email: string } } | { ok: false; response: Response }> {
+	const admin = await requireAdmin(request, env);
+	if (!admin.ok) return { ok: false, response: new Response(null, { status: 404 }) };
+	if (options.checkOrigin && !assertSameOrigin(request).ok) return { ok: false, response: new Response(null, { status: 403 }) };
+	options.headers?.set('Cache-Control', 'private, no-store');
+	return { ok: true, admin: { customerId: admin.customerId, email: admin.email } };
+}
+
+/**
  * Where a freshly signed-in Cliente lands. An allowlisted address with no purchases has no
  * `/conta` (it redirects to `/login`), so it goes to `/admin`; an admin who also bought keeps
  * `/conta`, the page they were sent to before this gate existed.

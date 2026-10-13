@@ -9,7 +9,7 @@ import { env } from 'cloudflare:workers';
 import AdminRobotForm from '../../../components/admin-robot-form.astro';
 import BaseLayout from '../../../layouts/base-layout.astro';
 import { createRobot, emptyRobotForm, readRobotForm, type FieldErrors } from '../../../modules/catalog/admin';
-import { assertSameOrigin, requireAdmin } from '../../../modules/identity/admin';
+import { gateAdmin } from '../../../modules/identity/admin';
 import {
 	backToListLabel,
 	createSubmitLabel,
@@ -21,11 +21,8 @@ import {
 
 export const prerender = false;
 
-const admin = await requireAdmin(Astro.request, env);
-if (!admin.ok) return new Response(null, { status: 404 });
-if (!assertSameOrigin(Astro.request).ok) return new Response(null, { status: 403 });
-
-Astro.response.headers.set('Cache-Control', 'private, no-store');
+const gate = await gateAdmin(Astro.request, env, { checkOrigin: true, headers: Astro.response.headers });
+if (!gate.ok) return gate.response;
 
 let values = emptyRobotForm;
 let errors: FieldErrors = {};

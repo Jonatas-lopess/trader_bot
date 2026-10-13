@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
-import { assertSameOrigin, isAdminEmail, landingPathAfterLogin, requireAdmin } from './admin';
+import { assertSameOrigin, gateAdmin, isAdminEmail, landingPathAfterLogin, requireAdmin } from './admin';
 import { createSession, revokeSession, SESSION_COOKIE_NAME } from './session';
 
 async function seedCustomerRow(id: string, email: string): Promise<void> {
@@ -128,6 +128,68 @@ describe('assertSameOrigin', () => {
 	it('does not look at Origin on safe methods', () => {
 		expect(assertSameOrigin(new Request('https://example.com/admin'))).toEqual({ ok: true });
 		expect(assertSameOrigin(request({ Origin: 'https://evil.example' }, 'GET'))).toEqual({ ok: true });
+	});
+});
+
+describe('gateAdmin', () => {
+	const post = (cookie: string | null, origin: string | null) =>
+		new Request('https://example.com/admin/robos/new', {
+			method: 'POST',
+			headers: { ...(cookie ? { Cookie: cookie } : {}), ...(origin ? { Origin: origin } : {}) },
+		});
+
+	it('answers an empty 404 to a visitor with no session, before looking at the Origin', async () => {
+		const gate = await gateAdmin(post(null, 'https://evil.example'), withAdmins('boss@example.com'), { checkOrigin: true });
+
+		expect(gate.ok).toBe(false);
+		if (gate.ok) return;
+		expect(gate.response.status).toBe(404);
+		expect(await gate.response.text()).toBe('');
+	});
+
+	it('answers an empty 404 to a signed-in non-admin', async () => {
+		await seedCustomerRow('cust-gate-1', 'buyer-gate@example.com');
+		const { request } = await sessionRequest('cust-gate-1');
+
+		const gate = await gateAdmin(request, withAdmins('boss@example.com'));
+
+		expect(gate.ok).toBe(false);
+		if (!gate.ok) expect(gate.response.status).toBe(404);
+	});
+
+	it('answers 403 to an admin whose Origin is foreign, only when the origin is checked', async () => {
+		await seedCustomerRow('cust-gate-2', 'boss-gate@example.com');
+		const { cookieValue } = await createSession(env, 'cust-gate-2');
+		const cookie = `${SESSION_COOKIE_NAME}=${cookieValue}`;
+		const adminEnv = withAdmins('boss-gate@example.com');
+
+		const checked = await gateAdmin(post(cookie, 'https://evil.example'), adminEnv, { checkOrigin: true });
+		expect(checked.ok).toBe(false);
+		if (!checked.ok) expect(checked.response.status).toBe(403);
+
+		expect((await gateAdmin(post(cookie, 'https://evil.example'), adminEnv)).ok).toBe(true);
+	});
+
+	it('lets an admin through and marks the page response private, no-store', async () => {
+		await seedCustomerRow('cust-gate-3', 'boss-gate3@example.com');
+		const { cookieValue } = await createSession(env, 'cust-gate-3');
+		const headers = new Headers();
+
+		const gate = await gateAdmin(post(`${SESSION_COOKIE_NAME}=${cookieValue}`, 'https://example.com'), withAdmins('boss-gate3@example.com'), {
+			checkOrigin: true,
+			headers,
+		});
+
+		expect(gate).toEqual({ ok: true, admin: { customerId: 'cust-gate-3', email: 'boss-gate3@example.com' } });
+		expect(headers.get('Cache-Control')).toBe('private, no-store');
+	});
+
+	it('sets no header when the gate refuses', async () => {
+		const headers = new Headers();
+
+		await gateAdmin(post(null, null), withAdmins('boss@example.com'), { headers });
+
+		expect(headers.get('Cache-Control')).toBeNull();
 	});
 });
 

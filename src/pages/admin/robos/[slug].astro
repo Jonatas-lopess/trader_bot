@@ -16,25 +16,20 @@ import {
 	updateRobot,
 	type FieldErrors,
 } from '../../../modules/catalog/admin';
-import { assertSameOrigin, requireAdmin } from '../../../modules/identity/admin';
+import { gateAdmin } from '../../../modules/identity/admin';
 import {
 	backToListLabel,
 	editRobotHeading,
-	flashKeys,
-	flashTexts,
+	flashText,
 	robotsPageDescription,
 	saveSubmitLabel,
 	viewPublicLabel,
-	type FlashKey,
 } from '../../../content/admin';
 
 export const prerender = false;
 
-const admin = await requireAdmin(Astro.request, env);
-if (!admin.ok) return new Response(null, { status: 404 });
-if (!assertSameOrigin(Astro.request).ok) return new Response(null, { status: 403 });
-
-Astro.response.headers.set('Cache-Control', 'private, no-store');
+const gate = await gateAdmin(Astro.request, env, { checkOrigin: true, headers: Astro.response.headers });
+if (!gate.ok) return gate.response;
 
 const slug = Astro.params.slug ?? '';
 const robot = await getRobotForAdmin(env, slug);
@@ -53,8 +48,7 @@ if (Astro.request.method === 'POST') {
 	Astro.response.status = 422;
 }
 
-const okParam = Astro.url.searchParams.get('ok');
-const flash = okParam !== null && (flashKeys as string[]).includes(okParam) ? flashTexts[okParam as FlashKey] : null;
+const flash = flashText(Astro.url.searchParams.get('ok'));
 const heading = editRobotHeading(robot.name);
 ---
 

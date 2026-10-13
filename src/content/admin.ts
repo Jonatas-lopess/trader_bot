@@ -199,8 +199,9 @@ export const flashTexts = {
 	'status-coming-soon': 'Robô marcado como em breve.',
 	'status-archived': 'Robô arquivado.',
 } as const;
-export type FlashKey = keyof typeof flashTexts;
-export const flashKeys = Object.keys(flashTexts) as FlashKey[];
+/** The flash line for a `?ok=` value; null for an absent or unknown one. */
+export const flashText = (param: string | null): string | null =>
+	param !== null && Object.hasOwn(flashTexts, param) ? flashTexts[param as keyof typeof flashTexts] : null;
 
 /** Failed status changes (`?error=`). */
 export const statusErrorTexts = {
@@ -208,4 +209,6 @@ export const statusErrorTexts = {
 	'invalid-status': 'Status inválido.',
 	'not-found': 'Robô não encontrado.',
 } as const;
-export type StatusErrorKey = keyof typeof statusErrorTexts;
+/** The failure line for a `?error=` value; null for an absent or unknown one. */
+export const statusErrorText = (param: string | null): string | null =>
+	param !== null && Object.hasOwn(statusErrorTexts, param) ? statusErrorTexts[param as keyof typeof statusErrorTexts] : null;

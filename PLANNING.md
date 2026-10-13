@@ -496,7 +496,8 @@ the requester, through the e-mail dead letter); unset or invalid still stores th
 `custom_orders` and logs a warning. `WHATSAPP_NUMBER` (digits, country code first) is the target
 of the success state's "Continuar no WhatsApp" link; unset falls back to the `launchBlocking`
 placeholder in `src/content/encomenda.ts`. Both ship empty in `wrangler.jsonc`; a deploy supplies
-them with `--var`. `ENCOMENDA_RATE_LIMITER` (3 per 60 s per IP) throttles the form's endpoint.
+them with `--var` (the CI deploy reads each from the `dev` Environment variable of the same name,
+like `ADMIN_EMAILS`, and passes it only when set, so an unset variable does not blank a dashboard value). `ENCOMENDA_RATE_LIMITER` (3 per 60 s per IP) throttles the form's endpoint.
 
 **Done:**
 

@@ -106,7 +106,10 @@ jobs:
           # (src/shared/sentry-environment.ts, sentry-integration/issues/07).
           # ADMIN_EMAILS (comma-separated admin allowlist, modules/identity/admin.ts) follows
           # the same pattern: wrangler.jsonc ships it empty (nobody is admin), the "dev"
-          # Environment variable supplies the real list.
+          # Environment variable supplies the real list. ORDER_NOTIFY_EMAIL and WHATSAPP_NUMBER
+          # (/encomenda, modules/orders/encomenda.ts) ship empty the same way, so each is passed
+          # only when its same-named Environment variable is set; otherwise a deploy would blank
+          # a value set in the Cloudflare dashboard.
           # SENTRY_RELEASE is the commit SHA, matching the release the build step
           # uploaded source maps under (@sentry/cloudflare reads it off the env).
           #
@@ -115,4 +118,4 @@ jobs:
           # setting this "dev" Environment variable (e.g. to
           # `workers-dev-test`) only sharpens the dashboard label, it isn't
           # required for the test-phase deploy to stop reading as production.
-          command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}${{ vars.SENTRY_ENVIRONMENT && format(' --var SENTRY_ENVIRONMENT:{0}', vars.SENTRY_ENVIRONMENT) || '' }}${{ vars.ADMIN_EMAILS && format(' --var ADMIN_EMAILS:{0}', vars.ADMIN_EMAILS) || '' }} --var SENTRY_RELEASE:${{ github.sha }}
+          command: deploy${{ vars.PAYMENT_PROVIDER && format(' --var PAYMENT_PROVIDER:{0}', vars.PAYMENT_PROVIDER) || '' }}${{ vars.SENTRY_ENVIRONMENT && format(' --var SENTRY_ENVIRONMENT:{0}', vars.SENTRY_ENVIRONMENT) || '' }}${{ vars.ADMIN_EMAILS && format(' --var ADMIN_EMAILS:{0}', vars.ADMIN_EMAILS) || '' }}${{ vars.ORDER_NOTIFY_EMAIL && format(' --var ORDER_NOTIFY_EMAIL:{0}', vars.ORDER_NOTIFY_EMAIL) || '' }}${{ vars.WHATSAPP_NUMBER && format(' --var WHATSAPP_NUMBER:{0}', vars.WHATSAPP_NUMBER) || '' }} --var SENTRY_RELEASE:${{ github.sha }}

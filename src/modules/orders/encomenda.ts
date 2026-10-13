@@ -241,11 +241,11 @@ export async function submitEncomenda(
 	env: EncomendaEnv,
 	params: { fields: unknown; ip: string }
 ): Promise<SubmitEncomendaResult> {
-	const whatsappNumberToUse = resolveWhatsappNumber(env);
+	const resolvedWhatsappNumber = resolveWhatsappNumber(env);
 	const fields = typeof params.fields === 'object' && params.fields !== null ? (params.fields as Record<string, unknown>) : {};
 
 	if (!isBlank(fields[HONEYPOT_FIELD])) {
-		return { ok: true, whatsappHref: buildWhatsappHref(whatsappNumberToUse, whatsappText(null)) };
+		return { ok: true, whatsappHref: buildWhatsappHref(resolvedWhatsappNumber, whatsappText(null)) };
 	}
 
 	const normalized = normalizeEncomendaInput(fields);
@@ -269,5 +269,5 @@ export async function submitEncomenda(
 	}
 
 	await notifyOperator(env, id, input);
-	return { ok: true, whatsappHref: buildWhatsappHref(whatsappNumberToUse, whatsappText(input)) };
+	return { ok: true, whatsappHref: buildWhatsappHref(resolvedWhatsappNumber, whatsappText(input)) };
 }

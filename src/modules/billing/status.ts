@@ -14,7 +14,7 @@ export type PurchaseStatusResult =
 	| { ok: true; state: PurchaseState }
 	| { ok: false; status: 404 };
 
-type CheckoutRow = { status: PurchaseStatus; paymentMethod: string | null };
+type CheckoutStatusRow = { status: PurchaseStatus; paymentMethod: string | null };
 
 /**
  * One state for the rows of a checkout (ADR-0008: one row per Licença, the rows of an order
@@ -27,7 +27,7 @@ type CheckoutRow = { status: PurchaseStatus; paymentMethod: string | null };
  * A one-row checkout returns its own status, so single purchases behave as they always did.
  * `null` for no rows.
  */
-export function aggregateCheckoutStatus(rows: readonly CheckoutRow[]): PurchaseState | null {
+export function aggregateCheckoutStatus(rows: readonly CheckoutStatusRow[]): PurchaseState | null {
 	if (rows.length === 0) return null;
 	if (rows.some((row) => row.status === 'rejected')) return 'rejected';
 	const pending = rows.find((row) => row.status === 'pending');

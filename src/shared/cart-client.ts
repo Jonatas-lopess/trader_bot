@@ -10,7 +10,8 @@
 
 import { addedAnnouncement, addedFeedbackMs, addedLabel } from '../content/cart';
 import { cartBadgeText, cartLabelFor } from '../content/header';
-import { cartCount, getCartStore, isCartOffer } from './cart-store';
+import { isCartOffer } from './cart-limits';
+import { cartCount, getCartStore } from './cart-store';
 
 const renderCount = (count: number) => {
 	for (const link of document.querySelectorAll<HTMLElement>('[data-cart-link]')) {

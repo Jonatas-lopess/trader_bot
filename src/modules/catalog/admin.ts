@@ -13,14 +13,12 @@
  * `purchases.amount_cents`: that column is a snapshot written at checkout.
  */
 
-import { ROBOT_COLUMNS, toRobot, type OfferName, type Robot, type RobotOffer, type RobotRow, type RobotStatus } from './robots';
+import { CART_OFFERS, SLUG_PATTERN } from '../../shared/cart-limits';
+import { OFFER_ORDER_SQL, ROBOT_COLUMNS, groupOffersBySlug, toRobot, type OfferName, type Robot, type RobotOffer, type RobotRow, type RobotStatus } from './robots';
 
 type CatalogAdminEnv = Pick<Cloudflare.Env, 'DB'>;
 
 export const robotStatuses: RobotStatus[] = ['draft', 'available', 'coming-soon', 'archived'];
-
-/** Compra first, then Anual: the order the form and the catalog list them. */
-export const adminOffers: OfferName[] = ['one_time', 'annual'];
 
 /** R$ 100.000,00: a typo guard, not a business rule. */
 export const maxPriceCents = 10_000_000;
@@ -176,8 +174,18 @@ export type RobotWrite = {
 	offers: RobotOffer[];
 };
 
-const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const MAX_LABELS = 12;
+
+/** Longest accepted text per form field, in characters. */
+const ROBOT_LIMITS = {
+	slug: 60,
+	name: 80,
+	shortDescription: 200,
+	longDescription: 5000,
+	strategyType: 60,
+	perfil: 80,
+	label: 60,
+} as const;
 
 function labelList(text: string): string[] {
 	const seen = new Set<string>();
@@ -212,21 +220,21 @@ export function validateRobotForm(
 	const labels = (field: 'market' | 'supportedCorretoras'): string[] | null => {
 		const list = labelList(input[field]);
 		if (list.length > MAX_LABELS) errors[field] = 'too-many';
-		else if (list.some((label) => label.length > 60)) errors[field] = 'too-long';
+		else if (list.some((label) => label.length > ROBOT_LIMITS.label)) errors[field] = 'too-long';
 		return list.length > 0 ? list : null;
 	};
 
 	const slug = input.slug.trim().toLowerCase();
 	if (slug === '') errors.slug = 'required';
-	else if (slug.length > 60 || !SLUG_PATTERN.test(slug)) errors.slug = 'slug-format';
+	else if (slug.length > ROBOT_LIMITS.slug || !SLUG_PATTERN.test(slug)) errors.slug = 'slug-format';
 	else if (reservedSlugs.has(slug)) errors.slug = 'slug-reserved';
 
-	const name = text('name', 80);
-	const shortDescription = text('shortDescription', 200);
-	const longDescription = optionalText('longDescription', 5000);
-	const strategyType = text('strategyType', 60);
+	const name = text('name', ROBOT_LIMITS.name);
+	const shortDescription = text('shortDescription', ROBOT_LIMITS.shortDescription);
+	const longDescription = optionalText('longDescription', ROBOT_LIMITS.longDescription);
+	const strategyType = text('strategyType', ROBOT_LIMITS.strategyType);
 	const market = labels('market');
-	const perfil = optionalText('perfil', 80);
+	const perfil = optionalText('perfil', ROBOT_LIMITS.perfil);
 	const supportedCorretoras = labels('supportedCorretoras');
 
 	const status = input.status as RobotStatus;
@@ -240,7 +248,7 @@ export function validateRobotForm(
 	}
 
 	const offers: RobotOffer[] = [];
-	for (const offer of adminOffers) {
+	for (const offer of CART_OFFERS) {
 		const parsed = parsePriceToCents(input.prices[offer]);
 		if (!parsed.ok) errors[`price_${offer}`] = parsed.error;
 		else if (parsed.cents !== null) offers.push({ offer, priceCents: parsed.cents });
@@ -278,14 +286,10 @@ export type AdminRobot = Robot & { offers: RobotOffer[] };
 async function offersBySlug(env: CatalogAdminEnv, slug?: string): Promise<Map<string, RobotOffer[]>> {
 	const sql = `SELECT robot_slug AS slug, offer, price_cents AS priceCents FROM robot_offers
 		${slug === undefined ? '' : 'WHERE robot_slug = ?'}
-		ORDER BY CASE offer WHEN 'one_time' THEN 0 ELSE 1 END`;
+		ORDER BY ${OFFER_ORDER_SQL}`;
 	const statement = env.DB.prepare(sql);
 	const { results } = await (slug === undefined ? statement : statement.bind(slug)).all<RobotOffer & { slug: string }>();
-	const bySlug = new Map<string, RobotOffer[]>();
-	for (const { slug: robotSlug, offer, priceCents } of results) {
-		bySlug.set(robotSlug, [...(bySlug.get(robotSlug) ?? []), { offer, priceCents }]);
-	}
-	return bySlug;
+	return groupOffersBySlug(results);
 }
 
 /** Every Robô, whatever its status, by `sort_order` then slug. */

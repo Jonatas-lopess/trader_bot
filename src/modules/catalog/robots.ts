@@ -10,12 +10,14 @@
  * admin so a draft can be previewed as the real card. The write side is `./admin.ts`.
  */
 
+import type { CartOffer } from '../../shared/cart-limits';
+
 type CatalogEnv = Pick<Cloudflare.Env, 'DB'>;
 
 export type RobotStatus = 'draft' | 'available' | 'coming-soon' | 'archived';
 
 /** Compra and Anual only: Mensal is on standby (ADR-0008) and `robot_offers` rejects it. */
-export type OfferName = 'one_time' | 'annual';
+export type OfferName = CartOffer;
 
 /**
  * The Oferta stored on a purchase. Wider than `OfferName`: the catalog no longer sells Mensal,
@@ -99,6 +101,18 @@ const PREVIEW_STATUSES = `${PUBLISHED_STATUSES}, 'draft'`;
 const SELLING_STATUSES = "'available'";
 const PREVIEW_SELLING_STATUSES = "'available', 'draft'";
 
+/** Compra before Anual, for any query over `robot_offers` (`offer` is unambiguous even when joined to `robots`). */
+export const OFFER_ORDER_SQL = "CASE offer WHEN 'one_time' THEN 0 ELSE 1 END";
+
+/** Groups Oferta rows by Robô slug, keeping the rows' order. */
+export function groupOffersBySlug(rows: readonly (RobotOffer & { slug: string })[]): Map<string, RobotOffer[]> {
+	const bySlug = new Map<string, RobotOffer[]>();
+	for (const { slug, offer, priceCents } of rows) {
+		bySlug.set(slug, [...(bySlug.get(slug) ?? []), { offer, priceCents }]);
+	}
+	return bySlug;
+}
+
 /** Robôs on the public catalog (`available` and `coming-soon`), by `sort_order` then slug. */
 export async function listPublished(env: CatalogEnv, options: { includeDrafts?: boolean } = {}): Promise<Robot[]> {
 	const statuses = options.includeDrafts ? PREVIEW_STATUSES : PUBLISHED_STATUSES;
@@ -111,7 +125,7 @@ export async function listPublished(env: CatalogEnv, options: { includeDrafts?: 
 /** A published Robô by slug; `null` for unknown, draft and archived. */
 export async function getPublishedBySlug(env: CatalogEnv, slug: string): Promise<Robot | null> {
 	const row = await env.DB.prepare(
-		`SELECT ${ROBOT_COLUMNS} FROM robots WHERE slug = ? AND status IN ('available', 'coming-soon')`
+		`SELECT ${ROBOT_COLUMNS} FROM robots WHERE slug = ? AND status IN (${PUBLISHED_STATUSES})`
 	)
 		.bind(slug)
 		.first<RobotRow>();
@@ -124,7 +138,7 @@ export async function listOffersFor(env: CatalogEnv, slug: string): Promise<Robo
 		`SELECT o.offer AS offer, o.price_cents AS priceCents
 		FROM robot_offers o JOIN robots r ON r.slug = o.robot_slug
 		WHERE o.robot_slug = ? AND r.status = 'available'
-		ORDER BY CASE o.offer WHEN 'one_time' THEN 0 ELSE 1 END`
+		ORDER BY ${OFFER_ORDER_SQL}`
 	)
 		.bind(slug)
 		.all<RobotOffer>();
@@ -150,13 +164,10 @@ export async function listPublishedWithOffers(
 			`SELECT o.robot_slug AS slug, o.offer AS offer, o.price_cents AS priceCents
 			FROM robot_offers o JOIN robots r ON r.slug = o.robot_slug
 			WHERE r.status IN (${selling})
-			ORDER BY CASE o.offer WHEN 'one_time' THEN 0 ELSE 1 END`
+			ORDER BY ${OFFER_ORDER_SQL}`
 		).all<RobotOffer & { slug: string }>(),
 	]);
-	const bySlug = new Map<string, RobotOffer[]>();
-	for (const { slug, offer, priceCents } of offerRows) {
-		bySlug.set(slug, [...(bySlug.get(slug) ?? []), { offer, priceCents }]);
-	}
+	const bySlug = groupOffersBySlug(offerRows);
 	return robots.map((robot) => ({ ...robot, offers: bySlug.get(robot.slug) ?? [] }));
 }
 

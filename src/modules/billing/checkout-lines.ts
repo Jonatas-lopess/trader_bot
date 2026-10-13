@@ -8,7 +8,7 @@
 import type { OfferName } from '../catalog/robots';
 
 /** A line whose unit price was already read from the catalog. `quantity` is a positive integer. */
-export type PricedLine = { robotId: string; offer: OfferName; name: string; unitCents: number; quantity: number };
+export type PricedCheckoutLine = { robotId: string; offer: OfferName; name: string; unitCents: number; quantity: number };
 
 /** What becomes one `purchases` row: one Licença. */
 export type CheckoutRow = { robotId: string; offer: OfferName; amountCents: number };
@@ -23,7 +23,7 @@ export type ExpandedCheckout = { rows: CheckoutRow[]; totalCents: number; produc
  * the sum of the rows' `amountCents` equals the sum of `quantity * unit_value` over `products`
  * (Appmax's `amounts.sub_total`, which the webhook compares against, ticket 12).
  */
-export function expandLines(lines: readonly PricedLine[]): ExpandedCheckout {
+export function expandLines(lines: readonly PricedCheckoutLine[]): ExpandedCheckout {
 	const rows: CheckoutRow[] = [];
 	const products: AppmaxProduct[] = [];
 	for (const { robotId, offer, name, unitCents, quantity } of lines) {

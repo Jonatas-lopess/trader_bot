@@ -18,8 +18,9 @@ import {
 	unitPriceSuffix,
 } from '../content/cart';
 import { formatBrl, offerLabels } from '../content/catalog-page';
-import type { CartSummary, PricedLine } from '../modules/catalog/price-cart';
-import { MAX_QUANTITY, getCartStore } from './cart-store';
+import type { CartSummary, PricedCartLine } from '../modules/catalog/price-cart';
+import { MAX_LINE_QUANTITY } from './cart-limits';
+import { getCartStore } from './cart-store';
 
 type PageState = 'loading' | 'empty' | 'error' | 'ready';
 
@@ -51,7 +52,7 @@ export const initCartPage = (): void => {
 
 	const key = (robot: string, offer: string) => `${robot}|${offer}`;
 
-	const fill = (line: PricedLine): HTMLElement => {
+	const fill = (line: PricedCartLine): HTMLElement => {
 		const item = (template.content.cloneNode(true) as DocumentFragment).querySelector<HTMLElement>('[data-cart-line]')!;
 		const field = (name: string) => item.querySelector<HTMLElement>(`[data-field="${name}"]`)!;
 		// The slug stands in for the name of a Robô the catalog does not publish.
@@ -69,7 +70,7 @@ export const initCartPage = (): void => {
 		increase.setAttribute('aria-label', increaseLabel(label));
 		remove.setAttribute('aria-label', removeLabelFor(label));
 		decrease.disabled = line.quantity <= 1;
-		increase.disabled = line.quantity >= MAX_QUANTITY;
+		increase.disabled = line.quantity >= MAX_LINE_QUANTITY;
 
 		if (line.available && line.lineCents !== null && line.unitCents !== null) {
 			field('line-price').textContent = formatBrl(line.lineCents);

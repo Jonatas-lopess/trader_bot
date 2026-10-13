@@ -5,29 +5,25 @@
  * rejects the whole checkout, never a partial one.
  */
 
+import { MAX_LINE_QUANTITY, MAX_LINES } from '../../shared/cart-limits';
 import { listRobotNames, lookupOffer, type OfferName } from '../catalog/robots';
-import { expandLines, type ExpandedCheckout, type PricedLine } from './checkout-lines';
+import { expandLines, type ExpandedCheckout, type PricedCheckoutLine } from './checkout-lines';
 
 type PriceEnv = Pick<Cloudflare.Env, 'DB'>;
 
 /** An untrusted cart line, as parsed from a request body. */
-export type CartLine = { robotId: unknown; offer: unknown; quantity: unknown };
-
-/** Per-line cap (the tickets assume 5, ADR-0008 "Open"); the cart store enforces the same number client-side. */
-export const MAX_LINE_QUANTITY = 5;
-/** Bounds the D1 reads one request can cause. */
-export const MAX_LINES = 20;
+export type RawCheckoutLine = { robotId: unknown; offer: unknown; quantity: unknown };
 
 export type PriceCheckoutResult =
 	| ({ ok: true } & ExpandedCheckout)
 	| { ok: false; reason: 'empty' | 'too_many_lines' | 'invalid_quantity' | 'unknown_robot' | 'unknown_offer'; line?: number };
 
-export async function priceCheckout(env: PriceEnv, lines: readonly CartLine[]): Promise<PriceCheckoutResult> {
+export async function priceCheckout(env: PriceEnv, lines: readonly RawCheckoutLine[]): Promise<PriceCheckoutResult> {
 	if (lines.length === 0) return { ok: false, reason: 'empty' };
 	if (lines.length > MAX_LINES) return { ok: false, reason: 'too_many_lines' };
 
 	const names = await listRobotNames(env);
-	const priced: PricedLine[] = [];
+	const priced: PricedCheckoutLine[] = [];
 	for (const [index, line] of lines.entries()) {
 		const { robotId, offer, quantity } = line;
 		if (typeof quantity !== 'number' || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_LINE_QUANTITY) {

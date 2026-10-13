@@ -11,38 +11,21 @@
  * No price in the request is ever read: a line's fields are picked, not spread.
  */
 
-import { MAX_LINE_QUANTITY, MAX_LINES } from '../billing/price-checkout';
-import { listPublishedWithOffers, type OfferName, type PublishedRobot } from './robots';
-
-// The caps are checkout's own (modules/billing/price-checkout.ts), so a cart this endpoint
-// accepts is never one checkout rejects for size.
-export { MAX_LINE_QUANTITY };
+import { MAX_LINE_QUANTITY, MAX_LINES, isCartOffer, isCartSlug, type CartLine } from '../../shared/cart-limits';
+import { listPublishedWithOffers, type PublishedRobot } from './robots';
 
 type SummaryEnv = Pick<Cloudflare.Env, 'DB' | 'CART_RATE_LIMITER'>;
 
-export const MAX_CART_LINES = MAX_LINES;
 const MAX_BODY_CHARS = 8192;
-const MAX_SLUG_LENGTH = 64;
-const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-export const CART_OFFERS: readonly OfferName[] = ['one_time', 'annual'];
-
-export const isCartSlug = (value: unknown): value is string =>
-	typeof value === 'string' && value.length <= MAX_SLUG_LENGTH && SLUG.test(value);
-
-export const isCartOffer = (value: unknown): value is OfferName => CART_OFFERS.includes(value as OfferName);
-
-export type CartInputLine = { robot: string; offer: OfferName; quantity: number };
-
-export type ParseCartResult = { ok: true; lines: CartInputLine[] } | { ok: false };
+export type ParseCartResult = { ok: true; lines: CartLine[] } | { ok: false };
 
 /** Validates an untrusted `{lines: [...]}`; anything off is `{ok: false}` (the endpoint's 400). */
 export const parseCartLines = (body: unknown): ParseCartResult => {
 	if (typeof body !== 'object' || body === null || Array.isArray(body)) return { ok: false };
 	const raw = (body as { lines?: unknown }).lines;
-	if (!Array.isArray(raw) || raw.length > MAX_CART_LINES) return { ok: false };
+	if (!Array.isArray(raw) || raw.length > MAX_LINES) return { ok: false };
 
-	const lines: CartInputLine[] = [];
+	const lines: CartLine[] = [];
 	for (const item of raw) {
 		if (typeof item !== 'object' || item === null) return { ok: false };
 		const { robot, offer, quantity } = item as Record<string, unknown>;
@@ -58,7 +41,7 @@ export const parseCartLines = (body: unknown): ParseCartResult => {
 };
 
 /** A priced line. `name` and the cents are null when the line cannot be bought. */
-export type PricedLine = CartInputLine & {
+export type PricedCartLine = CartLine & {
 	/** The Robô's name when it is published (public anyway); null for unknown, draft and archived. */
 	name: string | null;
 	unitCents: number | null;
@@ -66,16 +49,16 @@ export type PricedLine = CartInputLine & {
 	available: boolean;
 };
 
-export type CartSummary = { lines: PricedLine[]; totalCents: number };
+export type CartSummary = { lines: PricedCartLine[]; totalCents: number };
 
 /**
  * Prices `lines` against the published catalog (`listPublishedWithOffers`). A line is available
  * only when its Robô is `available` and sells that Oferta; a coming-soon, draft, archived,
  * unknown or no-longer-offered line has no price and is left out of the total.
  */
-export const priceCart = (lines: CartInputLine[], published: PublishedRobot[]): CartSummary => {
+export const priceCart = (lines: CartLine[], published: PublishedRobot[]): CartSummary => {
 	const bySlug = new Map(published.map((robot) => [robot.slug, robot]));
-	const priced = lines.map((line): PricedLine => {
+	const priced = lines.map((line): PricedCartLine => {
 		const robot = bySlug.get(line.robot);
 		const sold = robot?.status === 'available' ? robot.offers.find((o) => o.offer === line.offer) : undefined;
 		if (!sold) {

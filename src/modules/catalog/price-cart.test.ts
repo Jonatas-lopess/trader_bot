@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MAX_CART_LINES, MAX_LINE_QUANTITY, parseCartLines, priceCart, summarizeCart } from './price-cart';
+import { MAX_LINE_QUANTITY, MAX_LINES } from '../../shared/cart-limits';
+import { parseCartLines, priceCart, summarizeCart } from './price-cart';
 import { listPublishedWithOffers } from './robots';
 import { clearCatalog, seedRobot } from './test-helpers';
 
@@ -56,9 +57,9 @@ describe('parseCartLines', () => {
 	});
 
 	it('rejects too many lines and a repeated Robô + Oferta', () => {
-		const many = Array.from({ length: MAX_CART_LINES + 1 }, (_, i) => ({ robot: `robo-${i}`, offer: 'one_time', quantity: 1 }));
+		const many = Array.from({ length: MAX_LINES + 1 }, (_, i) => ({ robot: `robo-${i}`, offer: 'one_time', quantity: 1 }));
 		expect(ok(many).ok).toBe(false);
-		expect(ok(many.slice(0, MAX_CART_LINES)).ok).toBe(true);
+		expect(ok(many.slice(0, MAX_LINES)).ok).toBe(true);
 		const twice = { robot: 'robo-a', offer: 'one_time', quantity: 1 };
 		expect(ok([twice, twice]).ok).toBe(false);
 	});
@@ -171,7 +172,7 @@ describe('summarizeCart (POST /cart/summary)', () => {
 			{ lines: [{ robot: 'robo-a', offer: 'one_time', quantity: -1 }] },
 			{ lines: [{ robot: "x' OR 1=1 --", offer: 'one_time', quantity: 1 }] },
 			{ lines: 'robo-a' },
-			{ lines: Array.from({ length: MAX_CART_LINES + 1 }, (_, i) => ({ robot: `r-${i}`, offer: 'one_time', quantity: 1 })) },
+			{ lines: Array.from({ length: MAX_LINES + 1 }, (_, i) => ({ robot: `r-${i}`, offer: 'one_time', quantity: 1 })) },
 			'x'.repeat(20_000),
 		];
 		for (const body of bad) {

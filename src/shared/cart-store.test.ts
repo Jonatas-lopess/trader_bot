@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CART_STORAGE_KEY, MAX_LINES, MAX_QUANTITY, cartCount, createCartStore } from './cart-store';
+import { MAX_LINE_QUANTITY, MAX_LINES } from './cart-limits';
+import { CART_STORAGE_KEY, cartCount, createCartStore } from './cart-store';
 
 // In-memory stand-in for sessionStorage: the store takes its storage by injection, so these
 // tests need no DOM (storefront-v2 08).
@@ -36,8 +37,8 @@ describe('cart store actions', () => {
 
 	it('caps a line at the maximum quantity', () => {
 		const store = createCartStore(memoryStorage());
-		for (let i = 0; i < MAX_QUANTITY + 3; i++) store.getState().add('robo-a', 'one_time');
-		expect(store.getState().lines[0]?.quantity).toBe(MAX_QUANTITY);
+		for (let i = 0; i < MAX_LINE_QUANTITY + 3; i++) store.getState().add('robo-a', 'one_time');
+		expect(store.getState().lines[0]?.quantity).toBe(MAX_LINE_QUANTITY);
 	});
 
 	it('refuses a new line past the line limit but still merges into an existing one', () => {
@@ -55,7 +56,7 @@ describe('cart store actions', () => {
 		store.getState().setQuantity('robo-a', 'one_time', 4);
 		expect(store.getState().lines[0]?.quantity).toBe(4);
 		store.getState().setQuantity('robo-a', 'one_time', 99);
-		expect(store.getState().lines[0]?.quantity).toBe(MAX_QUANTITY);
+		expect(store.getState().lines[0]?.quantity).toBe(MAX_LINE_QUANTITY);
 		store.getState().setQuantity('robo-a', 'one_time', 0);
 		expect(store.getState().lines).toEqual([]);
 	});
@@ -144,7 +145,7 @@ describe('cart store persistence', () => {
 			]),
 		});
 		expect(createCartStore(storage).getState().lines).toEqual([
-			{ robot: 'robo-a', offer: 'one_time', quantity: MAX_QUANTITY },
+			{ robot: 'robo-a', offer: 'one_time', quantity: MAX_LINE_QUANTITY },
 			{ robot: 'robo-b', offer: 'one_time', quantity: 3 },
 		]);
 	});

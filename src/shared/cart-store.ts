@@ -16,19 +16,13 @@
 
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { OfferName } from '../modules/catalog/robots';
-import { MAX_CART_LINES, MAX_LINE_QUANTITY, isCartOffer, isCartSlug } from '../modules/catalog/price-cart';
-
-/** The Ofertas a cart line can hold: the catalog's Compra and Anual, never `monthly`. */
-export type CartOffer = OfferName;
-
-export type CartLine = { robot: string; offer: CartOffer; quantity: number };
+import { MAX_LINE_QUANTITY, MAX_LINES, isCartOffer, isCartSlug, type CartLine, type CartOffer } from './cart-limits';
 
 export type CartState = {
 	lines: CartLine[];
-	/** Adds one unit, merging into the line of the same Robô and Oferta (capped at MAX_QUANTITY). */
+	/** Adds one unit, merging into the line of the same Robô and Oferta (capped at MAX_LINE_QUANTITY). */
 	add: (robot: string, offer: CartOffer) => void;
-	/** Sets a line's units, clamped to MAX_QUANTITY; zero or less removes the line. */
+	/** Sets a line's units, clamped to MAX_LINE_QUANTITY; zero or less removes the line. */
 	setQuantity: (robot: string, offer: CartOffer, quantity: number) => void;
 	remove: (robot: string, offer: CartOffer) => void;
 	clear: () => void;
@@ -36,13 +30,7 @@ export type CartState = {
 
 export const CART_STORAGE_KEY = 'rt-cart-v1';
 const CART_VERSION = 1;
-// The caps and the shape checks are the cart endpoint's own (modules/catalog/price-cart.ts), so
-// what the store keeps is always something `POST /cart/summary` accepts.
-export const MAX_QUANTITY = MAX_LINE_QUANTITY;
-export const MAX_LINES = MAX_CART_LINES;
-export { isCartOffer };
-
-const clampQuantity = (quantity: number): number => Math.min(MAX_QUANTITY, Math.floor(quantity));
+const clampQuantity = (quantity: number): number => Math.min(MAX_LINE_QUANTITY, Math.floor(quantity));
 
 /**
  * Whatever the storage held, as a clean list of lines: malformed or unknown-offer lines are

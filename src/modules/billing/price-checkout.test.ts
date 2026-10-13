@@ -85,6 +85,40 @@ describe('priceCheckout', () => {
 		});
 	});
 
+	it('does not let repeated lines of the same Robô and offer bypass the per-line cap', async () => {
+		const same = { robotId: 'robo-a', offer: 'one_time', quantity: 5 };
+		expect(await priceCheckout(env, Array.from({ length: 20 }, () => same))).toMatchObject({
+			ok: false,
+			reason: 'quantity_over_cap',
+		});
+		expect(
+			await priceCheckout(env, [
+				{ robotId: 'robo-a', offer: 'one_time', quantity: 2 },
+				{ robotId: 'robo-a', offer: 'one_time', quantity: 4 },
+			]),
+		).toEqual({ ok: false, reason: 'quantity_over_cap', line: 1 });
+
+		const merged = await priceCheckout(env, [
+			{ robotId: 'robo-a', offer: 'one_time', quantity: 2 },
+			{ robotId: 'robo-b', offer: 'one_time', quantity: 1 },
+			{ robotId: 'robo-a', offer: 'one_time', quantity: 3 },
+		]);
+		expect(merged).toMatchObject({ ok: true, totalCents: 5 * 29700 + 49900 });
+		expect(merged.ok && merged.rows).toHaveLength(6);
+		expect(merged.ok && merged.products).toEqual([
+			{ sku: 'robo-a:one_time', name: 'Robô A', quantity: 5, unit_value: 29700, type: 'digital' },
+			{ sku: 'robo-b:one_time', name: 'Robô B', quantity: 1, unit_value: 49900, type: 'digital' },
+		]);
+
+		// Same Robô under a different offer is a different line: not merged.
+		expect(
+			await priceCheckout(env, [
+				{ robotId: 'robo-a', offer: 'one_time', quantity: 5 },
+				{ robotId: 'robo-a', offer: 'annual', quantity: 5 },
+			]),
+		).toMatchObject({ ok: true });
+	});
+
 	it('rejects an empty cart, a bad quantity, and non-string ids', async () => {
 		expect(await priceCheckout(env, [])).toEqual({ ok: false, reason: 'empty' });
 		for (const quantity of [0, -1, 1.5, 6, '2', null, Number.NaN]) {

@@ -1,0 +1,152 @@
+---
+// /admin/robos — every Robô, any status, with its status actions.
+//
+// .scratch/storefront-v2/issues/05-admin-catalog-crud.md. Same gate as /admin: any non-admin
+// result is an empty 404. This GET never writes; the status buttons POST to
+// /admin/robos/<slug>/status. The flash (`?ok=`, `?error=`) is set by the redirect after a POST.
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../../../layouts/base-layout.astro';
+import { formatBrl } from '../../../content/catalog-page';
+import { listAllRobots } from '../../../modules/catalog/admin';
+import { requireAdmin } from '../../../modules/identity/admin';
+import {
+	draftPreviewNote,
+	editLabel,
+	flashKeys,
+	flashTexts,
+	newRobotLabel,
+	notOffered,
+	offerFieldLabels,
+	offersColumn,
+	robotColumn,
+	robotsEmpty,
+	robotsHeading,
+	robotsIntro,
+	robotsPageDescription,
+	robotsPageTitle,
+	sortOrderColumn,
+	statusActions,
+	statusColumn,
+	statusErrorTexts,
+	statusLabels,
+	viewPublicLabel,
+	type FlashKey,
+	type StatusErrorKey,
+} from '../../../content/admin';
+
+export const prerender = false;
+
+const admin = await requireAdmin(Astro.request, env);
+if (!admin.ok) return new Response(null, { status: 404 });
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const robots = await listAllRobots(env);
+
+const okParam = Astro.url.searchParams.get('ok');
+const flash = okParam !== null && (flashKeys as string[]).includes(okParam) ? flashTexts[okParam as FlashKey] : null;
+const errorParam = Astro.url.searchParams.get('error');
+const failure = errorParam !== null && errorParam in statusErrorTexts ? statusErrorTexts[errorParam as StatusErrorKey] : null;
+---
+
+<BaseLayout title={robotsPageTitle} description={robotsPageDescription} shell="admin">
+	<section class="content-row gutter-x flex flex-col gap-8 py-12 sm:py-16">
+		<div class="flex flex-wrap items-end justify-between gap-4">
+			<div class="flex flex-col gap-2">
+				<h1 class="text-heading-1 font-bold text-text-primary">{robotsHeading}</h1>
+				<p class="text-body text-text-secondary">{robotsIntro}</p>
+			</div>
+			<a
+				href="/admin/robos/new"
+				class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+			>
+				{newRobotLabel}
+			</a>
+		</div>
+
+		{flash && <p class="rounded-md border-w-1 border-success bg-success-subtle p-4 text-body text-text-primary" role="status">{flash}</p>}
+		{failure && <p class="rounded-md border-w-1 border-danger bg-danger-subtle p-4 text-body text-text-primary" role="alert">{failure}</p>}
+
+		{
+			robots.length === 0 ? (
+				<p class="text-body-lg text-text-secondary">{robotsEmpty}</p>
+			) : (
+				<div class="overflow-x-auto rounded-lg border-w-1 border-border-subtle bg-surface-raised shadow-card">
+					<table class="w-full text-left text-body-sm">
+						<thead class="border-b border-border-subtle text-text-secondary">
+							<tr>
+								<th scope="col" class="px-4 py-3 font-medium">{robotColumn}</th>
+								<th scope="col" class="px-4 py-3 font-medium">{statusColumn}</th>
+								<th scope="col" class="px-4 py-3 font-medium">{offersColumn}</th>
+								<th scope="col" class="px-4 py-3 font-medium">{sortOrderColumn}</th>
+								<th scope="col" class="px-4 py-3"><span class="sr-only">{editLabel}</span></th>
+							</tr>
+						</thead>
+						<tbody>
+							{robots.map((robot) => (
+								<tr class="border-b border-border-subtle align-top last:border-b-0">
+									<td class="px-4 py-3">
+										<div class="flex flex-col gap-1">
+											<span class="font-medium text-text-primary">{robot.name}</span>
+											<span class="font-mono text-caption text-text-secondary">{robot.slug}</span>
+										</div>
+									</td>
+									<td class="px-4 py-3">
+										<span
+											data-status={robot.status}
+											class:list={[
+												'inline-flex w-fit items-center rounded-full border px-3 py-1 text-caption font-medium',
+												robot.status === 'available' && 'border-success bg-success-subtle text-success',
+												robot.status === 'coming-soon' && 'border-border-accent bg-brand-primary-subtle text-brand-primary',
+												robot.status === 'draft' && 'border-accent bg-surface-sunken text-accent',
+												robot.status === 'archived' && 'border-border-strong bg-surface-sunken text-text-secondary',
+											]}
+										>
+											{statusLabels[robot.status]}
+										</span>
+									</td>
+									<td class="px-4 py-3 text-text-secondary">
+										{robot.offers.length === 0 ? (
+											notOffered
+										) : (
+											<ul class="flex flex-col gap-1">
+												{robot.offers.map((offer) => (
+													<li>
+														{offerFieldLabels[offer.offer]}: <span class="text-text-primary">{formatBrl(offer.priceCents)}</span>
+													</li>
+												))}
+											</ul>
+										)}
+									</td>
+									<td class="px-4 py-3 text-text-secondary">{robot.sortOrder}</td>
+									<td class="px-4 py-3">
+										<div class="flex flex-wrap items-center justify-end gap-x-4 gap-y-2">
+											<a href={`/admin/robos/${robot.slug}`} class="text-brand-primary transition-colors hover:text-brand-primary-hover">
+												{editLabel}
+											</a>
+											{(robot.status === 'available' || robot.status === 'coming-soon') && (
+												<a href="/catalog" class="text-text-secondary transition-colors hover:text-text-primary">
+													{viewPublicLabel}
+												</a>
+											)}
+											{statusActions[robot.status].map((action) => (
+												<form method="POST" action={`/admin/robos/${robot.slug}/status`}>
+													<input type="hidden" name="status" value={action.to} />
+													<button type="submit" class="text-text-secondary transition-colors hover:text-text-primary">
+														{action.label}
+													</button>
+												</form>
+											))}
+										</div>
+									</td>
+								</tr>
+							))}
+						</tbody>
+					</table>
+				</div>
+			)
+		}
+
+		<p class="text-caption text-text-secondary">{draftPreviewNote}</p>
+	</section>
+</BaseLayout>

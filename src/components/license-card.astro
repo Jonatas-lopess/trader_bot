@@ -26,11 +26,13 @@ import {
 	corretoraDataEmpty,
 	corretoraDataLabel,
 	corretoraSubmitLabel,
+	formatPurchaseDate,
 	licenseBadges,
 	licenseLabel,
 	licenseStatusText,
 	offerLabels,
 	offerPrefix,
+	purchaseDateLabel,
 	rejectedNoticeText,
 	withdrawalRequestHint,
 	withdrawalRequestLabel,
@@ -157,6 +159,10 @@ const Icon = icons[badge.icon];
 		<div class="flex flex-col gap-0.5">
 			<dt class="text-body-sm text-text-secondary">{corretoraDataLabel}</dt>
 			<dd class="font-mono text-body-sm text-text-primary">{item.corretoraAccount ?? corretoraDataEmpty}</dd>
+		</div>
+		<div class="flex flex-col gap-0.5">
+			<dt class="text-body-sm text-text-secondary">{purchaseDateLabel}</dt>
+			<dd class="font-mono text-body-sm text-text-primary">{formatPurchaseDate(item.purchasedAt)}</dd>
 		</div>
 	</dl>
 

@@ -58,7 +58,7 @@ Esta parte cria o cliente e libera a área do cliente.
    - [ ] Comece uma compra e, na tela do Stripe, clique na seta de voltar sem pagar. Você deve voltar à página inicial.
    - [ ] Abra `https://trader-bot.jonataslopes-011.workers.dev/checkout/confirmacao` sem nada depois. Deve aparecer "Não encontramos esse checkout…"
    - [ ] Faça uma segunda compra de **outro robô** (ex.: Exemplo B, compra única) com o mesmo e-mail. Ela vira um segundo cartão na área do cliente.
-   - [ ] Tente comprar o **mesmo robô** de novo (Exemplo A) enquanto a primeira compra está ativa. Deve aparecer uma mensagem simples em inglês ("You already have an active license for this robot."). É uma tela provisória, apenas anote.
+   - [ ] Compre o **mesmo robô** de novo (Exemplo A) enquanto a primeira compra está ativa. A compra deve seguir normalmente, sem bloqueio. Na área do cliente, os dois cartões do Exemplo A aparecem com a data da compra e a conta na Corretora de cada um.
 
 > **E-mails automáticos:** o envio de e-mails está limitado nesta fase. Provavelmente **você não vai receber** o e-mail de link de acesso nem o de download. Isso é esperado e é o motivo do passo 4.
 

@@ -1,0 +1,205 @@
+---
+// Robô form — src/components/admin-robot-form.astro
+//
+// The create and edit form of /admin/robos (storefront-v2 05), styled like /login and /conta.
+// It only displays: the server (`modules/catalog/admin.ts`) validates everything, and on an
+// error the page re-renders this form with `values` as typed and `errors` per field. The slug
+// input is writable only while no purchase references it. New Robôs have no status field: they
+// start as drafts and are published from the list or the edit form.
+//
+// Copy comes from src/content/admin.ts — see docs/agents/content-files.md.
+import { adminOffers, robotStatuses, type FieldErrors, type RobotFormInput } from '../modules/catalog/admin';
+import {
+	fieldErrorText,
+	fieldHelp,
+	fieldLabels,
+	formErrorsSummary,
+	notOffered,
+	offerFieldLabels,
+	priceHelp,
+	priceInputPrefix,
+	sectionDetails,
+	sectionIdentity,
+	sectionOffers,
+	sectionPublishing,
+	slugLockedNote,
+	slugRenameNote,
+	statusHints,
+	statusLabels,
+} from '../content/admin';
+
+type Props = {
+	values: RobotFormInput;
+	errors: FieldErrors;
+	mode: 'create' | 'edit';
+	/** A purchase references the slug, so it is shown read-only. */
+	slugLocked?: boolean;
+	submitLabel: string;
+};
+
+const { values, errors, mode, slugLocked = false, submitLabel } = Astro.props;
+const hasErrors = Object.keys(errors).length > 0;
+
+const inputClass =
+	'w-full rounded-md border-w-1 border-border-high-contrast bg-surface-raised px-4 py-2 text-body text-text-primary focus:border-border-accent focus:shadow-focus-ring focus:outline-none';
+const invalidClass = 'border-danger';
+const helpClass = 'text-caption text-text-secondary';
+const errorClass = 'text-body-sm text-danger';
+const labelClass = 'text-body-sm text-text-secondary';
+const legendClass = 'mb-2 text-body-lg font-bold text-text-primary';
+---
+
+<form method="POST" class="flex w-full max-w-3xl flex-col gap-8" novalidate>
+	{
+		hasErrors && (
+			<p class="rounded-md border-w-1 border-danger bg-danger-subtle p-4 text-body text-text-primary" role="alert">
+				{formErrorsSummary}
+			</p>
+		)
+	}
+
+	<fieldset class="flex flex-col gap-4">
+		<legend class={legendClass}>{sectionIdentity}</legend>
+
+		<label class="flex flex-col gap-2">
+			<span class={labelClass}>{fieldLabels.name}</span>
+			<input type="text" name="name" value={values.name} required maxlength="80" aria-invalid={errors.name ? 'true' : undefined} class:list={[inputClass, errors.name && invalidClass]} />
+			{errors.name && <span class={errorClass} role="alert">{fieldErrorText(errors.name)}</span>}
+		</label>
+
+		<label class="flex flex-col gap-2">
+			<span class={labelClass}>{fieldLabels.slug}</span>
+			<input
+				type="text"
+				name="slug"
+				value={values.slug}
+				required
+				maxlength="60"
+				readonly={slugLocked}
+				autocapitalize="none"
+				spellcheck="false"
+				aria-invalid={errors.slug ? 'true' : undefined}
+				class:list={[inputClass, 'font-mono', slugLocked && 'cursor-not-allowed bg-surface-sunken text-text-secondary', errors.slug && invalidClass]}
+			/>
+			{errors.slug && <span class={errorClass} role="alert">{fieldErrorText(errors.slug)}</span>}
+			<span class={helpClass}>{slugLocked ? slugLockedNote : mode === 'edit' ? slugRenameNote : fieldHelp.slug}</span>
+		</label>
+	</fieldset>
+
+	<fieldset class="flex flex-col gap-4">
+		<legend class={legendClass}>{sectionDetails}</legend>
+
+		<label class="flex flex-col gap-2">
+			<span class={labelClass}>{fieldLabels.shortDescription}</span>
+			<input type="text" name="shortDescription" value={values.shortDescription} required maxlength="200" aria-invalid={errors.shortDescription ? 'true' : undefined} class:list={[inputClass, errors.shortDescription && invalidClass]} />
+			{errors.shortDescription && <span class={errorClass} role="alert">{fieldErrorText(errors.shortDescription)}</span>}
+			<span class={helpClass}>{fieldHelp.shortDescription}</span>
+		</label>
+
+		<label class="flex flex-col gap-2">
+			<span class={labelClass}>{fieldLabels.longDescription}</span>
+			<textarea name="longDescription" rows="6" maxlength="5000" aria-invalid={errors.longDescription ? 'true' : undefined} class:list={[inputClass, errors.longDescription && invalidClass]}>{values.longDescription}</textarea>
+			{errors.longDescription && <span class={errorClass} role="alert">{fieldErrorText(errors.longDescription)}</span>}
+			<span class={helpClass}>{fieldHelp.longDescription}</span>
+		</label>
+
+		<label class="flex flex-col gap-2">
+			<span class={labelClass}>{fieldLabels.strategyType}</span>
+			<input type="text" name="strategyType" value={values.strategyType} required maxlength="60" aria-invalid={errors.strategyType ? 'true' : undefined} class:list={[inputClass, errors.strategyType && invalidClass]} />
+			{errors.strategyType && <span class={errorClass} role="alert">{fieldErrorText(errors.strategyType)}</span>}
+		</label>
+
+		<div class="grid gap-4 md:grid-cols-2">
+			<label class="flex flex-col gap-2">
+				<span class={labelClass}>{fieldLabels.market}</span>
+				<input type="text" name="market" value={values.market} aria-invalid={errors.market ? 'true' : undefined} class:list={[inputClass, errors.market && invalidClass]} />
+				{errors.market && <span class={errorClass} role="alert">{fieldErrorText(errors.market)}</span>}
+				<span class={helpClass}>{fieldHelp.market}</span>
+			</label>
+
+			<label class="flex flex-col gap-2">
+				<span class={labelClass}>{fieldLabels.perfil}</span>
+				<input type="text" name="perfil" value={values.perfil} maxlength="80" aria-invalid={errors.perfil ? 'true' : undefined} class:list={[inputClass, errors.perfil && invalidClass]} />
+				{errors.perfil && <span class={errorClass} role="alert">{fieldErrorText(errors.perfil)}</span>}
+				<span class={helpClass}>{fieldHelp.perfil}</span>
+			</label>
+		</div>
+
+		<label class="flex flex-col gap-2">
+			<span class={labelClass}>{fieldLabels.supportedCorretoras}</span>
+			<input type="text" name="supportedCorretoras" value={values.supportedCorretoras} aria-invalid={errors.supportedCorretoras ? 'true' : undefined} class:list={[inputClass, errors.supportedCorretoras && invalidClass]} />
+			{errors.supportedCorretoras && <span class={errorClass} role="alert">{fieldErrorText(errors.supportedCorretoras)}</span>}
+			<span class={helpClass}>{fieldHelp.supportedCorretoras}</span>
+		</label>
+	</fieldset>
+
+	<fieldset class="flex flex-col gap-4">
+		<legend class={legendClass}>{sectionOffers}</legend>
+		<p class="text-body-sm text-text-secondary">{priceHelp}</p>
+		{errors.offers && <p class={errorClass} role="alert">{fieldErrorText(errors.offers)}</p>}
+
+		<div class="grid gap-4 md:grid-cols-2">
+			{
+				adminOffers.map((offer) => {
+					const error = errors[`price_${offer}`];
+					return (
+						<label class="flex flex-col gap-2">
+							<span class={labelClass}>{offerFieldLabels[offer]}</span>
+							<span class="flex items-center gap-2">
+								<span class="text-body text-text-secondary">{priceInputPrefix}</span>
+								<input
+									type="text"
+									inputmode="decimal"
+									name={`price_${offer}`}
+									value={values.prices[offer]}
+									placeholder={notOffered}
+									autocomplete="off"
+									aria-invalid={error ? 'true' : undefined}
+									class:list={[inputClass, error && invalidClass]}
+								/>
+							</span>
+							{error && <span class={errorClass} role="alert">{fieldErrorText(error)}</span>}
+						</label>
+					);
+				})
+			}
+		</div>
+	</fieldset>
+
+	<fieldset class="flex flex-col gap-4">
+		<legend class={legendClass}>{sectionPublishing}</legend>
+
+		{
+			mode === 'edit' && (
+				<label class="flex flex-col gap-2">
+					<span class={labelClass}>{fieldLabels.status}</span>
+					<select name="status" aria-invalid={errors.status ? 'true' : undefined} class:list={[inputClass, errors.status && invalidClass]}>
+						{robotStatuses.map((status) => (
+							<option value={status} selected={values.status === status}>
+								{statusLabels[status]}
+							</option>
+						))}
+					</select>
+					{errors.status && <span class={errorClass} role="alert">{fieldErrorText(errors.status)}</span>}
+					<span class={helpClass}>{robotStatuses.map((status) => `${statusLabels[status]}: ${statusHints[status]}`).join(' ')}</span>
+				</label>
+			)
+		}
+
+		<label class="flex flex-col gap-2 md:max-w-xs">
+			<span class={labelClass}>{fieldLabels.sortOrder}</span>
+			<input type="text" inputmode="numeric" name="sortOrder" value={values.sortOrder} aria-invalid={errors.sortOrder ? 'true' : undefined} class:list={[inputClass, errors.sortOrder && invalidClass]} />
+			{errors.sortOrder && <span class={errorClass} role="alert">{fieldErrorText(errors.sortOrder)}</span>}
+			<span class={helpClass}>{fieldHelp.sortOrder}</span>
+		</label>
+	</fieldset>
+
+	<div>
+		<button
+			type="submit"
+			class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+		>
+			{submitLabel}
+		</button>
+	</div>
+</form>

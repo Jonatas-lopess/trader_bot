@@ -18,9 +18,9 @@ type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
  * resolves to the same `customers` row however the address is cased or padded.
  *
  * `created` means "this purchase was newly attached", not "a customers row was inserted": the
- * caller (`webhook.ts`'s `onSubscriptionBecameActive`) gates the duplicate-Licença report and the
- * magic-link send on it, so a reapplied or renewal event for an already-attached purchase is a
- * no-op, while a repeat buyer's second purchase still gets its own link.
+ * caller (`webhook.ts`'s `onSubscriptionBecameActive`) gates the magic-link send on it, so a
+ * reapplied or renewal event for an already-attached purchase is a no-op, while a repeat buyer's
+ * second purchase still gets its own link.
  *
  * Both writes are single atomic statements (`ON CONFLICT(email) DO NOTHING`, then
  * `UPDATE ... WHERE customer_id IS NULL`); the `SELECT` between them only resolves the id the

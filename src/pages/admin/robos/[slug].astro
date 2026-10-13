@@ -1,0 +1,73 @@
+---
+// /admin/robos/<slug> — edit a Robô: fields, Ofertas and status.
+//
+// .scratch/storefront-v2/issues/05-admin-catalog-crud.md. GET shows the stored values (the
+// slug read-only once a purchase references it); POST saves through `updateRobot` and
+// redirects with a flash (303), or re-renders with the typed values and field errors (422).
+// An unknown slug is a plain 404, like every non-admin result.
+import { env } from 'cloudflare:workers';
+import AdminRobotForm from '../../../components/admin-robot-form.astro';
+import BaseLayout from '../../../layouts/base-layout.astro';
+import {
+	getRobotForAdmin,
+	isSlugLocked,
+	readRobotForm,
+	toFormInput,
+	updateRobot,
+	type FieldErrors,
+} from '../../../modules/catalog/admin';
+import { assertSameOrigin, requireAdmin } from '../../../modules/identity/admin';
+import {
+	backToListLabel,
+	editRobotHeading,
+	flashKeys,
+	flashTexts,
+	robotsPageDescription,
+	saveSubmitLabel,
+	viewPublicLabel,
+	type FlashKey,
+} from '../../../content/admin';
+
+export const prerender = false;
+
+const admin = await requireAdmin(Astro.request, env);
+if (!admin.ok) return new Response(null, { status: 404 });
+if (!assertSameOrigin(Astro.request).ok) return new Response(null, { status: 403 });
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const slug = Astro.params.slug ?? '';
+const robot = await getRobotForAdmin(env, slug);
+if (!robot) return new Response(null, { status: 404 });
+const slugLocked = await isSlugLocked(env, slug);
+
+let values = toFormInput(robot);
+let errors: FieldErrors = {};
+
+if (Astro.request.method === 'POST') {
+	values = readRobotForm(await Astro.request.formData());
+	const result = await updateRobot(env, slug, values);
+	if (result === null) return new Response(null, { status: 404 });
+	if (result.ok) return Astro.redirect(`/admin/robos/${result.slug}?ok=saved`, 303);
+	errors = result.errors;
+	Astro.response.status = 422;
+}
+
+const okParam = Astro.url.searchParams.get('ok');
+const flash = okParam !== null && (flashKeys as string[]).includes(okParam) ? flashTexts[okParam as FlashKey] : null;
+const heading = editRobotHeading(robot.name);
+---
+
+<BaseLayout title={heading} description={robotsPageDescription} shell="admin">
+	<section class="content-row gutter-x flex flex-col gap-8 py-12 sm:py-16">
+		<div class="flex flex-col gap-2">
+			<a href="/admin/robos" class="w-fit text-body-sm text-text-secondary transition-colors hover:text-text-primary">{backToListLabel}</a>
+			<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+			<a href="/catalog" class="w-fit text-body-sm text-brand-primary transition-colors hover:text-brand-primary-hover">{viewPublicLabel}</a>
+		</div>
+
+		{flash && <p class="max-w-3xl rounded-md border-w-1 border-success bg-success-subtle p-4 text-body text-text-primary" role="status">{flash}</p>}
+
+		<AdminRobotForm values={values} errors={errors} mode="edit" slugLocked={slugLocked} submitLabel={saveSubmitLabel} />
+	</section>
+</BaseLayout>

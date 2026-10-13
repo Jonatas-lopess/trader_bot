@@ -48,6 +48,8 @@ export const dialogCloseLabel = 'Fechar';
 export const addToCartLabel = 'Adicionar ao carrinho';
 
 export const comingSoonLabel = 'Em breve';
+// Shown only to an admin previewing a draft on the real catalog (storefront-v2 05).
+export const draftLabel = 'Rascunho';
 export const strategyTypeLabel = 'Estratégia';
 export const marketLabel = 'Mercado';
 export const perfilLabel = 'Perfil';
@@ -118,6 +120,8 @@ export type CatalogCard = {
 	perfil: string | null;
 	/** Published statuses only: a draft or archived Robô never becomes a card. */
 	status: Extract<RobotStatus, 'available' | 'coming-soon'>;
+	/** An unpublished Robô an admin is previewing; never true for a visitor's catalog. */
+	draft: boolean;
 	/** In Compra, Anual order; empty for a coming-soon Robô. */
 	offers: CardOffer[];
 };
@@ -176,7 +180,7 @@ export const cardBuy = (card: CatalogCard): CardBuy | null => {
 	return offer ? { label: `${buyLabelPrefix} ${card.name}`, href: offer.href } : null;
 };
 
-/** One card per published Robô, with the Ofertas it sells in Compra, Anual order. */
+/** One card per published Robô (and per draft, when the page loaded drafts for an admin), with the Ofertas it sells in Compra, Anual order. */
 export const buildCatalogCards = (robots: PublishedRobot[]): CatalogCard[] =>
 	robots.map((robot) => ({
 		slug: robot.slug,
@@ -187,6 +191,7 @@ export const buildCatalogCards = (robots: PublishedRobot[]): CatalogCard[] =>
 		market: robot.market ?? [],
 		perfil: robot.perfil,
 		status: robot.status === 'coming-soon' ? 'coming-soon' : 'available',
+		draft: robot.status === 'draft',
 		offers: offerOrder.flatMap((offer) => {
 			const sold = robot.offers.find((o) => o.offer === offer);
 			if (!sold) return [];

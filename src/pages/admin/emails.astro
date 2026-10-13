@@ -1,0 +1,104 @@
+---
+// /admin/emails — parked e-mails (the dead letter) and their resend button.
+//
+// .scratch/storefront-v2/issues/16-email-dead-letter.md. Behind the admin gate: every non-admin
+// result is the same empty 404 (see admin.astro). The resend is a POST to /admin/emails/resend,
+// which redirects back here with `?resent=<outcome>` for the flash line.
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../../layouts/base-layout.astro';
+import { requireAdmin } from '../../modules/identity/admin';
+import { listDeadLetters } from '../../modules/identity/send-with-dead-letter';
+import { ageLabel, emails, type EmailsFlashKey } from '../../content/admin';
+
+export const prerender = false;
+
+const admin = await requireAdmin(Astro.request, env);
+if (!admin.ok) return new Response(null, { status: 404 });
+
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+
+const { unresolved, resolved } = await listDeadLetters(env);
+const now = Date.now();
+
+const resent = Astro.url.searchParams.get('resent');
+const flashKey = resent !== null && resent in emails.flash ? (resent as EmailsFlashKey) : null;
+const flashClass = flashKey === 'ok' ? 'text-success' : 'text-danger';
+---
+
+<BaseLayout title={emails.pageTitle} description={emails.pageDescription} shell="admin">
+	<section class="content-row gutter-x flex flex-col gap-8 py-12 sm:py-16">
+		<div class="flex flex-col gap-2">
+			<h1 class="text-heading-1 font-bold text-text-primary">{emails.heading}</h1>
+			<p class="text-body text-text-secondary">{emails.intro}</p>
+			{flashKey && <p class={`text-body ${flashClass}`} role="status">{emails.flash[flashKey]}</p>}
+		</div>
+
+		<div class="flex flex-col gap-4">
+			<h2 class="text-body-lg font-bold text-text-primary">{emails.unresolvedHeading} ({unresolved.length})</h2>
+			{
+				unresolved.length === 0 ? (
+					<p class="text-body text-text-secondary">{emails.emptyUnresolved}</p>
+				) : (
+					<ul class="flex flex-col gap-4">
+						{unresolved.map((item) => (
+							<li class="flex flex-col gap-3 rounded-lg border-w-1 border-border-subtle bg-surface-raised p-5 shadow-card">
+								<div class="flex flex-wrap items-baseline justify-between gap-2">
+									<span class="font-mono text-caption uppercase text-text-secondary">{item.kind}</span>
+									<span class="text-body-sm text-text-secondary">
+										{emails.columns.age} <time datetime={item.createdAt}>{ageLabel(now - Date.parse(item.createdAt))}</time>
+										{' · '}
+										{emails.columns.attempts}: {item.attempts}
+									</span>
+								</div>
+								<p class="text-body font-medium text-text-primary">{item.subject}</p>
+								<p class="text-body-sm text-text-secondary">
+									{emails.columns.recipient}: {item.toAddress}
+								</p>
+								<p class="break-words text-body-sm text-danger">
+									{emails.columns.error}: {item.lastError}
+								</p>
+								{item.resendable ? (
+									<form method="POST" action="/admin/emails/resend">
+										<input type="hidden" name="id" value={item.id} />
+										<button
+											type="submit"
+											class="inline-flex items-center rounded-md border-w-1 border-border-accent bg-surface-emphasis px-4 py-2 text-body-sm font-medium text-brand-primary transition-colors hover:bg-surface-overlay"
+										>
+											{emails.resendLabel}
+										</button>
+									</form>
+								) : (
+									<p class="text-body-sm text-text-tertiary">{emails.notResendable}</p>
+								)}
+							</li>
+						))}
+					</ul>
+				)
+			}
+		</div>
+
+		<div class="flex flex-col gap-4">
+			<h2 class="text-body-lg font-bold text-text-primary">{emails.resolvedHeading}</h2>
+			{
+				resolved.length === 0 ? (
+					<p class="text-body text-text-secondary">{emails.emptyResolved}</p>
+				) : (
+					<ul class="flex flex-col gap-2">
+						{resolved.map((item) => (
+							<li class="flex flex-wrap items-baseline justify-between gap-2 border-b border-border-subtle py-2 text-body-sm text-text-secondary">
+								<span class="min-w-0 break-words">
+									<span class="font-mono text-caption uppercase">{item.kind}</span> · {item.subject} · {item.toAddress}
+								</span>
+								<span>
+									{emails.resolvedAtLabel} <time datetime={item.resolvedAt ?? ''}>{item.resolvedAt}</time>
+									{' · '}
+									{emails.columns.attempts}: {item.attempts}
+								</span>
+							</li>
+						))}
+					</ul>
+				)
+			}
+		</div>
+	</section>
+</BaseLayout>

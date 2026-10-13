@@ -36,6 +36,18 @@ export const corretoraDataLabel = 'Conta na Corretora';
 // Shown until the Cliente has entered the account number.
 export const corretoraDataEmpty = '—';
 
+// Repeat purchases of one Robô are allowed (ADR-0008), so each card also carries its purchase
+// date: Corretora account plus date is how the Cliente tells two Licenças of the same Robô apart.
+export const purchaseDateLabel = 'Data da compra';
+
+// pt-BR DD/MM/AAAA in Brasília time (fixed UTC-3, no DST), the same clock the withdrawal window uses.
+export function formatPurchaseDate(iso: string): string {
+	const date = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
+	const day = String(date.getUTCDate()).padStart(2, '0');
+	const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+	return `${day}/${month}/${date.getUTCFullYear()}`;
+}
+
 /** Status pill beside the page title: how many Licenças are usable right now. */
 export function activeLicensesText(count: number): string {
 	return count === 1 ? '1 Licença ativa' : `${count} Licenças ativas`;

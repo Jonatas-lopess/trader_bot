@@ -10,12 +10,21 @@
 
 **Blocked by:** 03, 08.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: `price-cart` (pure) and the endpoint (D1 real): totals, unavailable lines, tampered input rejected.
 
-- [ ] Cart shows server prices; changing the store's quantity updates totals through the server
-- [ ] Unavailable lines are flagged and excluded from the total
-- [ ] Bad payloads get 400; no price in the request is ever read
-- [ ] Looks right at 390 and 1280, empty and error states included
+- [x] Cart shows server prices; changing the store's quantity updates totals through the server
+- [x] Unavailable lines are flagged and excluded from the total
+- [x] Bad payloads get 400; no price in the request is ever read
+- [x] Looks right at 390 and 1280, empty and error states included
 - [ ] Typecheck and the full test suite pass
+
+## Comments
+
+- **"Finalizar compra" is disabled** with a visible note (`checkoutPendingNote` in `content/cart.ts`) until ticket 11 (checkout for N lines) lands. Ticket 11 must swap the disabled button in `src/pages/carrinho.astro` for the link to its checkout form and drop the note.
+- **Endpoint:** `POST /cart/summary` (`src/pages/cart/summary.ts`) is a thin wrapper; all logic is `summarizeCart` in `modules/catalog/price-cart.ts` (rate limit by `CF-Connecting-IP` first, then parse, then `priceCart` over `listPublishedWithOffers`). New Rate Limiting binding `CART_RATE_LIMITER` (namespace_id 4, 20 per 10 s) in `wrangler.jsonc`: ticket 14's Encomenda limiter must not reuse namespace 4. Caps come from `modules/billing/price-checkout.ts` (`MAX_LINE_QUANTITY`, `MAX_LINES`) so cart and checkout agree. A repeated Robô + Oferta line is a 400 (the client merges repeats). Unavailable lines return `name` only for a published Robô (public anyway), `null` for draft, archived and unknown, so a draft's name never leaks.
+- **Tests:** `price-cart.test.ts` runs the endpoint logic against real D1 (totals, unavailable lines, price changes and unpublish between calls, tampered input, rate limit via an injected limiter). No route-level HTTP test (the repo has none); the route was also exercised with `curl` against `astro preview`. Note Astro's own CSRF check answers 403 to a POST without a content-type, before the endpoint runs.
+- **Verified in headless Chromium** (`astro build` + `astro preview`, local D1 seed) at 1280 and 390: empty, ready (with a coming-soon and an unknown line flagged and excluded from the total), error (forced 500) and retry states; `+` re-prices through the server (one request after the click burst), focus stays on the pressed control, the request body carries no price, the storage line updates, removing lines reaches the empty state, no horizontal scroll at 390. A Robô named `<img src=x onerror=alert(1)>` renders as text. Not verified: a screen reader, iOS Safari.
+- The header badge counts units in the store, including a line that turns out unavailable, until the Cliente removes it.
+- Payment note (`paymentMethodsNote`) is new placeholder copy wrapped in `launchBlocking` (PLANNING §6); the withdrawal note reuses `buyWithdrawalNote`.

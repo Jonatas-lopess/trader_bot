@@ -8,6 +8,9 @@
  * The client supplies only `robotId` + `offer`. Nothing else it sends is read,
  * so a tampered price cannot reach the gateway or the `amount_cents` the
  * webhook later compares against (PLANNING.md §6 "Price integrity").
+ *
+ * No check against a Licença the Cliente already holds: buying the same Robô
+ * again is how a second Corretora account gets its own Licença (ADR-0008).
  */
 
 import { lookupOffer, type OfferName } from '../catalog/robots';
@@ -17,7 +20,6 @@ import { paymentMethodsFor } from './payment-provider';
 export type CheckoutSessionResult =
 	| { ok: true; redirectUrl: string }
 	| { ok: false; status: 400; message: string }
-	| { ok: false; status: 409; message: string }
 	| { ok: false; status: 502; message: string };
 
 type CheckoutEnv = Pick<
@@ -25,29 +27,12 @@ type CheckoutEnv = Pick<
 	'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'STRIPE_SECRET_KEY' | 'PAYMENT_PROVIDER'
 >;
 
-/**
- * One active Licença per Cliente per Robô (ADR-0006). Only `active` purchases
- * count: a `pending` row from an abandoned or declined attempt must never block
- * a new checkout. Purchases belong to the Cliente via `purchases.customer_id`
- * (migration 0011; one Cliente per normalized email).
- */
-async function hasActivePurchase(env: Pick<Cloudflare.Env, 'DB'>, customerId: string, robotId: string): Promise<boolean> {
-	const row = await env.DB.prepare(
-		"SELECT 1 FROM purchases WHERE customer_id = ? AND robot_id = ? AND status = 'active' LIMIT 1"
-	)
-		.bind(customerId, robotId)
-		.first();
-	return row !== null;
-}
-
 export async function createCheckoutSession(
 	env: CheckoutEnv,
 	params: {
 		robotId: string | null;
 		offer: string | null;
 		origin: string;
-		/** The authenticated Cliente, when the request carries a session; guests are checked at provisioning instead (PLANNING §7). */
-		customerId?: string | null;
 	}
 ): Promise<CheckoutSessionResult> {
 	const priced =
@@ -59,10 +44,6 @@ export async function createCheckoutSession(
 	// `found` proves `offer` is one of the robot's own OfferName keys.
 	const offer = params.offer as OfferName;
 	const amountCents = priced.amountCents;
-
-	if (params.customerId && (await hasActivePurchase(env, params.customerId, robotId))) {
-		return { ok: false, status: 409, message: 'You already have an active license for this robot.' };
-	}
 
 	const reference = crypto.randomUUID();
 	const returnUrl = new URL(`/checkout/confirmacao?ref=${reference}`, params.origin).toString();

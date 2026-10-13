@@ -41,7 +41,7 @@ describe('resolveAccountView', () => {
 			robots: [
 				{
 					robotName: 'Robô Exemplo A',
-					licenses: [{ purchaseId: 'sub-account-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) }],
+					licenses: [{ purchaseId: 'sub-account-1', offer: 'monthly', corretoraAccount: null, purchasedAt: expect.any(String), canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) }],
 				},
 			],
 		});
@@ -66,6 +66,7 @@ describe('resolveAccountView', () => {
 							purchaseId: 'sub-account-2',
 							offer: 'monthly',
 							corretoraAccount: null,
+							purchasedAt: expect.any(String),
 							canCancel: true,
 							license: { status: 'active', expiresAt: '2027-06-20T00:00:00.000Z' },
 							subscriptionStatus: 'active',
@@ -113,14 +114,14 @@ describe('resolveAccountView', () => {
 				{
 					robotName: 'Robô Exemplo A',
 					licenses: [
-						{ purchaseId: 'multi-1', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
-						{ purchaseId: 'multi-3', offer: 'one_time', corretoraAccount: null, canCancel: false, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
+						{ purchaseId: 'multi-1', offer: 'monthly', corretoraAccount: null, purchasedAt: expect.any(String), canCancel: true, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
+						{ purchaseId: 'multi-3', offer: 'one_time', corretoraAccount: null, purchasedAt: expect.any(String), canCancel: false, license: { status: 'none' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
 					],
 				},
 				{
 					robotName: 'Robô Exemplo B',
 					licenses: [
-						{ purchaseId: 'multi-2', offer: 'monthly', corretoraAccount: null, canCancel: true, license: { status: 'awaiting_account' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
+						{ purchaseId: 'multi-2', offer: 'monthly', corretoraAccount: null, purchasedAt: expect.any(String), canCancel: true, license: { status: 'awaiting_account' }, subscriptionStatus: 'active', withdrawalMailto: expect.any(String) },
 					],
 				},
 			],
@@ -147,6 +148,34 @@ describe('resolveAccountView', () => {
 					licenses: [
 						{ purchaseId: 'acct-1', offer: 'monthly', corretoraAccount: 123456 },
 						{ purchaseId: 'acct-2', offer: 'annual', corretoraAccount: null },
+					],
+				},
+			],
+		});
+	});
+
+	it('tells two Licenças of the same Robô apart by Corretora account and purchase date', async () => {
+		await seedAccount({ purchaseId: 'twin-1', customerId: 'cust-twin', planId: 'robo-exemplo-a', email: 'twin@example.com', offer: 'one_time' });
+		await seedAccount({ purchaseId: 'twin-2', customerId: 'cust-twin-other', planId: 'robo-exemplo-a', email: 'twin@example.com', offer: 'one_time' });
+		await env.DB.prepare('UPDATE purchases SET created_at = ? WHERE id = ?').bind('2026-10-01T15:00:00.000Z', 'twin-1').run();
+		await env.DB.prepare('UPDATE purchases SET created_at = ? WHERE id = ?').bind('2026-10-12T02:30:00.000Z', 'twin-2').run();
+		for (const [purchaseId, account] of [['twin-1', 111111], ['twin-2', 222222]] as const) {
+			await env.DB.prepare('INSERT INTO licenses (purchase_id, robot_id, status, corretora_account) VALUES (?, ?, ?, ?)')
+				.bind(purchaseId, 'robo-exemplo-a', 'preparing', account)
+				.run();
+		}
+		const { cookieValue } = await createSession(env, 'cust-twin');
+
+		const result = await resolveAccountView(env, requestWithCookie(cookieValue));
+
+		expect(result).toMatchObject({
+			ok: true,
+			robots: [
+				{
+					robotName: 'Robô Exemplo A',
+					licenses: [
+						{ purchaseId: 'twin-1', corretoraAccount: 111111, purchasedAt: '2026-10-01T15:00:00.000Z' },
+						{ purchaseId: 'twin-2', corretoraAccount: 222222, purchasedAt: '2026-10-12T02:30:00.000Z' },
 					],
 				},
 			],

@@ -67,6 +67,45 @@ export async function findPurchaseByProviderRef(
 	return row === null ? null : { id: row.id, robotId: row.robot_id, offer: row.offer };
 }
 
+export type CheckoutPurchase = {
+	id: string;
+	robotId: string;
+	offer: PurchaseOffer;
+	amountCents: number;
+	status: PurchaseStatus;
+	paymentMethod: string | null;
+};
+
+/**
+ * Every purchase row of a checkout (ADR-0008), oldest first. Rows share `checkout_id`; a row
+ * written before migration 0013 or by code that does not set it still answers for itself when
+ * `checkoutId` is its `id`. Empty for an unknown id.
+ */
+export async function findByCheckout(env: LookupEnv, checkoutId: string): Promise<CheckoutPurchase[]> {
+	const { results } = await env.DB.prepare(
+		`SELECT id, robot_id, offer, amount_cents, status, payment_method FROM purchases
+		WHERE checkout_id = ?1 OR (checkout_id IS NULL AND id = ?1)
+		ORDER BY created_at, id`
+	)
+		.bind(checkoutId)
+		.all<{
+			id: string;
+			robot_id: string;
+			offer: PurchaseOffer;
+			amount_cents: number;
+			status: PurchaseStatus;
+			payment_method: string | null;
+		}>();
+	return results.map((row) => ({
+		id: row.id,
+		robotId: row.robot_id,
+		offer: row.offer,
+		amountCents: row.amount_cents,
+		status: row.status,
+		paymentMethod: row.payment_method,
+	}));
+}
+
 type AmountFacts = { purchaseId: string; expectedCents: number };
 
 export type AmountCheck =

@@ -22,10 +22,14 @@ import {
 	regulatoryNote,
 } from '../content/catalog-page';
 import { listPublishedWithOffers } from '../modules/catalog/robots';
+import { requireAdmin } from '../modules/identity/admin';
 
 export const prerender = false;
 
-const cards = buildCatalogCards(await listPublishedWithOffers(env));
+// An admin also sees drafts, marked: the preview of a Robô before it is published (ADR-0008).
+const admin = await requireAdmin(Astro.request, env);
+if (admin.ok) Astro.response.headers.set('Cache-Control', 'private, no-store');
+const cards = buildCatalogCards(await listPublishedWithOffers(env, { includeDrafts: admin.ok }));
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>

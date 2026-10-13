@@ -5,8 +5,9 @@
  * The one module that knows `robots` / `robot_offers` (migration 0012). Price integrity is
  * unchanged in kind from ADR-0006: checkout passes only the client's `robot_id` + `offer` to
  * `lookupOffer`, and the price comes from here, server-side. Only published Robôs (`available`,
- * `coming-soon`) are visible; `draft` and `archived` are not found. The write side (admin) is a
- * separate ticket.
+ * `coming-soon`) are visible; `draft` and `archived` are not found. The one exception is
+ * `listPublishedWithOffers(env, { includeDrafts: true })`, which the catalog page passes for an
+ * admin so a draft can be previewed as the real card. The write side is `./admin.ts`.
  */
 
 type CatalogEnv = Pick<Cloudflare.Env, 'DB'>;
@@ -49,7 +50,7 @@ export type LookupOfferResult =
 	| { kind: 'unknown_robot' }
 	| { kind: 'unknown_offer' };
 
-type RobotRow = {
+export type RobotRow = {
 	slug: string;
 	name: string;
 	short_description: string;
@@ -62,7 +63,7 @@ type RobotRow = {
 	sort_order: number;
 };
 
-const ROBOT_COLUMNS =
+export const ROBOT_COLUMNS =
 	'slug, name, short_description, long_description, strategy_type, market, perfil, supported_corretoras, status, sort_order';
 
 /** Anything that is not a JSON array of strings reads as absent: a bad cell must not 500 the catalog. */
@@ -77,7 +78,7 @@ function parseStringArray(json: string | null): string[] | null {
 	return null;
 }
 
-function toRobot(row: RobotRow): Robot {
+export function toRobot(row: RobotRow): Robot {
 	return {
 		slug: row.slug,
 		name: row.name,
@@ -92,10 +93,17 @@ function toRobot(row: RobotRow): Robot {
 	};
 }
 
+/** Constant SQL lists (never user input), so they are safe to interpolate. */
+const PUBLISHED_STATUSES = "'available', 'coming-soon'";
+const PREVIEW_STATUSES = `${PUBLISHED_STATUSES}, 'draft'`;
+const SELLING_STATUSES = "'available'";
+const PREVIEW_SELLING_STATUSES = "'available', 'draft'";
+
 /** Robôs on the public catalog (`available` and `coming-soon`), by `sort_order` then slug. */
-export async function listPublished(env: CatalogEnv): Promise<Robot[]> {
+export async function listPublished(env: CatalogEnv, options: { includeDrafts?: boolean } = {}): Promise<Robot[]> {
+	const statuses = options.includeDrafts ? PREVIEW_STATUSES : PUBLISHED_STATUSES;
 	const { results } = await env.DB.prepare(
-		`SELECT ${ROBOT_COLUMNS} FROM robots WHERE status IN ('available', 'coming-soon') ORDER BY sort_order, slug`
+		`SELECT ${ROBOT_COLUMNS} FROM robots WHERE status IN (${statuses}) ORDER BY sort_order, slug`
 	).all<RobotRow>();
 	return results.map(toRobot);
 }
@@ -126,14 +134,22 @@ export async function listOffersFor(env: CatalogEnv, slug: string): Promise<Robo
 /** A published Robô together with the Ofertas it sells (empty unless `available`), for the catalog page. */
 export type PublishedRobot = Robot & { offers: RobotOffer[] };
 
-/** The public catalog in one pass: every published Robô with its Ofertas, Compra first. */
-export async function listPublishedWithOffers(env: CatalogEnv): Promise<PublishedRobot[]> {
+/**
+ * The public catalog in one pass: every published Robô with its Ofertas, Compra first. With
+ * `includeDrafts` (admin preview only, the caller has checked `requireAdmin`) drafts are listed
+ * too, with the Ofertas they would sell once published; checkout still treats them as unknown.
+ */
+export async function listPublishedWithOffers(
+	env: CatalogEnv,
+	options: { includeDrafts?: boolean } = {}
+): Promise<PublishedRobot[]> {
+	const selling = options.includeDrafts ? PREVIEW_SELLING_STATUSES : SELLING_STATUSES;
 	const [robots, { results: offerRows }] = await Promise.all([
-		listPublished(env),
+		listPublished(env, options),
 		env.DB.prepare(
 			`SELECT o.robot_slug AS slug, o.offer AS offer, o.price_cents AS priceCents
 			FROM robot_offers o JOIN robots r ON r.slug = o.robot_slug
-			WHERE r.status = 'available'
+			WHERE r.status IN (${selling})
 			ORDER BY CASE o.offer WHEN 'one_time' THEN 0 ELSE 1 END`
 		).all<RobotOffer & { slug: string }>(),
 	]);

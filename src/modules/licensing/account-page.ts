@@ -21,6 +21,8 @@ export type AccountLicense = {
 	offer: PurchaseOffer;
 	// The Corretora account the Cliente entered; null until they do.
 	corretoraAccount: number | null;
+	// ISO instant the purchase was started; with the account it tells two Licenças of one Robô apart.
+	purchasedAt: string;
 	// Only a Mensal has a recurring Assinatura to cancel; Compra and Anual are one payment.
 	canCancel: boolean;
 	license: LicenseStatus;
@@ -72,6 +74,7 @@ export async function resolveAccountView(env: AccountPageEnv, request: Request, 
 			purchaseId: purchase.purchaseId,
 			offer: purchase.offer,
 			corretoraAccount: accountByPurchase.get(purchase.purchaseId) ?? null,
+			purchasedAt: purchase.createdAt,
 			canCancel: purchase.offer === 'monthly' && (purchase.status === 'active' || purchase.status === 'past_due'),
 			license: await getLicenseStatus(env, purchase.purchaseId, purchase.status),
 			subscriptionStatus: purchase.status,

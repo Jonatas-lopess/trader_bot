@@ -11,13 +11,16 @@
  * No price in the request is ever read: a line's fields are picked, not spread.
  */
 
+import { MAX_LINE_QUANTITY, MAX_LINES } from '../billing/price-checkout';
 import { listPublishedWithOffers, type OfferName, type PublishedRobot } from './robots';
+
+// The caps are checkout's own (modules/billing/price-checkout.ts), so a cart this endpoint
+// accepts is never one checkout rejects for size.
+export { MAX_LINE_QUANTITY };
 
 type SummaryEnv = Pick<Cloudflare.Env, 'DB' | 'CART_RATE_LIMITER'>;
 
-export const MAX_CART_LINES = 20;
-/** The quantity cap per line (an open question with the owner, spec "Further Notes"). */
-export const MAX_LINE_QUANTITY = 5;
+export const MAX_CART_LINES = MAX_LINES;
 const MAX_BODY_CHARS = 8192;
 const MAX_SLUG_LENGTH = 64;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

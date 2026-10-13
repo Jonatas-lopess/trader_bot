@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { LIFETIME_EXPIRY } from '../modules/licensing/license-expiry';
-import { licenseActiveText, licenseStatusText } from './conta';
+import { formatPurchaseDate, licenseActiveText, licenseStatusText } from './conta';
 
 describe('licenseActiveText', () => {
 	it('shows a dated term as "Ativa até DD/MM"', () => {
@@ -20,5 +20,13 @@ describe('licenseStatusText', () => {
 		expect(licenseStatusText({ status: 'active', expiresAt: LIFETIME_EXPIRY })).toBe('Vitalícia');
 		expect(licenseStatusText({ status: 'expired', expiresAt: '2026-09-01T00:00:00.000Z' })).toBe('Expirada em 01/09');
 		expect(licenseStatusText({ status: 'revoked' })).toBe('Revogada');
+	});
+});
+
+describe('formatPurchaseDate', () => {
+	it('shows the day in Brasília time as DD/MM/AAAA', () => {
+		expect(formatPurchaseDate('2026-10-01T15:00:00.000Z')).toBe('01/10/2026');
+		// 02:30 UTC is still the previous evening in Brasília.
+		expect(formatPurchaseDate('2026-10-12T02:30:00.000Z')).toBe('11/10/2026');
 	});
 });

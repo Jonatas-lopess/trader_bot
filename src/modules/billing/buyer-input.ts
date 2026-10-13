@@ -71,7 +71,7 @@ function parseName(raw: unknown): Pick<BuyerInput, 'firstName' | 'lastName'> | n
 	return { firstName, lastName: rest.join(' ') };
 }
 
-function parseEmail(raw: unknown): string | null {
+export function parseEmail(raw: unknown): string | null {
 	if (typeof raw !== 'string') return null;
 	const email = normalizeEmail(raw);
 	if (email === null || /\s/.test(email)) return null;
@@ -80,7 +80,7 @@ function parseEmail(raw: unknown): string | null {
 	return /^[^.]+(\.[^.]+)+$/.test(domain) ? email : null;
 }
 
-function parsePhone(raw: unknown): string | null {
+export function parsePhone(raw: unknown): string | null {
 	if (typeof raw !== 'string') return null;
 	let digits = raw.replace(/\D/g, '');
 	if ((digits.length === 12 || digits.length === 13) && digits.startsWith('55')) digits = digits.slice(2);

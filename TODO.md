@@ -222,7 +222,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 | 11 | [Checkout and pay for a cart](.scratch/storefront-v2/issues/11-checkout-from-cart.md) | 09, 10, appmax-checkout 04, 05 | ready-for-agent |
 | 12 | [Webhook over an order that holds several purchases](.scratch/storefront-v2/issues/12-webhook-for-order-groups.md) | 10, appmax-checkout 07 | ready-for-agent |
 | 13 | [Confirmation page and delivery for several Licenças](.scratch/storefront-v2/issues/13-confirmation-and-delivery-for-n-licenses.md) | 11, 12, appmax-checkout 06 | ready-for-agent |
-| 14 | [Encomenda page: custom-Robô request](.scratch/storefront-v2/issues/14-encomenda-page.md) | 16 | ready-for-agent |
+| 14 | [Encomenda page: custom-Robô request](.scratch/storefront-v2/issues/14-encomenda-page.md) | 16 | done |
 | 15 | [End-to-end verification](.scratch/storefront-v2/issues/15-end-to-end-verification.md) | 01, 05, 07, 09, 13, 14, 16 | ready-for-agent |
 | 16 | [E-mail dead letter and admin resend](.scratch/storefront-v2/issues/16-email-dead-letter.md) | 04 | done |
 

@@ -1,0 +1,286 @@
+---
+// /encomenda — src/pages/encomenda.astro
+//
+// .scratch/storefront-v2/issues/14-encomenda-page.md. A prerendered form; the script below posts
+// it as JSON to POST /encomenda/enviar (src/pages/encomenda/enviar.ts → modules/orders/encomenda.ts) and
+// swaps in the success panel with the "Continuar no WhatsApp" link. No price, no payment, no
+// account (CONTEXT.md — Encomenda). All copy comes from src/content/encomenda.ts.
+import BaseLayout from '../layouts/base-layout.astro';
+import {
+	consentLabel,
+	fieldErrors,
+	fields,
+	formErrorSummary,
+	heading,
+	intro,
+	pageDescription,
+	pageTitle,
+	rateLimitedMessage,
+	serverErrorMessage,
+	submitLabel,
+	submittingLabel,
+	successHeading,
+	successMessage,
+	whatsappLinkLabel,
+} from '../content/encomenda';
+import { HONEYPOT_FIELD } from '../modules/orders/encomenda';
+
+export const prerender = true;
+
+const inputClass =
+	'w-full rounded-md border-w-1 border-border-high-contrast bg-surface-raised px-4 py-2 text-body text-text-primary focus:border-border-accent focus:shadow-focus-ring focus:outline-none aria-[invalid=true]:border-danger';
+
+type FieldSpec = {
+	name: keyof typeof fields;
+	kind: 'text' | 'email' | 'tel' | 'textarea';
+	autocomplete?: string;
+	maxlength: number;
+	required?: boolean;
+};
+
+const fieldSpecs: FieldSpec[] = [
+	{ name: 'name', kind: 'text', autocomplete: 'name', maxlength: 100, required: true },
+	{ name: 'email', kind: 'email', autocomplete: 'email', maxlength: 254 },
+	{ name: 'phone', kind: 'tel', autocomplete: 'tel', maxlength: 30 },
+	{ name: 'strategy', kind: 'textarea', maxlength: 2000, required: true },
+	{ name: 'market', kind: 'text', maxlength: 100 },
+	{ name: 'corretora', kind: 'text', maxlength: 100 },
+];
+
+// The script reads these; the error text is keyed by the module's stable codes.
+const clientCopy = {
+	fieldErrors,
+	formErrorSummary,
+	rateLimitedMessage,
+	serverErrorMessage,
+	submitLabel,
+	submittingLabel,
+};
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+	<section class="content-row gutter-x mx-auto flex max-w-2xl flex-col gap-6 py-12 md:py-20">
+		<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+		<p class="text-body-lg text-text-secondary">{intro.value}</p>
+
+		<div
+			id="encomenda-success"
+			hidden
+			tabindex="-1"
+			class="flex flex-col items-start gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6 focus:outline-none"
+		>
+			<h2 class="text-heading-2 font-bold text-text-primary">{successHeading}</h2>
+			<p class="text-body text-text-secondary">{successMessage.value}</p>
+			<a
+				id="encomenda-whatsapp"
+				hidden
+				href="https://wa.me/"
+				rel="noopener noreferrer"
+				class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+			>
+				{whatsappLinkLabel}
+			</a>
+		</div>
+
+		<form id="encomenda-form" method="POST" action="/encomenda/enviar" novalidate class="flex flex-col gap-5">
+			<p
+				id="encomenda-form-error"
+				role="alert"
+				hidden
+				tabindex="-1"
+				class="rounded-md bg-danger-subtle px-4 py-3 text-body-sm text-danger focus:outline-none"
+			>
+			</p>
+
+			{
+				fieldSpecs.map((spec) => {
+					const copy: { label: string; hint?: string } = fields[spec.name];
+					const describedBy = [copy.hint ? `encomenda-${spec.name}-hint` : null, `encomenda-${spec.name}-error`]
+						.filter(Boolean)
+						.join(' ');
+					return (
+						<div class="flex flex-col gap-2">
+							<label for={`encomenda-${spec.name}`} class="text-body-sm text-text-secondary">
+								{copy.label}
+							</label>
+							{spec.kind === 'textarea' ? (
+								<textarea
+									id={`encomenda-${spec.name}`}
+									name={spec.name}
+									rows="7"
+									maxlength={spec.maxlength}
+									aria-required={spec.required ? 'true' : undefined}
+									aria-describedby={describedBy}
+									class={inputClass}
+								/>
+							) : (
+								<input
+									id={`encomenda-${spec.name}`}
+									type={spec.kind}
+									name={spec.name}
+									maxlength={spec.maxlength}
+									autocomplete={spec.autocomplete}
+									aria-required={spec.required ? 'true' : undefined}
+									aria-describedby={describedBy}
+									class={inputClass}
+								/>
+							)}
+							{copy.hint && (
+								<p id={`encomenda-${spec.name}-hint`} class="text-body-sm text-text-tertiary">
+									{copy.hint}
+								</p>
+							)}
+							<p id={`encomenda-${spec.name}-error`} hidden class="text-body-sm text-danger" />
+						</div>
+					);
+				})
+			}
+
+			<div class="flex flex-col gap-2">
+				<div class="flex items-start gap-3">
+					<input
+						id="encomenda-consent"
+						type="checkbox"
+						name="consent"
+						aria-describedby="encomenda-consent-error"
+						class="mt-1 size-5 shrink-0 accent-brand-primary aria-[invalid=true]:outline aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-danger"
+					/>
+					<label for="encomenda-consent" class="text-body-sm text-text-secondary">{consentLabel.value}</label>
+				</div>
+				<p id="encomenda-consent-error" hidden class="text-body-sm text-danger"></p>
+			</div>
+
+			{/* Honeypot: off-screen, out of the tab order and hidden from assistive tech; real visitors never fill it. */}
+			<div class="absolute -left-[9999px] h-0 w-0 overflow-hidden" aria-hidden="true">
+				<input type="text" name={HONEYPOT_FIELD} tabindex="-1" autocomplete="off" />
+			</div>
+
+			<button
+				id="encomenda-submit"
+				type="submit"
+				class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover disabled:opacity-60"
+			>
+				{submitLabel}
+			</button>
+		</form>
+	</section>
+</BaseLayout>
+
+<script id="encomenda-copy" type="application/json" set:html={JSON.stringify(clientCopy)} />
+
+<script>
+	type FieldErrors = Record<string, string>;
+	type Copy = {
+		fieldErrors: FieldErrors;
+		formErrorSummary: string;
+		rateLimitedMessage: string;
+		serverErrorMessage: string;
+		submitLabel: string;
+		submittingLabel: string;
+	};
+
+	const form = document.getElementById('encomenda-form') as HTMLFormElement | null;
+	const copy: Copy | null = JSON.parse(document.getElementById('encomenda-copy')?.textContent ?? 'null');
+
+	if (form && copy) {
+		const submit = document.getElementById('encomenda-submit') as HTMLButtonElement;
+		const formError = document.getElementById('encomenda-form-error') as HTMLElement;
+		const success = document.getElementById('encomenda-success') as HTMLElement;
+		const whatsapp = document.getElementById('encomenda-whatsapp') as HTMLAnchorElement;
+
+		// DOM order, so focus lands on the first field in error. `contact` (neither e-mail nor
+		// phone) marks both inputs and shows its message under the phone field.
+		const fieldOrder = ['name', 'email', 'phone', 'strategy', 'market', 'corretora', 'consent'];
+		const controlsFor = (field: string): string[] => (field === 'contact' ? ['email', 'phone'] : [field]);
+		const errorSlot = (field: string): string => (field === 'contact' ? 'phone' : field);
+
+		const control = (name: string) => document.getElementById(`encomenda-${name}`) as HTMLElement | null;
+		const slot = (name: string) => document.getElementById(`encomenda-${name}-error`) as HTMLElement | null;
+
+		const clearErrors = () => {
+			formError.hidden = true;
+			formError.textContent = '';
+			for (const name of fieldOrder) {
+				control(name)?.removeAttribute('aria-invalid');
+				const el = slot(name);
+				if (el) {
+					el.hidden = true;
+					el.textContent = '';
+				}
+			}
+		};
+
+		const showFieldErrors = (errors: FieldErrors) => {
+			const invalid = new Set<string>();
+			for (const [field, code] of Object.entries(errors)) {
+				const el = slot(errorSlot(field));
+				if (el) {
+					el.textContent = copy.fieldErrors[code] ?? copy.serverErrorMessage;
+					el.hidden = false;
+				}
+				for (const name of controlsFor(field)) {
+					control(name)?.setAttribute('aria-invalid', 'true');
+					invalid.add(name);
+				}
+			}
+			// The e-mail input also points at the phone slot when the shared contact message is shown.
+			if (errors.contact) {
+				const phoneDescription = 'encomenda-phone-error';
+				const email = control('email');
+				const current = email?.getAttribute('aria-describedby') ?? '';
+				if (email && !current.includes(phoneDescription)) email.setAttribute('aria-describedby', `${current} ${phoneDescription}`.trim());
+			}
+			formError.textContent = copy.formErrorSummary;
+			formError.hidden = false;
+			const first = fieldOrder.find((name) => invalid.has(name));
+			if (first) control(first)?.focus();
+		};
+
+		const showFormError = (message: string) => {
+			formError.textContent = message;
+			formError.hidden = false;
+			formError.focus();
+		};
+
+		form.addEventListener('submit', async (event) => {
+			event.preventDefault();
+			clearErrors();
+			submit.disabled = true;
+			submit.textContent = copy.submittingLabel;
+			form.setAttribute('aria-busy', 'true');
+
+			try {
+				const response = await fetch('/encomenda/enviar', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(Object.fromEntries(new FormData(form))),
+				});
+				const body = (await response.json().catch(() => ({}))) as {
+					ok?: boolean;
+					whatsappHref?: string | null;
+					fieldErrors?: FieldErrors;
+				};
+
+				if (response.ok && body.ok) {
+					form.hidden = true;
+					if (typeof body.whatsappHref === 'string' && body.whatsappHref.startsWith('https://wa.me/')) {
+						whatsapp.href = body.whatsappHref;
+						whatsapp.hidden = false;
+					}
+					success.hidden = false;
+					success.focus();
+					return;
+				}
+				if (response.status === 422 && body.fieldErrors) showFieldErrors(body.fieldErrors);
+				else if (response.status === 429) showFormError(copy.rateLimitedMessage);
+				else showFormError(copy.serverErrorMessage);
+			} catch {
+				showFormError(copy.serverErrorMessage);
+			} finally {
+				submit.disabled = false;
+				submit.textContent = copy.submitLabel;
+				form.removeAttribute('aria-busy');
+			}
+		});
+	}
+</script>

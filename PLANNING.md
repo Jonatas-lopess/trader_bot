@@ -489,6 +489,14 @@ deploy reads it from the `dev` Environment variable of the same name). An allowl
 request a magic link at `/login` without a purchase (a bare `customers` row is created); every
 other visitor to `/admin` gets a 404.
 
+`ORDER_NOTIFY_EMAIL` and `WHATSAPP_NUMBER` (storefront-v2 14) configure `/encomenda`
+(`modules/orders/encomenda.ts`). `ORDER_NOTIFY_EMAIL` is where each Encomenda is e-mailed (reply-to
+the requester, through the e-mail dead letter); unset or invalid still stores the lead in
+`custom_orders` and logs a warning. `WHATSAPP_NUMBER` (digits, country code first) is the target
+of the success state's "Continuar no WhatsApp" link; unset falls back to the `launchBlocking`
+placeholder in `src/content/encomenda.ts`. Both ship empty in `wrangler.jsonc`; a deploy supplies
+them with `--var`. `ENCOMENDA_RATE_LIMITER` (3 per 60 s per IP) throttles the form's endpoint.
+
 **Done:**
 
 5. **Contador engaged** for NFS-e.

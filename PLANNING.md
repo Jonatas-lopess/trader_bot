@@ -131,9 +131,10 @@ src/
 ├── modules/
 │   ├── catalog/    robots and offers in D1, admin CRUD, price lookup (ADR-0008)
 │   ├── billing/    purchases, payment provider, webhooks, dunning, cancellation
-│   ├── identity/   customers, magic-link tokens, sessions
-│   └── licensing/  licenses, expiry, Corretora account binding, binary storage, download tokens, dispatch
-└── shared/         ids, dates, environment bindings, D1 client
+│   ├── identity/   customers, magic-link tokens, sessions, admin gate
+│   ├── licensing/  licenses, expiry, Corretora account binding, binary storage, download tokens, dispatch
+│   └── orders/     Encomendas (custom-Robô requests): validation, rate limit, notification, WhatsApp link
+└── shared/         ids, dates, environment bindings, D1 client, browser scripts, cart limits (pure, also imported by the server)
 ```
 
 Tactical patterns get introduced where an invariant demands them, not upfront. The first

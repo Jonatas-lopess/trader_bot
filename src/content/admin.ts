@@ -185,6 +185,7 @@ const errorTexts: Record<FieldErrorCode, string> = {
 	'invalid-status': 'Status inválido.',
 	'invalid-number': 'Informe um número inteiro entre -9999 e 9999.',
 	'price-invalid': 'Preço inválido. Use algo como 997,00.',
+	'price-zero': 'O preço não pode ser R$ 0,00. Deixe o campo em branco para não oferecer esta Oferta.',
 	'price-too-high': 'Preço alto demais (máximo R$ 100.000,00).',
 	'offers-required': 'Um Robô disponível precisa de ao menos uma Oferta com preço.',
 };

@@ -52,6 +52,8 @@ export type FieldErrorCode =
 	| 'invalid-status'
 	| 'invalid-number'
 	| 'price-invalid'
+	/** R$ 0,00: blank is how an Oferta is left out, so zero is never a price. */
+	| 'price-zero'
 	| 'price-too-high'
 	| 'offers-required';
 
@@ -116,13 +118,13 @@ export function readRobotForm(form: FormData): RobotFormInput {
 
 export type ParsedPrice =
 	| { ok: true; cents: number | null }
-	| { ok: false; error: 'price-invalid' | 'price-too-high' };
+	| { ok: false; error: 'price-invalid' | 'price-zero' | 'price-too-high' };
 
 const count = (text: string, char: string) => text.split(char).length - 1;
 
 /**
  * "97", "97,5", "97.50", "R$ 1.997,00", "1,997.00" to integer cents; blank is `null` (not
- * offered). A lone comma is always the decimal mark (pt-BR); a lone dot is the decimal mark
+ * offered); zero is `price-zero`. A lone comma is always the decimal mark (pt-BR); a lone dot is the decimal mark
  * unless exactly three digits follow it ("1.997" is 1997 reais). At most two decimals, no
  * sign, no exponent: anything else is `price-invalid`.
  */
@@ -147,6 +149,7 @@ export function parsePriceToCents(text: string): ParsedPrice {
 	if (digits.length > 9) return { ok: false, error: 'price-too-high' };
 	const cents = Number(digits) * 100 + Number(fraction.padEnd(2, '0') || '0');
 	if (cents > maxPriceCents) return { ok: false, error: 'price-too-high' };
+	if (cents === 0) return { ok: false, error: 'price-zero' };
 	return { ok: true, cents };
 }
 
@@ -351,6 +354,14 @@ async function slugExists(env: CatalogAdminEnv, slug: string): Promise<boolean> 
 	return (await env.DB.prepare('SELECT 1 AS hit FROM robots WHERE slug = ?').bind(slug).first()) !== null;
 }
 
+/** D1 reports a primary-key or unique clash as an error whose message (or cause) says so. */
+function isUniqueViolation(error: unknown): boolean {
+	for (let current: unknown = error, depth = 0; current instanceof Error && depth < 3; current = current.cause, depth++) {
+		if (/UNIQUE constraint failed/i.test(current.message)) return true;
+	}
+	return false;
+}
+
 /** A new Robô always starts as a draft: the form's status is ignored, publishing is a later step. */
 export async function createRobot(env: CatalogAdminEnv, input: RobotFormInput): Promise<SaveResult> {
 	const validated = validateRobotForm({ ...input, status: 'draft' });
@@ -358,7 +369,9 @@ export async function createRobot(env: CatalogAdminEnv, input: RobotFormInput): 
 	const robot = validated.value;
 	if (await slugExists(env, robot.slug)) return { ok: false, errors: { slug: 'slug-taken' } };
 
-	await env.DB.batch([
+	// The check above and this write are not atomic: a concurrent create can take the slug first,
+	// and the primary key then refuses the batch (all of it, so nothing is half-written).
+	const statements = [
 		env.DB.prepare(
 			`INSERT INTO robots
 				(slug, name, short_description, long_description, strategy_type, market, perfil, supported_corretoras, status, sort_order)
@@ -375,7 +388,13 @@ export async function createRobot(env: CatalogAdminEnv, input: RobotFormInput): 
 			robot.sortOrder
 		),
 		...insertOffers(env, robot.slug, robot.offers),
-	]);
+	];
+	try {
+		await env.DB.batch(statements);
+	} catch (error) {
+		if (isUniqueViolation(error)) return { ok: false, errors: { slug: 'slug-taken' } };
+		throw error;
+	}
 	return { ok: true, slug: robot.slug };
 }
 
@@ -425,7 +444,7 @@ export async function updateRobot(
 	];
 	// One atomic batch. Statements after the UPDATE act only if the new slug now exists, which is
 	// true unless the guarded rename was refused (a purchase landed since the check above).
-	const [updated] = await env.DB.batch([
+	const statements = [
 		update.bind(...values),
 		// After a successful rename the old slug is gone from `robots`, so the offers follow it;
 		// after a refused one the old row is still there and the offers stay where they are.
@@ -441,7 +460,15 @@ export async function updateRobot(
 				'INSERT INTO robot_offers (robot_slug, offer, price_cents) SELECT ?, ?, ? WHERE EXISTS (SELECT 1 FROM robots WHERE slug = ?)'
 			).bind(robot.slug, offer, priceCents, robot.slug)
 		),
-	]);
+	];
+	let updated: D1Result;
+	try {
+		[updated] = await env.DB.batch(statements);
+	} catch (error) {
+		// A rename racing another create or rename onto the same slug: the primary key refuses it.
+		if (renaming && isUniqueViolation(error)) return { ok: false, errors: { slug: 'slug-taken' } };
+		throw error;
+	}
 	if (updated.meta.changes === 0) return { ok: false, errors: { slug: 'slug-locked' } };
 	return { ok: true, slug: robot.slug };
 }

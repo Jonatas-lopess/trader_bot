@@ -45,14 +45,30 @@ async function seedPurchase(robotId: string, amountCents: number, id = `purchase
 		.run();
 }
 
+/** An env whose "does this slug exist" read misses `slug`, as if another request inserted it just after. */
+function staleSlugCheck(slug: string): typeof env {
+	const DB = new Proxy(env.DB, {
+		get(target, prop) {
+			if (prop === 'prepare') {
+				return (sql: string) => {
+					const statement = target.prepare(sql);
+					if (!sql.startsWith('SELECT 1 AS hit FROM robots WHERE slug')) return statement;
+					return { bind: (value: string) => (value === slug ? { first: async () => null } : statement.bind(value)) };
+				};
+			}
+			const value = Reflect.get(target, prop);
+			return typeof value === 'function' ? value.bind(target) : value;
+		},
+	});
+	return { ...env, DB } as typeof env;
+}
+
 describe('parsePriceToCents', () => {
 	it.each([
 		['97', 9700],
 		['97,5', 9750],
 		['97,50', 9750],
 		['97.50', 9750],
-		['0', 0],
-		['0,00', 0],
 		['R$ 997', 99700],
 		['R$997,00', 99700],
 		['1.997', 199700],
@@ -75,6 +91,10 @@ describe('parsePriceToCents', () => {
 		}
 	);
 
+	it.each(['0', '0,00', 'R$ 0', '0.00', '000'])('rejects the zero price %j: a free Oferta is not sellable', (text) => {
+		expect(parsePriceToCents(text)).toEqual({ ok: false, error: 'price-zero' });
+	});
+
 	it('rejects a price above the bound and accepts the bound itself', () => {
 		expect(parsePriceToCents('100000,00')).toEqual({ ok: true, cents: 10_000_000 });
 		expect(parsePriceToCents('100000,01')).toEqual({ ok: false, error: 'price-too-high' });
@@ -86,7 +106,7 @@ describe('parsePriceToCents', () => {
 		expect(formatPriceForInput(9750)).toBe('97,50');
 		expect(formatPriceForInput(99700)).toBe('997,00');
 		expect(formatPriceForInput(0)).toBe('0,00');
-		for (const cents of [0, 5, 100, 9750, 123456]) {
+		for (const cents of [5, 100, 9750, 123456]) {
 			expect(parsePriceToCents(formatPriceForInput(cents))).toEqual({ ok: true, cents });
 		}
 	});
@@ -127,6 +147,14 @@ describe('validateRobotForm', () => {
 				price_annual: 'price-invalid',
 			},
 		});
+	});
+
+	it('flags a zero price on the Oferta field, while blank still means not offered', () => {
+		expect(validateRobotForm(validForm({ prices: { one_time: '997,00', annual: '0,00' } }))).toEqual({
+			ok: false,
+			errors: { price_annual: 'price-zero' },
+		});
+		expect(validateRobotForm(validForm({ prices: { one_time: '997,00', annual: '' } }))).toMatchObject({ ok: true });
 	});
 
 	it.each(['-leading', 'trailing-', 'double--dash', 'with_underscore', 'accént', 'a b'])('rejects slug %j', (slug) => {
@@ -173,6 +201,15 @@ describe('createRobot', () => {
 		await createRobot(env, validForm({ status: 'available' }));
 
 		expect((await getRobotForAdmin(env, 'robo-novo'))?.status).toBe('draft');
+	});
+
+	it('answers slug-taken, not an error, when another create wins the slug between check and write', async () => {
+		await seedRobot({ slug: 'robo-novo', name: 'Existente' });
+
+		const result = await createRobot(staleSlugCheck('robo-novo'), validForm());
+
+		expect(result).toEqual({ ok: false, errors: { slug: 'slug-taken' } });
+		expect((await getRobotForAdmin(env, 'robo-novo'))?.name).toBe('Existente');
 	});
 
 	it('refuses a taken slug and writes nothing', async () => {
@@ -237,6 +274,16 @@ describe('updateRobot', () => {
 		expect(await getRobotForAdmin(env, 'robo-a')).toBeNull();
 		expect((await listOffersFor(env, 'robo-b')).map((o) => o.priceCents)).toEqual([99700]);
 		expect(await listOffersFor(env, 'robo-a')).toEqual([]);
+	});
+
+	it('answers slug-taken, not an error, when the target slug appears between check and write', async () => {
+		await seedRobot({ slug: 'robo-a' });
+		await seedRobot({ slug: 'robo-b' });
+
+		const result = await updateRobot(staleSlugCheck('robo-b'), 'robo-a', validForm({ slug: 'robo-b' }));
+
+		expect(result).toEqual({ ok: false, errors: { slug: 'slug-taken' } });
+		expect(await getRobotForAdmin(env, 'robo-a')).not.toBeNull();
 	});
 
 	it('refuses to rename onto another Robô slug', async () => {

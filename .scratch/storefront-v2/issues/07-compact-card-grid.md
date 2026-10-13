@@ -14,7 +14,7 @@
 - [x] Grid at 390, 768 and 1280; cards equal height, buttons aligned
 - [x] "Saiba mais" opens the modal; the coming-soon variant is correct
 - [x] Carousel and its script removed; no unused code left
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 

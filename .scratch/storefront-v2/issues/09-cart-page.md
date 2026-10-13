@@ -18,7 +18,7 @@ TDD seam: `price-cart` (pure) and the endpoint (D1 real): totals, unavailable li
 - [x] Unavailable lines are flagged and excluded from the total
 - [x] Bad payloads get 400; no price in the request is ever read
 - [x] Looks right at 390 and 1280, empty and error states included
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 

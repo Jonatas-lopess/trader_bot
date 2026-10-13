@@ -18,7 +18,7 @@
 - [x] Admin-entered text is escaped (a name containing markup renders as text)
 - [x] Coming-soon variant has no prices or buy controls; buy links carry only `robot` + `offer`
 - [x] Works at 390 and 1280; degrades without JavaScript
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 

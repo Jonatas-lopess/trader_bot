@@ -19,7 +19,7 @@ TDD seam: the store with an in-memory storage (add/merge/cap/remove/clear, malfo
 - [x] Corrupt `sessionStorage` content does not break the page
 - [x] No price is ever written to storage
 - [ ] Keyboard and screen-reader usable
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 

@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearCatalog, seedRobot } from '../catalog/test-helpers';
 import { resolveCheckout } from './checkout';
+import { pay } from './pay';
 import { getPurchaseStatus } from './status';
 import { handleWebhook } from './webhook';
 
@@ -12,18 +13,46 @@ import { handleWebhook } from './webhook';
  * mocked (spec.md's Testing Decisions); every D1 read/write is real.
  */
 
+const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
+
 /**
- * The own-form checkout (ADR-0007) renders the form and writes no row; the pay endpoint
- * writes it with `id = reference` and the Appmax order id. Set up directly here.
+ * The own-form checkout (ADR-0007): `/checkout` renders the form with a fresh reference, the
+ * form posts to the pay endpoint, which writes the row and creates the Appmax order. Appmax's
+ * customer/order/payment answers are layered over the test's own `fetch` mock for the call.
  */
-async function startCheckout(orderId: string): Promise<string> {
+async function startCheckout(orderId: string, method: 'card' | 'boleto'): Promise<string> {
 	const checkout = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin: 'https://example.com' });
 	if (checkout.kind !== 'form') throw new Error('expected the own checkout form');
-	await env.DB.prepare(
-		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, ?, ?, 'pending', 'appmax', ?)"
-	)
-		.bind(checkout.reference, checkout.robotId, checkout.offer, checkout.amountCents, orderId)
-		.run();
+
+	const fetchMock = vi.mocked(globalThis.fetch);
+	const outer = fetchMock.getMockImplementation();
+	if (outer === undefined) throw new Error('mock Appmax before starting a checkout');
+	fetchMock.mockImplementation(async (input, init) => {
+		const url = typeof input === 'string' ? input : input.toString();
+		if (url.endsWith('/v1/customers')) return json({ data: { customer: { id: 'cus_e2e' } } });
+		if (url.endsWith('/v1/orders')) return json({ data: { order: { id: orderId, status: 'pendente' } } });
+		if (url.endsWith('/v1/payments/credit-card')) return json({ data: { order: { id: orderId, status: 'autorizado' } } });
+		if (url.endsWith('/v1/payments/boleto')) {
+			return json({ data: { boleto: { pdf_url: 'https://boleto.example/b.pdf', digitable_line: '3419', due_date: '2026-10-19' } } });
+		}
+		return outer(input, init);
+	});
+	const paid = await pay(
+		{ ...env, PAY_RATE_LIMITER: { limit: async () => ({ success: true }) } },
+		{
+			body: {
+				reference: checkout.reference,
+				robot: checkout.robotId,
+				offer: checkout.offer,
+				method,
+				buyer: { name: 'Maria Silva', email: 'maria@example.com', phone: '11987654321', document: '12345678909' },
+				...(method === 'card' ? { token: 'tok_e2e' } : {}),
+			},
+			ip: '203.0.113.9',
+		}
+	);
+	fetchMock.mockImplementation(outer);
+	expect(paid).toEqual({ ok: true, redirectUrl: `/checkout/confirmacao?ref=${checkout.reference}` });
 	return checkout.reference;
 }
 
@@ -57,7 +86,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const reference = await startCheckout('ord_e2e_happy');
+		const reference = await startCheckout('ord_e2e_happy', 'card');
 		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'pending' });
 
 		const webhook = await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_e2e_happy' }));
@@ -77,7 +106,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const reference = await startCheckout('ord_e2e_boleto');
+		const reference = await startCheckout('ord_e2e_boleto', 'boleto');
 
 		const created = await handleWebhook(env, JSON.stringify({ event: 'order_billet_created', order_id: 'ord_e2e_boleto' }));
 		expect(created).toEqual({ status: 200 });

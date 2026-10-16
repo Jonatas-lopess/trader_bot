@@ -109,6 +109,18 @@
 				"period": 10
 			}
 		},
+		// POST /checkout/pay (modules/billing/pay.ts), keyed `ip:<address>`. The route is public
+		// and creates Appmax customers and orders, so it is also a card-testing target; every
+		// request spends a hit, checked before anything else (appmax-checkout 05). Whether to add
+		// Turnstile is an owner decision, not taken here.
+		{
+			"name": "PAY_RATE_LIMITER",
+			"namespace_id": "6",
+			"simple": {
+				"limit": 5,
+				"period": 60
+			}
+		},
 		// POST /encomenda (modules/orders/encomenda.ts), keyed `ip:<address>`. Only a
 		// valid, non-honeypot submission spends a hit; it is the last gate before D1 and Resend.
 		{

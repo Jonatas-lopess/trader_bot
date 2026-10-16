@@ -37,6 +37,7 @@ import { dialogCloseLabel } from '../content/catalog-page';
 </dialog>
 
 <script>
+	import { enhanceGallery } from '../shared/gallery-viewer';
 	import { enhanceOfferRows } from '../shared/offer-rows';
 
 	const dialog = document.querySelector<HTMLDialogElement>('#robot-dialog');
@@ -63,6 +64,8 @@ import { dialogCloseLabel } from '../content/catalog-page';
 					if (add && row.dataset.offer) add.dataset.offer = row.dataset.offer;
 				});
 			}
+			// The gallery (robot-gallery 04): one item at a time, videos embedded only on press.
+			for (const gallery of body.querySelectorAll<HTMLElement>('[data-robot-gallery]')) enhanceGallery(gallery);
 			dialog.showModal();
 		};
 

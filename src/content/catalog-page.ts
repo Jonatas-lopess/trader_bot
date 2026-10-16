@@ -13,6 +13,14 @@
  *   grep -rn "launchBlocking(" src/content/catalog-page.ts
  */
 
+import {
+	mediaPath,
+	YOUTUBE_THUMBNAIL_SIZE,
+	youtubeEmbedUrl,
+	youtubeThumbnailUrl,
+	youtubeWatchUrl,
+	type GalleryItem,
+} from '../modules/catalog/gallery';
 import type { OfferName, PublishedRobot, RobotStatus } from '../modules/catalog/robots';
 import { launchBlocking } from '../shared/launch-blocking';
 import { withdrawalHref } from './legal';
@@ -46,6 +54,15 @@ export const learnMoreLabelFor = (card: Pick<CatalogCard, 'name'>): string =>
 	`${learnMoreLabel} sobre ${card.name}`;
 export const dialogCloseLabel = 'Fechar';
 export const addToCartLabel = 'Adicionar ao carrinho';
+
+// Robô gallery inside "Saiba mais" (robot-gallery 04). Captions are the alt text; these name an
+// item that has none, so a screen reader never hears a bare "imagem".
+export const galleryAltFallback = (robotName: string, kind: 'image' | 'video', position: number): string =>
+	`${robotName}: ${kind === 'image' ? 'imagem' : 'vídeo'} ${position}`;
+export const galleryLabelFor = (robotName: string): string => `Galeria de ${robotName}`;
+export const galleryThumbsLabel = 'Escolher item da galeria';
+export const galleryThumbLabel = (position: number, alt: string): string => `Mostrar item ${position}: ${alt}`;
+export const galleryPlayLabel = (alt: string): string => `Reproduzir vídeo: ${alt}`;
 
 export const comingSoonLabel = 'Em breve';
 // Shown only to an admin previewing a draft on the real catalog (storefront-v2 05).
@@ -124,7 +141,27 @@ export type CatalogCard = {
 	draft: boolean;
 	/** In Compra, Anual order; empty for a coming-soon Robô. */
 	offers: CardOffer[];
+	/** Images and videos for the "Saiba mais" modal, in order; empty when the Robô has none. */
+	gallery: CardGalleryItem[];
 };
+
+/**
+ * One gallery item as the card renders it. Every URL is built here from a stored id (the media
+ * route, YouTube's embed, poster and watch page), never from anything an admin pasted; `alt` is
+ * the caption or a fallback naming the Robô, and both are plain text.
+ */
+export type CardGalleryItem =
+	| { kind: 'image'; src: string; width: number; height: number; alt: string; caption: string | null }
+	| {
+			kind: 'video';
+			posterSrc: string;
+			embedSrc: string;
+			watchHref: string;
+			width: number;
+			height: number;
+			alt: string;
+			caption: string | null;
+	  };
 
 export type CardInfoRow = { label: string; value: string };
 
@@ -180,9 +217,34 @@ export const cardBuy = (card: CatalogCard): CardBuy | null => {
 	return offer ? { label: `${buyLabelPrefix} ${card.name}`, href: offer.href } : null;
 };
 
-/** One card per published Robô (and per draft, when the page loaded drafts for an admin), with the Ofertas it sells in Compra, Anual order. */
-export const buildCatalogCards = (robots: PublishedRobot[]): CatalogCard[] =>
+const toCardGalleryItem = (robotName: string, item: GalleryItem, index: number): CardGalleryItem => {
+	const alt = item.caption ?? galleryAltFallback(robotName, item.kind, index + 1);
+	if (item.kind === 'image') {
+		return { kind: 'image', src: mediaPath(item.id), width: item.width, height: item.height, alt, caption: item.caption };
+	}
+	return {
+		kind: 'video',
+		posterSrc: youtubeThumbnailUrl(item.youtubeId),
+		embedSrc: youtubeEmbedUrl(item.youtubeId),
+		watchHref: youtubeWatchUrl(item.youtubeId),
+		width: YOUTUBE_THUMBNAIL_SIZE.width,
+		height: YOUTUBE_THUMBNAIL_SIZE.height,
+		alt,
+		caption: item.caption,
+	};
+};
+
+/**
+ * One card per published Robô (and per draft, when the page loaded drafts for an admin), with the
+ * Ofertas it sells in Compra, Anual order and its gallery (`listPublishedGalleries`, loaded with
+ * the same draft flag) when it has one.
+ */
+export const buildCatalogCards = (
+	robots: PublishedRobot[],
+	galleries: ReadonlyMap<string, readonly GalleryItem[]> = new Map()
+): CatalogCard[] =>
 	robots.map((robot) => ({
+		gallery: (galleries.get(robot.slug) ?? []).map((item, index) => toCardGalleryItem(robot.name, item, index)),
 		slug: robot.slug,
 		name: robot.name,
 		shortDescription: robot.shortDescription,

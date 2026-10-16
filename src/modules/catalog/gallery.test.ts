@@ -16,6 +16,7 @@ import {
 	addVideo,
 	GALLERY_LIMITS,
 	listGallery,
+	listPublishedGalleries,
 	moveItem,
 	openMedia,
 	parseYoutubeUrl,
@@ -24,6 +25,7 @@ import {
 	setCaption,
 	youtubeEmbedUrl,
 	youtubeThumbnailUrl,
+	type GalleryItem,
 } from './gallery';
 import { clearCatalog, seedRobot } from './test-helpers';
 
@@ -403,6 +405,45 @@ describe('reorder and move', () => {
 	it('answers not-found for an id that is not this Robô item', async () => {
 		expect(await moveItem(env, 'robo-a', 'stale-id', 'up')).toEqual({ ok: false, error: 'not-found' });
 		expect(await order()).toEqual(['a', 'b', 'c', 'd']);
+	});
+});
+
+describe('listPublishedGalleries', () => {
+	beforeEach(async () => {
+		for (const [slug, status] of [
+			['robo-available', 'available'],
+			['robo-soon', 'coming-soon'],
+			['robo-draft', 'draft'],
+			['robo-archived', 'archived'],
+		] as const) {
+			await seedRobot({ slug, status, offers: { one_time: 99700 } });
+			await addVideo(env, slug, 'https://youtu.be/aaaaaaaaaaa');
+			await addVideo(env, slug, 'https://youtu.be/bbbbbbbbbbb');
+		}
+	});
+
+	const shape = (galleries: Map<string, GalleryItem[]>) =>
+		Object.fromEntries([...galleries].map(([slug, items]) => [slug, items.map((i) => (i.kind === 'video' ? i.youtubeId[0] : '?'))]));
+
+	it('returns the galleries of published Robôs only, each in order', async () => {
+		const [first] = await listGallery(env, 'robo-available');
+		await moveItem(env, 'robo-available', first.id, 'down');
+
+		expect(shape(await listPublishedGalleries(env))).toEqual({ 'robo-available': ['b', 'a'], 'robo-soon': ['a', 'b'] });
+	});
+
+	it('adds drafts only for the admin preview, never archived', async () => {
+		expect(shape(await listPublishedGalleries(env, { includeDrafts: true }))).toEqual({
+			'robo-available': ['a', 'b'],
+			'robo-soon': ['a', 'b'],
+			'robo-draft': ['a', 'b'],
+		});
+	});
+
+	it('leaves out a published Robô with no media', async () => {
+		await seedRobot({ slug: 'robo-empty', status: 'available', offers: { one_time: 99700 } });
+
+		expect((await listPublishedGalleries(env)).has('robo-empty')).toBe(false);
 	});
 });
 

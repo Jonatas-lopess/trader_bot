@@ -15,6 +15,7 @@ import {
 	draftLabel,
 	emptyCatalogMessage,
 	formatBrl,
+	galleryAltFallback,
 	learnMoreLabelFor,
 	offerOrder,
 	type CatalogCard,
@@ -76,6 +77,64 @@ describe('draft preview (admin)', () => {
 		]);
 		expect(preview.find((c) => c.slug === 'robo-exemplo-f')).toBeUndefined();
 		expect(draftLabel.trim()).not.toBe('');
+	});
+});
+
+describe('card gallery', () => {
+	const robot = {
+		slug: 'robo-g',
+		name: 'Robô G',
+		shortDescription: 's',
+		longDescription: 'l',
+		strategyType: 't',
+		market: null,
+		perfil: null,
+		supportedCorretoras: null,
+		status: 'available' as const,
+		sortOrder: 0,
+		offers: [],
+	};
+	const image = {
+		id: 'img-1',
+		robotSlug: 'robo-g',
+		position: 0,
+		caption: 'Gráfico <b>do</b> resultado',
+		kind: 'image' as const,
+		contentType: 'image/png' as const,
+		byteSize: 10,
+		width: 1280,
+		height: 720,
+	};
+	const video = { id: 'vid-1', robotSlug: 'robo-g', position: 1, caption: null, kind: 'video' as const, youtubeId: 'dQw4w9WgXcQ' };
+
+	it('maps images to the media route with their size, and videos to ids rebuilt into YouTube URLs', () => {
+		const [card] = buildCatalogCards([robot], new Map([['robo-g', [image, video]]]));
+
+		expect(card.gallery).toEqual([
+			{ kind: 'image', src: '/media/img-1', width: 1280, height: 720, alt: 'Gráfico <b>do</b> resultado', caption: 'Gráfico <b>do</b> resultado' },
+			{
+				kind: 'video',
+				posterSrc: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+				embedSrc: 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ',
+				watchHref: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+				width: 480,
+				height: 360,
+				alt: galleryAltFallback('Robô G', 'video', 2),
+				caption: null,
+			},
+		]);
+	});
+
+	it('gives an item without a caption an alt text naming the Robô, and a Robô without media an empty gallery', () => {
+		const [card, bare] = buildCatalogCards(
+			[robot, { ...robot, slug: 'robo-h' }],
+			new Map([['robo-g', [{ ...image, caption: null }]]])
+		);
+
+		expect(card.gallery[0].alt).toBe(galleryAltFallback('Robô G', 'image', 1));
+		expect(card.gallery[0].alt).toContain('Robô G');
+		expect(bare.gallery).toEqual([]);
+		expect(buildCatalogCards([robot])[0].gallery).toEqual([]);
 	});
 });
 

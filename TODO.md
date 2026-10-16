@@ -239,7 +239,7 @@ Spec: [.scratch/robot-gallery/spec.md](.scratch/robot-gallery/spec.md). Images (
 | 01 | [Image gallery in the admin: upload, list, remove](.scratch/robot-gallery/issues/01-image-gallery-admin.md) | — | done |
 | 02 | [Video items from YouTube links](.scratch/robot-gallery/issues/02-youtube-video-items.md) | 01 | done |
 | 03 | [Captions, reordering and slug rename](.scratch/robot-gallery/issues/03-captions-reorder-rename.md) | 01 | done |
-| 04 | [Gallery in the "Saiba mais" modal](.scratch/robot-gallery/issues/04-gallery-in-saiba-mais-modal.md) | 01, 02 | ready-for-agent |
+| 04 | [Gallery in the "Saiba mais" modal](.scratch/robot-gallery/issues/04-gallery-in-saiba-mais-modal.md) | 01, 02 | done |
 | 05 | [End-to-end verification and setup checklist](.scratch/robot-gallery/issues/05-end-to-end-verification.md) | 01, 02, 03, 04 | ready-for-agent |
 
-Frontier: 04. The media bucket and its binding are a manual Cloudflare step (05).
+Frontier: 05. The media bucket and its binding are a manual Cloudflare step (05).

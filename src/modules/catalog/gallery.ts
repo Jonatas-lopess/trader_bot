@@ -277,6 +277,9 @@ export function parseYoutubeUrl(input: string): string | null {
 /** The privacy-enhanced embed, rebuilt from the stored id (never from what the admin pasted). */
 export const youtubeEmbedUrl = (id: string): string => `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
 
+/** The video's own YouTube page: where the poster links when there is no JavaScript to embed it. */
+export const youtubeWatchUrl = (id: string): string => `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
+
 /** YouTube's static thumbnail for a video, shown before play. */
 export const youtubeThumbnailUrl = (id: string): string => `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
 
@@ -295,6 +298,28 @@ export async function listGallery(env: Pick<GalleryEnv, 'DB'>, slug: string): Pr
 		.bind(slug)
 		.all<ItemRow>();
 	return results.map(toItem);
+}
+
+/**
+ * The catalog's read side: every published Robô's gallery (`available`, `coming-soon`), keyed by
+ * slug, each in display order; a Robô with no media has no entry. With `includeDrafts` (the
+ * admin preview on `/catalog`, after `requireAdmin`) drafts are included too. Archived never.
+ */
+export async function listPublishedGalleries(
+	env: Pick<GalleryEnv, 'DB'>,
+	options: { includeDrafts?: boolean } = {}
+): Promise<Map<string, GalleryItem[]>> {
+	// Constant SQL lists, never user input.
+	const statuses = options.includeDrafts ? "'available', 'coming-soon', 'draft'" : "'available', 'coming-soon'";
+	const { results } = await env.DB.prepare(
+		`SELECT ${ITEM_COLUMNS.split(', ').map((c) => `g.${c}`).join(', ')}
+		FROM robot_gallery_items g JOIN robots r ON r.slug = g.robot_slug
+		WHERE r.status IN (${statuses})
+		ORDER BY g.robot_slug, g.position, g.created_at, g.id`
+	).all<ItemRow>();
+	const bySlug = new Map<string, GalleryItem[]>();
+	for (const row of results) bySlug.set(row.robot_slug, [...(bySlug.get(row.robot_slug) ?? []), toItem(row)]);
+	return bySlug;
 }
 
 // ---------------------------------------------------------------------

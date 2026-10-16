@@ -1,8 +1,8 @@
 ---
 // Robô details — src/components/robot-details.astro
 //
-// The body of the "Saiba mais" modal for one Robô (storefront-v2 06, ADR-0008): long
-// description, "Detalhes do Robô" rows, the price rows with one buy link and the "Adicionar
+// The body of the "Saiba mais" modal for one Robô (storefront-v2 06, ADR-0008): its gallery when it
+// has one (robot-gallery 04, robot-gallery.astro), long description, "Detalhes do Robô" rows, the price rows with one buy link and the "Adicionar
 // ao carrinho" button, and the 7-day withdrawal note. A coming-soon Robô gets the description
 // and rows only: no prices, no buy controls, no note.
 //
@@ -22,6 +22,7 @@ import {
 	detailsHeading,
 	type CatalogCard,
 } from '../content/catalog-page';
+import RobotGallery from './robot-gallery.astro';
 import RobotInfoRows from './robot-info-rows.astro';
 import RobotPriceRows from './robot-price-rows.astro';
 
@@ -35,7 +36,9 @@ const offer = defaultOffer(card);
 const withdrawalNote = cardWithdrawalNote(card);
 ---
 
-<div class="flex flex-col gap-6">
+<div class="flex min-w-0 flex-col gap-6">
+	<RobotGallery robotName={card.name} items={card.gallery} />
+
 	<p class="whitespace-pre-line text-body text-text-secondary">{card.longDescription}</p>
 
 	<div>

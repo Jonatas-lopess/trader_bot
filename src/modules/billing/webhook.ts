@@ -99,9 +99,9 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
  * happening.
  *
  * Also the point a first-activation auto-sends the magic-link login email
- * (customer-area ticket 06/07) — the Cliente never types an email anywhere
- * on our own checkout (`checkout.ts` only ever collects `planId`; Appmax's
- * hosted page is what collects the email this function receives). Gated on
+ * (customer-area ticket 06/07). The e-mail is the one the Cliente typed on our
+ * own checkout form (ADR-0007), read back from Appmax's order refetch, never
+ * from the webhook payload. Gated on
  * `provisionCustomer`'s `created` flag, not merely "status is active": a
  * reapplied/renewal event for an already-attached purchase must not
  * re-issue a login email on every renewal, only on the purchase's first

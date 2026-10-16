@@ -58,8 +58,8 @@ export const buyLabelPrefix = 'Comprar';
 // Accessible name of the price rows' radio group.
 export const priceRowsLabel = 'Forma de contratar';
 
-// One line under the buy area of every card with something to buy. Checkout is hosted by
-// Appmax, so this is the last place we control before payment (withdrawal-guarantee 03).
+// One line under the buy area of every card with something to buy; the own checkout page
+// repeats it before payment (ADR-0007, withdrawal-guarantee 03).
 // "Desistir da compra", never "garantia": the statutory right is arrependimento, and
 // "garantia" reads as a product-performance guarantee (CDC art. 37).
 export const buyWithdrawalNote = {

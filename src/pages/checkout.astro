@@ -1,0 +1,35 @@
+---
+// /checkout?robot=<slug>&offer=<offer> — src/pages/checkout.astro
+//
+// Thin adapter around `resolveCheckout` (modules/billing/checkout.ts, ADR-0007). A
+// redirect provider (Stripe's test driver) is sent on with a 302; an error answers with
+// its status and a plain message; Appmax renders our own form.
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../layouts/base-layout.astro';
+import { readCheckoutQuery, resolveCheckout } from '../modules/billing/checkout';
+import { pageDescription, pageTitle, unavailable } from '../content/checkout-form';
+
+export const prerender = false;
+
+const result = await resolveCheckout(env, readCheckoutQuery(Astro.url));
+if (result.kind === 'redirect') return Astro.redirect(result.redirectUrl, 302);
+if (result.kind === 'error') return new Response(result.message, { status: result.status });
+---
+
+<BaseLayout title={pageTitle} description={pageDescription}>
+	<section class="content-row gutter-x flex flex-col items-center gap-6 py-20 text-center">
+		{
+			result.kind === 'unavailable' ? (
+				<>
+					<h1 class="text-heading-1 font-bold text-text-primary">{unavailable.heading}</h1>
+					<p class="text-body-lg text-text-secondary">{unavailable.message}</p>
+					<a href={unavailable.backLink.href} class="text-body font-medium text-brand-primary underline">
+						{unavailable.backLink.label}
+					</a>
+				</>
+			) : (
+				<h1 class="text-heading-1 font-bold text-text-primary">{pageTitle}</h1>
+			)
+		}
+	</section>
+</BaseLayout>

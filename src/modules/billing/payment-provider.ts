@@ -9,7 +9,10 @@
  * `PAYMENT_PROVIDER=stripe` — ADR-0003 still stands as the committed
  * production gateway.
  *
- * Scoped to exactly the two operations `checkout.ts` and `cancel.ts` need.
+ * Scoped to exactly the operations `checkout.ts`, `cancel.ts` and the webhooks need. A
+ * provider either redirects to its own page (`checkout: 'redirect'`, Stripe) or uses our
+ * own checkout form (`checkout: 'own-form'`, Appmax, ADR-0007), in which case it has no
+ * `createCheckoutSession`: `pay.ts` drives Appmax's API directly.
  * Deliberately excludes:
  *   - Webhook handling. Appmax and Stripe's trust models, payload shapes
  *     and signature schemes are too different to unify without faking a
@@ -55,7 +58,7 @@ export type CreateCheckoutSessionParams = {
 	/** From `paymentMethodsFor(offer)`; a driver that cannot honour a method (Stripe test driver: card only) offers the intersection. */
 	allowedMethods: PaymentMethod[];
 	returnUrl: string;
-	/** Where an abandoned checkout goes back to. Appmax's hosted checkout has no such concept; Stripe's driver uses it as `cancel_url`, distinct from `returnUrl` so a cancelled checkout doesn't land on the same confirmation page a successful payer sees. */
+	/** Where an abandoned checkout goes back to. Only a redirect provider has one; Stripe's driver uses it as `cancel_url`, distinct from `returnUrl` so a cancelled checkout doesn't land on the same confirmation page a successful payer sees. */
 	cancelUrl: string;
 };
 
@@ -87,19 +90,29 @@ export type PaymentProviderEnv = Pick<
 	APPMAX_ENV?: string;
 };
 
-/** `I` prefix per convention (projeto_ebd's own `IPaymentProvider`) — a polymorphic contract two concrete drivers implement, not a plain data shape. */
-export type IPaymentProvider = {
+type PaymentProviderCommon = {
 	id: ProviderId;
-	createCheckoutSession(
-		env: PaymentProviderEnv,
-		params: CreateCheckoutSessionParams
-	): Promise<CreateCheckoutSessionResult>;
 	fetchAuthoritativeStatus(
 		env: PaymentProviderEnv,
 		ref: { orderId: string | null; subscriptionId: string | null }
 	): Promise<FetchAuthoritativeStatusResult>;
 	cancelSubscription(env: PaymentProviderEnv, providerSubscriptionId: string): Promise<{ ok: true } | { ok: false }>;
 };
+
+/** Sends the Cliente to the gateway's own page (Stripe's test driver). */
+export type RedirectPaymentProvider = PaymentProviderCommon & {
+	checkout: 'redirect';
+	createCheckoutSession(
+		env: PaymentProviderEnv,
+		params: CreateCheckoutSessionParams
+	): Promise<CreateCheckoutSessionResult>;
+};
+
+/** Collects payment on our own form and drives the gateway's API (Appmax, ADR-0007); the pay endpoint does the rest. */
+export type OwnFormPaymentProvider = PaymentProviderCommon & { checkout: 'own-form' };
+
+/** `I` prefix per convention (projeto_ebd's own `IPaymentProvider`) — a polymorphic contract two concrete drivers implement, not a plain data shape. */
+export type IPaymentProvider = RedirectPaymentProvider | OwnFormPaymentProvider;
 
 /** Strips a CPF/CNPJ to digits; anything that is not 11 (CPF) or 14 (CNPJ) digits is treated as absent rather than persisted into a nota. */
 export function normalizeBuyerDocument(raw: unknown): string | null {

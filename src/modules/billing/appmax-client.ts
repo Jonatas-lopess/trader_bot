@@ -55,19 +55,13 @@
  * equals the `unit_value` we sent, with shipping and discount at 0. Until then
  * a response with no such field activates with a Sentry report instead of
  * rejecting (webhook.ts).
- *
- * `createHostedCheckoutSession` is DEPRECATED: it targets a hosted checkout
- * Appmax does not offer (ADR-0007) and is deleted together with the
- * `IPaymentProvider` seam change in ticket 02.
  */
 
-import type { PurchaseOffer } from '../catalog/robots';
 import {
 	normalizeBuyerDocument,
 	normalizeBuyerName,
 	type BuyerFiscalData,
-	type IPaymentProvider,
-	type PaymentMethod,
+	type OwnFormPaymentProvider,
 	type PurchaseStatus,
 } from './payment-provider';
 
@@ -384,38 +378,6 @@ export async function getOrder(env: AppmaxCredentials, orderId: string): Promise
 	};
 }
 
-type CreateHostedCheckoutSessionParams = {
-	reference: string;
-	robotId: string;
-	offer: PurchaseOffer;
-	amountCents: number;
-	allowedMethods: PaymentMethod[];
-	returnUrl: string;
-};
-
-export type CreateHostedCheckoutSessionResult =
-	| { ok: true; checkoutUrl: string; appmaxOrderId: string | null }
-	| { ok: false; reason: 'appmax_auth_failed' | 'appmax_unavailable' };
-
-/** @deprecated Appmax has no hosted checkout (ADR-0007); deleted in ticket 02. */
-export async function createHostedCheckoutSession(
-	env: AppmaxCredentials,
-	params: CreateHostedCheckoutSessionParams
-): Promise<CreateHostedCheckoutSessionResult> {
-	const result = await appmaxRequest(env, 'POST', '/payment-links', {
-		external_id: params.reference,
-		amount: params.amountCents,
-		payment_methods: params.allowedMethods,
-		recurring: params.offer === 'monthly',
-		return_url: params.returnUrl,
-		metadata: { robot_id: params.robotId, offer: params.offer },
-	});
-	if (!result.ok) return { ok: false, reason: result.reason === 'auth_failed' ? 'appmax_auth_failed' : 'appmax_unavailable' };
-	const checkoutUrl = stringFrom(result.data.url);
-	if (checkoutUrl === null) return { ok: false, reason: 'appmax_unavailable' };
-	return { ok: true, checkoutUrl, appmaxOrderId: idFrom(result.data.order_id) };
-}
-
 /**
  * Webhook payload shape: `event`, `order_id`, `subscription_id`. Unlike the
  * rest of this file, these three field names carry higher confidence — they
@@ -567,24 +529,13 @@ function mapSubscriptionStatus(status: string): AppmaxPurchaseStatus {
 }
 
 /**
- * Adapter onto the shared `IPaymentProvider` seam (docs/adr/0005) —
- * `factory.ts` selects this by default. Every function above is unchanged;
- * this only reshapes their results to the generic contract (`appmaxOrderId`
- * → `providerOrderId`, `appmax_auth_failed`/`appmax_unavailable` →
- * `provider_auth_failed`/`provider_unavailable`).
+ * Adapter onto the shared `IPaymentProvider` seam (docs/adr/0005) — `factory.ts`
+ * selects this by default. An own-form provider (ADR-0007): `/checkout` renders our
+ * form and `pay.ts` calls `createCustomer`/`createOrder`/`pay*` above directly.
  */
-export const appmaxProvider: IPaymentProvider = {
+export const appmaxProvider: OwnFormPaymentProvider = {
 	id: 'appmax',
-	async createCheckoutSession(env, params) {
-		const result = await createHostedCheckoutSession(env, params);
-		if (!result.ok) {
-			return {
-				ok: false,
-				reason: result.reason === 'appmax_auth_failed' ? 'provider_auth_failed' : 'provider_unavailable',
-			};
-		}
-		return { ok: true, checkoutUrl: result.checkoutUrl, providerOrderId: result.appmaxOrderId };
-	},
+	checkout: 'own-form',
 	fetchAuthoritativeStatus,
 	cancelSubscription,
 };

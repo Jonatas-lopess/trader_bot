@@ -4,7 +4,7 @@ import { ROBOT_BINARY_BYTES, putLicenseBinary } from '../../../test/robot-binary
 import { cancelSubscription } from '../billing/cancel';
 import { lookupOffer } from '../catalog/robots';
 import { clearCatalog, seedRobot } from '../catalog/test-helpers';
-import { createCheckoutSession } from '../billing/checkout';
+import { resolveCheckout } from '../billing/checkout';
 import { getPurchaseStatus } from '../billing/status';
 import { handleWebhook } from '../billing/webhook';
 import { redeemMagicLink, requestMagicLink } from '../identity/magic-link';
@@ -42,12 +42,6 @@ function mockOutbound(orderId: string) {
 		if (url.includes('/oauth2/token')) {
 			return new Response(JSON.stringify({ access_token: 'e2e-catalog-token' }), { status: 200 });
 		}
-		if (url.includes('/payment-links')) {
-			return new Response(
-				JSON.stringify({ data: { url: `https://checkout.sandboxappmax.com.br/pay/${orderId}`, order_id: orderId } }),
-				{ status: 200 }
-			);
-		}
 		if (url.includes(`/orders/${orderId}`)) {
 			return new Response(
 				JSON.stringify({
@@ -75,8 +69,15 @@ function mockOutbound(orderId: string) {
 }
 
 async function startCheckout(orderId: string, offer: 'one_time') {
-	const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer, origin: 'https://example.com' });
-	expect(checkout.ok).toBe(true);
+	// The own-form checkout (ADR-0007) writes no row; the pay endpoint writes it with
+	// `id = reference` and the Appmax order id. Set up directly here.
+	const checkout = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer, origin: 'https://example.com' });
+	if (checkout.kind !== 'form') throw new Error('expected the own checkout form');
+	await env.DB.prepare(
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, ?, ?, 'pending', 'appmax', ?)"
+	)
+		.bind(checkout.reference, checkout.robotId, checkout.offer, checkout.amountCents, orderId)
+		.run();
 	const row = await env.DB.prepare('SELECT id, amount_cents FROM purchases WHERE appmax_order_id = ?')
 		.bind(orderId)
 		.first<{ id: string; amount_cents: number }>();

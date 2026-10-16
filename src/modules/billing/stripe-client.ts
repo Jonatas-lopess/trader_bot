@@ -19,8 +19,8 @@ import {
 	normalizeBuyerDocument,
 	normalizeBuyerName,
 	type BuyerFiscalData,
-	type IPaymentProvider,
 	type PurchaseStatus,
+	type RedirectPaymentProvider,
 } from './payment-provider';
 
 type StripeCredentials = Pick<Cloudflare.Env, 'STRIPE_SECRET_KEY'>;
@@ -215,8 +215,9 @@ function mapSessionStatus(status: string, paymentStatus: string): StripePurchase
 }
 
 /** Adapter onto the shared `IPaymentProvider` seam (docs/adr/0005) — selected by `factory.ts` only on explicit `PAYMENT_PROVIDER=stripe`. */
-export const stripeProvider: IPaymentProvider = {
+export const stripeProvider: RedirectPaymentProvider = {
 	id: 'stripe',
+	checkout: 'redirect',
 	async createCheckoutSession(env, params) {
 		const result = await createCheckoutSession(env, {
 			reference: params.reference,

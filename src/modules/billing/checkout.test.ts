@@ -1,43 +1,12 @@
 import { env } from 'cloudflare:workers';
 import { seedCustomer as attachCustomer } from '../../../test/customer-seed';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { GET } from '../../pages/checkout';
 import { clearCatalog, seedRobot } from '../catalog/test-helpers';
-import { createCheckoutSession } from './checkout';
+import { readCheckoutQuery, resolveCheckout } from './checkout';
 
 const origin = 'https://example.com';
 
-type AppmaxRequestBody = {
-	amount: number;
-	payment_methods: string[];
-	recurring: boolean;
-	metadata: { robot_id: string; offer: string };
-};
-
-// Only the outbound fetch to Appmax is mocked (spec.md's Testing
-// Decisions) — the D1 write below runs against the real binding from
-// ticket 01.
-function mockAppmax(response: { ok: true; orderId: string } | { ok: false }) {
-	const bodies: AppmaxRequestBody[] = [];
-	vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-		const url = typeof input === 'string' ? input : input.toString();
-		if (url.includes('/oauth2/token')) {
-			return new Response(JSON.stringify({ access_token: 'test-token' }), { status: 200 });
-		}
-		if (url.includes('/payment-links')) {
-			bodies.push(JSON.parse(init!.body as string));
-			if (!response.ok) return new Response('unavailable', { status: 503 });
-			return new Response(
-				JSON.stringify({
-					data: { url: 'https://checkout.sandboxappmax.com.br/pay/abc', order_id: response.orderId },
-				}),
-				{ status: 200 }
-			);
-		}
-		throw new Error(`unexpected fetch: ${url}`);
-	});
-	return bodies;
-}
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 function mockStripe(sessionId: string) {
 	const bodies: URLSearchParams[] = [];
@@ -55,7 +24,12 @@ function mockStripe(sessionId: string) {
 	return bodies;
 }
 
-describe('createCheckoutSession', () => {
+async function purchaseCount(robotId: string): Promise<number> {
+	const row = await env.DB.prepare('SELECT COUNT(*) AS n FROM purchases WHERE robot_id = ?').bind(robotId).first<{ n: number }>();
+	return row?.n ?? 0;
+}
+
+describe('resolveCheckout', () => {
 	beforeEach(async () => {
 		await clearCatalog();
 		await seedRobot({ slug: 'robo-exemplo-a', offers: { one_time: 99700, annual: 49700 } });
@@ -77,128 +51,93 @@ describe('createCheckoutSession', () => {
 		['offer the robot does not sell', 'robo-exemplo-b', 'annual'],
 		['robot with no offers (coming soon)', 'robo-exemplo-c', 'one_time'],
 		['inherited object key as offer', 'robo-exemplo-a', 'constructor'],
-		['monthly offer (on standby, not in the catalog)', 'robo-exemplo-a', 'monthly'],
 		['draft robot', 'robo-draft', 'one_time'],
 		['archived robot', 'robo-archived', 'one_time'],
-	])('rejects %s without calling the gateway or writing a row', async (_label, robotId, offer) => {
+		['monthly offer of an unknown robot', 'no-such-robot', 'monthly'],
+	])('rejects %s with 400, without calling a gateway or writing a row', async (_label, robotId, offer) => {
 		const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
-		const result = await createCheckoutSession(env, { robotId, offer, origin });
+		const result = await resolveCheckout(env, { robotId, offer, origin });
 
-		expect(result).toEqual({ ok: false, status: 400, message: 'Unknown or missing robot or offer.' });
+		expect(result).toEqual({ kind: 'error', status: 400, message: 'Unknown or missing robot or offer.' });
 		expect(fetchSpy).not.toHaveBeenCalled();
-		const row = await env.DB.prepare('SELECT 1 FROM purchases WHERE robot_id = ?')
-			.bind(robotId ?? '')
-			.first();
-		expect(row).toBeNull();
+		expect(await purchaseCount(robotId ?? '')).toBe(0);
 	});
 
-	it('prices from D1 at checkout time: an edited price is the one charged and stored', async () => {
-		const bodies = mockAppmax({ ok: true, orderId: 'ord_repriced' });
-		await env.DB.prepare("UPDATE robot_offers SET price_cents = 88800 WHERE robot_slug = 'robo-exemplo-a' AND offer = 'one_time'").run();
+	describe('Appmax (own form, ADR-0007)', () => {
+		it.each([
+			['one_time', 99700],
+			['annual', 49700],
+		])('%s returns the form data priced from the catalog and writes no row', async (offer, amountCents) => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch');
 
-		await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+			const result = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer, origin });
 
-		expect(bodies[0].amount).toBe(88800);
-		const row = await env.DB.prepare('SELECT amount_cents FROM purchases WHERE appmax_order_id = ?')
-			.bind('ord_repriced')
-			.first();
-		expect(row).toEqual({ amount_cents: 88800 });
-	});
-
-	it('writes a pending purchase priced from the catalog and redirects to Appmax', async () => {
-		mockAppmax({ ok: true, orderId: 'ord_123' });
-
-		const result = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
-
-		expect(result).toEqual({ ok: true, redirectUrl: 'https://checkout.sandboxappmax.com.br/pay/abc' });
-		const row = await env.DB.prepare('SELECT * FROM purchases WHERE appmax_order_id = ?')
-			.bind('ord_123')
-			.first();
-		expect(row).toMatchObject({
-			robot_id: 'robo-exemplo-a',
-			offer: 'one_time',
-			amount_cents: 99700,
-			status: 'pending',
-			provider: 'appmax',
+			expect(result).toMatchObject({
+				kind: 'form',
+				robotId: 'robo-exemplo-a',
+				robotName: 'Robô robo-exemplo-a',
+				offer,
+				amountCents,
+				methods: ['card', 'boleto', 'pix'],
+			});
+			if (result.kind !== 'form') throw new Error('expected the form');
+			expect(result.reference).toMatch(UUID);
+			expect(fetchSpy).not.toHaveBeenCalled();
+			expect(await purchaseCount('robo-exemplo-a')).toBe(0);
 		});
-	});
 
-	it('ignores a client-supplied price: only the catalog amount is charged and stored', async () => {
-		const bodies = mockAppmax({ ok: true, orderId: 'ord_tampered' });
-
-		// The typed API takes no price; a tampered caller can only smuggle extra properties.
-		const tampered = { robotId: 'robo-exemplo-a', offer: 'one_time', origin, amountCents: 1, amount: 1 };
-		await createCheckoutSession(env, tampered);
-
-		expect(bodies[0].amount).toBe(99700);
-		const row = await env.DB.prepare('SELECT amount_cents FROM purchases WHERE appmax_order_id = ?')
-			.bind('ord_tampered')
-			.first();
-		expect(row).toEqual({ amount_cents: 99700 });
-	});
-
-	it('the /checkout route ignores an amount query param', async () => {
-		const bodies = mockAppmax({ ok: true, orderId: 'ord_route' });
-		const url = new URL('https://example.com/checkout?robot=robo-exemplo-a&offer=annual&amount=1&price=1');
-
-		const response = await GET({ url, request: new Request(url) } as Parameters<typeof GET>[0]);
-
-		expect(response.status).toBe(302);
-		expect(bodies[0].amount).toBe(49700);
-	});
-
-	it('the /checkout route returns 400 for an unknown robot', async () => {
-		const url = new URL('https://example.com/checkout?robot=nope&offer=annual');
-		const response = await GET({ url, request: new Request(url) } as Parameters<typeof GET>[0]);
-		expect(response.status).toBe(400);
-	});
-
-	it.each([
-		['one_time', ['card', 'boleto', 'pix'], false, 99700],
-		['annual', ['card', 'boleto', 'pix'], false, 49700],
-	])('Appmax: %s offers %j, recurring=%s', async (offer, methods, recurring, amount) => {
-		const bodies = mockAppmax({ ok: true, orderId: `ord_${offer}` });
-
-		await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer, origin });
-
-		expect(bodies[0]).toMatchObject({
-			amount,
-			payment_methods: methods,
-			recurring,
-			metadata: { robot_id: 'robo-exemplo-a', offer },
+		it('mints a fresh reference per render', async () => {
+			const first = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+			const second = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+			if (first.kind !== 'form' || second.kind !== 'form') throw new Error('expected the form');
+			expect(first.reference).not.toBe(second.reference);
 		});
-	});
 
-	it('returns 502 and writes no row when Appmax is unavailable', async () => {
-		mockAppmax({ ok: false });
+		it('prices from D1 at render time: an edited price is the one shown', async () => {
+			await env.DB.prepare("UPDATE robot_offers SET price_cents = 88800 WHERE robot_slug = 'robo-exemplo-a' AND offer = 'one_time'").run();
 
-		const result = await createCheckoutSession(env, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
+			const result = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
 
-		expect(result).toEqual({
-			ok: false,
-			status: 502,
-			message: 'Payment provider unavailable, try again shortly.',
+			expect(result).toMatchObject({ kind: 'form', amountCents: 88800 });
 		});
-		const row = await env.DB.prepare('SELECT * FROM purchases WHERE robot_id = ?')
-			.bind('robo-exemplo-b')
-			.first();
-		expect(row).toBeNull();
+
+		it('ignores a client-supplied price: only the catalog amount reaches the form', async () => {
+			// The typed API takes no price; a tampered caller can only smuggle extra properties.
+			const tampered = { robotId: 'robo-exemplo-a', offer: 'one_time', origin, amountCents: 1, amount: 1 };
+
+			const result = await resolveCheckout(env, tampered);
+
+			expect(result).toMatchObject({ kind: 'form', amountCents: 99700 });
+		});
+
+		it('Mensal of a published Robô is unavailable until the own-form recurrence exists (ticket 09)', async () => {
+			const result = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'monthly', origin });
+			expect(result).toEqual({ kind: 'unavailable', reason: 'offer_not_supported' });
+			expect(await purchaseCount('robo-exemplo-a')).toBe(0);
+		});
+
+		it('repeat purchase of a Robô the Cliente already has active still gets the form (ADR-0008)', async () => {
+			await env.DB.prepare(
+				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES ('rep-active', 'robo-exemplo-a', 'one_time', 99700, 'active')"
+			).run();
+			await attachCustomer({ purchaseId: 'rep-active', customerId: 'cust-rep-active', email: 'repeat@example.com' });
+
+			const result = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+
+			expect(result.kind).toBe('form');
+		});
 	});
 
 	describe('with PAYMENT_PROVIDER=stripe (docs/adr/0005-stripe-test-driver.md)', () => {
 		const stripeEnv = { ...env, PAYMENT_PROVIDER: 'stripe' as const };
 
-		it('one_time is a single payment, card only', async () => {
+		it('one_time is a single payment, card only, with a pending row and a redirect', async () => {
 			const bodies = mockStripe('cs_stripe_one_time');
 
-			const result = await createCheckoutSession(stripeEnv, {
-				robotId: 'robo-exemplo-a',
-				offer: 'one_time',
-				origin,
-			});
+			const result = await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
 
-			expect(result).toEqual({ ok: true, redirectUrl: 'https://checkout.stripe.com/pay/cs_stripe_one_time' });
+			expect(result).toEqual({ kind: 'redirect', redirectUrl: 'https://checkout.stripe.com/pay/cs_stripe_one_time' });
 			expect(bodies[0].get('mode')).toBe('payment');
 			expect(bodies[0].get('line_items[0][price_data][unit_amount]')).toBe('99700');
 			expect(bodies[0].get('line_items[0][price_data][recurring][interval]')).toBeNull();
@@ -217,38 +156,62 @@ describe('createCheckoutSession', () => {
 
 		it('annual is a single payment', async () => {
 			const bodies = mockStripe('cs_stripe_annual');
-			await createCheckoutSession(stripeEnv, { robotId: 'robo-exemplo-a', offer: 'annual', origin });
+			await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-a', offer: 'annual', origin });
 			expect(bodies[0].get('mode')).toBe('payment');
 			expect(bodies[0].get('line_items[0][price_data][unit_amount]')).toBe('49700');
 		});
 
-	});
+		it('the success URL carries the row reference to the confirmation page', async () => {
+			const bodies = mockStripe('cs_stripe_return');
+			await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+			const row = await env.DB.prepare('SELECT id FROM purchases WHERE appmax_order_id = ?')
+				.bind('cs_stripe_return')
+				.first<{ id: string }>();
+			expect(bodies[0].get('success_url')).toBe(`https://example.com/checkout/confirmacao?ref=${row!.id}`);
+		});
 
-	describe('repeat purchase of the same Robô (ADR-0008)', () => {
-		it('starts a checkout for a Robô the Cliente already has active, and writes a second purchase row', async () => {
-			await env.DB.prepare(
-				"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES ('rep-active', 'robo-exemplo-a', 'one_time', 99700, 'active')"
-			).run();
-			await attachCustomer({ purchaseId: 'rep-active', customerId: 'cust-rep-active', email: 'repeat@example.com' });
-			mockAppmax({ ok: true, orderId: 'ord_repeat' });
+		it('ignores a client-supplied price', async () => {
+			const bodies = mockStripe('cs_stripe_tampered');
+			await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-a', offer: 'one_time', origin, amountCents: 1 } as never);
+			expect(bodies[0].get('line_items[0][price_data][unit_amount]')).toBe('99700');
+		});
 
-			const result = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin });
+		it('Mensal is not in the catalog (ADR-0008 standby): 400', async () => {
+			const result = await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-a', offer: 'monthly', origin });
+			expect(result).toMatchObject({ kind: 'error', status: 400 });
+		});
 
-			expect(result.ok).toBe(true);
-			const rows = await env.DB.prepare("SELECT id FROM purchases WHERE robot_id = 'robo-exemplo-a' AND appmax_order_id = 'ord_repeat'").all();
-			expect(rows.results).toHaveLength(1);
+		it('returns 502 and writes no row when Stripe is unavailable', async () => {
+			vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('down', { status: 503 }));
+
+			const result = await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
+
+			expect(result).toEqual({ kind: 'error', status: 502, message: 'Payment provider unavailable, try again shortly.' });
+			expect(await purchaseCount('robo-exemplo-b')).toBe(0);
 		});
 
 		it('two checkouts for the same Robô and Oferta yield two distinct pending purchases', async () => {
-			mockAppmax({ ok: true, orderId: 'ord_twin_1' });
-			await createCheckoutSession(env, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
-			mockAppmax({ ok: true, orderId: 'ord_twin_2' });
-			await createCheckoutSession(env, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
+			mockStripe('cs_twin_1');
+			await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
+			vi.restoreAllMocks();
+			mockStripe('cs_twin_2');
+			await resolveCheckout(stripeEnv, { robotId: 'robo-exemplo-b', offer: 'one_time', origin });
 
-			const rows = await env.DB.prepare("SELECT id, status FROM purchases WHERE appmax_order_id IN ('ord_twin_1', 'ord_twin_2')").all<{ id: string; status: string }>();
+			const rows = await env.DB.prepare("SELECT id, status FROM purchases WHERE appmax_order_id IN ('cs_twin_1', 'cs_twin_2')").all<{ id: string; status: string }>();
 			expect(rows.results).toHaveLength(2);
 			expect(new Set(rows.results.map((row) => row.id)).size).toBe(2);
 			expect(rows.results.every((row) => row.status === 'pending')).toBe(true);
 		});
+	});
+});
+
+describe('readCheckoutQuery', () => {
+	it('reads only robot and offer from the URL; a price-like param is ignored (ADR-0006)', () => {
+		const url = new URL('https://example.com/checkout?robot=robo-exemplo-a&offer=annual&amount=1&price=1&amountCents=1');
+		expect(readCheckoutQuery(url)).toEqual({ robotId: 'robo-exemplo-a', offer: 'annual', origin: 'https://example.com' });
+	});
+
+	it('passes missing params as null', () => {
+		expect(readCheckoutQuery(new URL('https://example.com/checkout'))).toEqual({ robotId: null, offer: null, origin: 'https://example.com' });
 	});
 });

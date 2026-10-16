@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearCatalog, seedRobot } from '../catalog/test-helpers';
-import { createCheckoutSession } from './checkout';
+import { resolveCheckout } from './checkout';
 import { getPurchaseStatus } from './status';
 import { handleWebhook } from './webhook';
 
@@ -11,6 +11,21 @@ import { handleWebhook } from './webhook';
  * modules together rather than each in isolation. Only Appmax's `fetch` is
  * mocked (spec.md's Testing Decisions); every D1 read/write is real.
  */
+
+/**
+ * The own-form checkout (ADR-0007) renders the form and writes no row; the pay endpoint
+ * writes it with `id = reference` and the Appmax order id. Set up directly here.
+ */
+async function startCheckout(orderId: string): Promise<string> {
+	const checkout = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin: 'https://example.com' });
+	if (checkout.kind !== 'form') throw new Error('expected the own checkout form');
+	await env.DB.prepare(
+		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, ?, ?, 'pending', 'appmax', ?)"
+	)
+		.bind(checkout.reference, checkout.robotId, checkout.offer, checkout.amountCents, orderId)
+		.run();
+	return checkout.reference;
+}
 
 function mockAppmaxAuth(handler: (url: string, init?: RequestInit) => Response | Promise<Response>) {
 	return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
@@ -33,15 +48,7 @@ describe('checkout-webhooks end to end', () => {
 	});
 
 	it('happy path: /checkout creates a provisional row, a webhook confirms it, the status endpoint reflects active', async () => {
-		let capturedReturnUrl = '';
-		mockAppmaxAuth((url, init) => {
-			if (url.includes('/payment-links')) {
-				capturedReturnUrl = (JSON.parse(String(init?.body)) as { return_url: string }).return_url;
-				return new Response(
-					JSON.stringify({ data: { url: 'https://checkout.sandboxappmax.com.br/pay/e2e-happy', order_id: 'ord_e2e_happy' } }),
-					{ status: 200 }
-				);
-			}
+		mockAppmaxAuth((url) => {
 			if (url.includes('/orders/ord_e2e_happy')) {
 				return new Response(JSON.stringify({ data: { order: { status: 'aprovado' }, payment: { method: 'credit_card' } } }), {
 					status: 200,
@@ -50,11 +57,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin: 'https://example.com' });
-		expect(checkout.ok).toBe(true);
-
-		const reference = new URL(capturedReturnUrl).searchParams.get('ref');
-		expect(reference).not.toBeNull();
+		const reference = await startCheckout('ord_e2e_happy');
 		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'pending' });
 
 		const webhook = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_happy' }));
@@ -64,19 +67,8 @@ describe('checkout-webhooks end to end', () => {
 	});
 
 	it('boleto branch: status shows the awaiting state before confirmation, then active after', async () => {
-		let capturedReturnUrl = '';
-		mockAppmaxAuth((url, init) => {
-			if (url.includes('/payment-links')) {
-				capturedReturnUrl = (JSON.parse(String(init?.body)) as { return_url: string }).return_url;
-				return new Response(
-					JSON.stringify({ data: { url: 'https://checkout.sandboxappmax.com.br/pay/e2e-boleto', order_id: 'ord_e2e_boleto' } }),
-					{ status: 200 }
-				);
-			}
-			// Appmax's own "creation" event fires once the Cliente picks Boleto on
-			// its hosted page — still pending, but payment_method is now known
-			// (PLANNING.md §6: Appmax documents a creation event distinct from
-			// the recurring-charge/paid one).
+		mockAppmaxAuth((url) => {
+			// Appmax's "boleto created" event: still pending, but payment_method is now known.
 			if (url.includes('/orders/ord_e2e_boleto')) {
 				return new Response(JSON.stringify({ data: { order: { status: 'pendente' }, payment: { method: 'boleto' } } }), {
 					status: 200,
@@ -85,9 +77,7 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const checkout = await createCheckoutSession(env, { robotId: 'robo-exemplo-a', offer: 'one_time', origin: 'https://example.com' });
-		expect(checkout.ok).toBe(true);
-		const reference = new URL(capturedReturnUrl).searchParams.get('ref');
+		const reference = await startCheckout('ord_e2e_boleto');
 
 		const created = await handleWebhook(env, JSON.stringify({ event: 'order.created', order_id: 'ord_e2e_boleto' }));
 		expect(created).toEqual({ status: 200 });

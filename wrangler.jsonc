@@ -41,11 +41,13 @@
 	// "Continuar no WhatsApp" target; empty falls back to the placeholder in
 	// src/content/encomenda.ts. Set both at deploy time, never in this file.
 	"vars": {
-		"APPMAX_ENV": "sandbox",
-		"ADMIN_EMAILS": "",
-		"ORDER_NOTIFY_EMAIL": "",
-		"WHATSAPP_NUMBER": ""
-	},
+    "ADMIN_EMAILS": "jonataslopes.011@gmail.com",
+    "APPMAX_ENV": "sandbox",
+    "ORDER_NOTIFY_EMAIL": "",
+    "PAYMENT_PROVIDER": "stripe",
+    "SENTRY_RELEASE": "1ce624fa12eb68548d945a10c863f93eab026210",
+    "WHATSAPP_NUMBER": ""
+  },
 	"observability": {
 		"enabled": true
 	},

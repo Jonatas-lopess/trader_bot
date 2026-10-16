@@ -42,6 +42,24 @@ describe('dispatchDownloadLink', () => {
 		expect(String(init.body)).toContain(result.downloadUrl);
 	});
 
+	it('one e-mail per Licença, each naming its Robô and Corretora account, so several in a row are told apart (storefront-v2 13)', async () => {
+		await seedLicense('lic-dispatch-named-1', { email: 'named@example.com', corretoraAccount: 111111 });
+		await seedLicense('lic-dispatch-named-2', { email: 'named2@example.com', corretoraAccount: 222222 });
+		const fetchSpy = mockResend();
+
+		await dispatchDownloadLink(env, { licenseId: 'lic-dispatch-named-1', origin: 'https://example.com' });
+		await dispatchDownloadLink(env, { licenseId: 'lic-dispatch-named-2', origin: 'https://example.com' });
+
+		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		const bodies = fetchSpy.mock.calls.map(([, init]) => JSON.parse(String((init as RequestInit).body)) as { subject: string; text: string; html: string });
+		// `starter` is not in the catalog table here, so the slug stands in for the name.
+		expect(bodies[0].subject).toContain('starter');
+		expect(bodies[0].text).toContain('111111');
+		expect(bodies[0].html).toContain('111111');
+		expect(bodies[1].text).toContain('222222');
+		expect(bodies[1].text).not.toContain('111111');
+	});
+
 	it.each(['awaiting_account', 'preparing'] as const)(
 		'refuses to mint for a %s Licença and sends no email',
 		async (licenseStatus) => {

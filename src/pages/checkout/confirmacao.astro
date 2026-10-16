@@ -8,9 +8,13 @@
 // polls /billing/status every ~2s so a slow or dropped webhook doesn't leave a stale message
 // (user story 5). Pix and Boleto instructions come from D1 (written by the pay endpoint), so a
 // reload shows them again; they were validated by `getPurchaseView` before reaching this markup.
+// A cart is one checkout of several rows (storefront-v2 13): `ref` is the checkout id, the page
+// lists every Robô bought and shows one state and one set of Pix/Boleto instructions for the order.
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/base-layout.astro';
 import { getPurchaseView } from '../../modules/billing/status';
+import { listRobotNames, type OfferName } from '../../modules/catalog/robots';
+import { offerLabels } from '../../content/catalog-page';
 import {
 	activeCtaLabel,
 	boletoInstructions,
@@ -21,6 +25,7 @@ import {
 	formatDueDate,
 	missingReferenceMessage,
 	newCheckoutHref,
+	orderItems,
 	pageDescription,
 	pageTitle,
 	pendingTimeoutMessage,
@@ -37,7 +42,13 @@ const initial = await getPurchaseView(env, reference);
 const view = initial.ok ? initial.view : null;
 const pix = view?.instructions?.kind === 'pix' ? view.instructions : null;
 const boleto = view?.instructions?.kind === 'boleto' ? view.instructions : null;
-const retryHref = newCheckoutHref(view?.line ?? null);
+const retryHref = newCheckoutHref(view?.items ?? []);
+// Names are read for display only (an archived Robô keeps its name; an unknown slug shows as is).
+const names = view === null ? new Map<string, string>() : await listRobotNames(env);
+const items = (view?.items ?? []).map((item) => ({
+	name: names.get(item.robotId) ?? item.robotId,
+	detail: orderItems.detail(offerLabels[item.offer as OfferName] ?? item.offer, item.quantity),
+}));
 
 // Which states show which block; the script toggles `hidden` from `data-show-on` as the poll moves.
 const PIX_STATES = 'awaiting_pix';
@@ -64,6 +75,18 @@ const codeClass =
 					<p id="confirmation-message" role="status" class="text-body-lg text-text-secondary">
 						{confirmationMessages[view.state]}
 					</p>
+
+					<section aria-labelledby="confirmation-items-heading" class="flex w-full flex-col gap-3 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6 text-left">
+						<h2 id="confirmation-items-heading" class="text-heading-3 font-bold text-text-primary">{orderItems.heading}</h2>
+						<ul role="list" class="flex flex-col gap-2">
+							{items.map((item) => (
+								<li class="flex flex-col">
+									<span class="break-words text-body font-medium text-text-primary">{item.name}</span>
+									<span class="text-body-sm text-text-secondary">{item.detail}</span>
+								</li>
+							))}
+						</ul>
+					</section>
 
 					{pix && (
 						<div data-show-on={PIX_STATES} hidden={!isShownOn(PIX_STATES)} class="flex w-full flex-col items-center gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6">

@@ -52,9 +52,14 @@ export type PurchaseView = {
 	state: PurchaseState;
 	method: string | null;
 	instructions: PixView | BoletoView | null;
-	/** The Robô and Oferta of a one-line checkout, for a new checkout of the same thing; `null` for a cart. */
-	line: { robotId: string; offer: PurchaseOffer } | null;
+	/**
+	 * What the checkout bought: one entry per Robô and Oferta with its number of Licenças, in the
+	 * order of the rows (storefront-v2 13). Also what a new checkout of the same thing is built from.
+	 */
+	items: PurchaseItem[];
 };
+
+export type PurchaseItem = { robotId: string; offer: PurchaseOffer; quantity: number };
 
 export type PurchaseViewResult = { ok: true; view: PurchaseView } | { ok: false; status: 404 };
 export type PurchaseStatusResult = { ok: true; state: PurchaseState } | { ok: false; status: 404 };
@@ -166,30 +171,45 @@ function isOverdue(dueDate: string, now: Date): boolean {
 	return now.getTime() > new Date(`${dueDate}T23:59:59.999${BRASILIA_OFFSET}`).getTime();
 }
 
-/** Pure: the page's view of a checkout's rows at `now`. `null` for no rows. */
+/** The rows (one per Licença) folded back into lines, keeping the order each Robô and Oferta first appears in. */
+function itemsOf(rows: readonly CheckoutViewRow[]): PurchaseItem[] {
+	const items: PurchaseItem[] = [];
+	for (const { robotId, offer } of rows) {
+		const existing = items.find((item) => item.robotId === robotId && item.offer === offer);
+		if (existing) existing.quantity += 1;
+		else items.push({ robotId, offer, quantity: 1 });
+	}
+	return items;
+}
+
+/**
+ * Pure: the page's view of a checkout's rows at `now`. `null` for no rows. A cart's rows share
+ * one payment, and the pay endpoint stores the Pix or Boleto on every row, so the first pending
+ * row's instructions are the order's.
+ */
 export function derivePurchaseView(rows: readonly CheckoutViewRow[], now: Date): PurchaseView | null {
 	const aggregate = aggregateCheckoutStatus(rows);
 	if (aggregate === null) return null;
-	const line = rows.length === 1 ? { robotId: rows[0].robotId, offer: rows[0].offer } : null;
+	const items = itemsOf(rows);
 	const pending = rows.find((row) => row.status === 'pending');
 	if (pending === undefined || (aggregate !== 'pending' && aggregate !== 'awaiting_boleto')) {
-		return { state: aggregate, method: rows[0].paymentMethod, instructions: null, line };
+		return { state: aggregate, method: rows[0].paymentMethod, instructions: null, items };
 	}
 
 	const method = pending.paymentMethod;
 	if (method === 'pix') {
 		const pix = parsePixInstructions(pending.paymentInstructions);
-		if (pix === null) return { state: 'pending', method, instructions: null, line };
+		if (pix === null) return { state: 'pending', method, instructions: null, items };
 		const expired = pix.expiresAt !== null && now.getTime() >= new Date(pix.expiresAt).getTime();
-		return { state: expired ? 'pix_expired' : 'awaiting_pix', method, instructions: pix, line };
+		return { state: expired ? 'pix_expired' : 'awaiting_pix', method, instructions: pix, items };
 	}
 	if (method === 'boleto') {
 		const boleto = parseBoletoInstructions(pending.paymentInstructions);
 		const overdue = boleto?.dueDate != null && isOverdue(boleto.dueDate, now);
-		return { state: overdue ? 'boleto_overdue' : 'awaiting_boleto', method, instructions: boleto, line };
+		return { state: overdue ? 'boleto_overdue' : 'awaiting_boleto', method, instructions: boleto, items };
 	}
-	if (method === 'card') return { state: 'card_in_review', method, instructions: null, line };
-	return { state: aggregate, method, instructions: null, line };
+	if (method === 'card') return { state: 'card_in_review', method, instructions: null, items };
+	return { state: aggregate, method, instructions: null, items };
 }
 
 /** `reference` is the `checkout_id` (equal to the first row's `id`), so a single purchase answers for itself. */

@@ -52,3 +52,18 @@ export const downloadLinkEmail: EmailContent = {
 	fallback: 'Se o botão não funcionar, copie e cole este endereço no navegador:',
 	disclaimer: 'Você recebeu este e-mail porque ativou uma licença do Robô Trader.',
 };
+
+/**
+ * The download e-mail of one Licença (storefront-v2 13). A cart of several Licenças sends one
+ * e-mail per Licença as each is compiled, so the subject and the first line name the Robô and the
+ * Corretora account the binary was built for: several links in a row stay distinguishable.
+ * `robotName` is admin-entered; `renderEmail` escapes it.
+ */
+export function downloadLinkEmailFor(license: { robotName: string; corretoraAccount: number | null }): EmailContent {
+	const account = license.corretoraAccount === null ? '' : `, conta ${license.corretoraAccount} na Corretora`;
+	return {
+		...downloadLinkEmail,
+		subject: `${license.robotName}: seu Robô está pronto para baixar`,
+		paragraphs: [`Licença do ${license.robotName}${account}.`, ...downloadLinkEmail.paragraphs],
+	};
+}

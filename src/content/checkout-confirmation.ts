@@ -1,5 +1,7 @@
+import { cartCheckoutHref, isCartOffer } from '../shared/cart-limits';
 import { launchBlocking } from '../shared/launch-blocking';
 import { checkoutHref } from './catalog-page';
+import { summary } from './checkout-form';
 import { withdrawalHref } from './legal';
 import { supportEmail, supportMailto } from './support';
 
@@ -20,7 +22,7 @@ export const confirmationHeading = 'Confirmando seu pagamento';
 // PLANNING.md §6 Price integrity: the Cliente *was* charged, so this never says
 // otherwise and never invites a second purchase. Wording is legal/support-facing.
 export const rejectedMessage = launchBlocking(
-	'Recebemos o seu pagamento, mas ele precisa de uma verificação manual antes de liberar a sua Licença. Nossa equipe entrará em contato por e-mail. Não é necessário pagar novamente; se preferir, fale com o suporte.',
+	'Recebemos o seu pagamento, mas ele precisa de uma verificação manual antes de liberarmos as Licenças do seu pedido. Nossa equipe entrará em contato por e-mail. Não é necessário pagar novamente; se preferir, fale com o suporte.',
 	'ADR-0006 / PLANNING.md §6 Price integrity: placeholder copy for a paid-but-rejected purchase (amount mismatch); needs support-channel and legal wording before launch.'
 );
 
@@ -116,16 +118,29 @@ export const boletoInstructions = {
 	dueLabel: 'Vencimento',
 } as const;
 
-// An expired Pix or an overdue Boleto is never resumed: the retry is a new checkout of the same
-// Robô and Oferta (or the catalog for a cart), like `pendingTimeoutRetry`.
+// An expired Pix or an overdue Boleto is never resumed: the retry is a new checkout of what was
+// bought (the same Robô and Oferta, or every line of a cart), like `pendingTimeoutRetry`.
 export const pixExpiredRetryLabel = 'Gerar novo Pix';
 export const boletoOverdueRetryLabel = 'Fazer um novo pedido';
 
-/** A new checkout of the same Robô and Oferta; the catalog when there is no single line or it is not sold there. */
-export function newCheckoutHref(line: { robotId: string; offer: string } | null): string {
-	if (line === null || (line.offer !== 'one_time' && line.offer !== 'annual')) return pendingTimeoutRetry.href;
-	return checkoutHref(line.robotId, line.offer);
+/**
+ * A new checkout of what the order held: the single-item checkout for one Licença, the cart
+ * checkout (`/checkout?line=...`, storefront-v2 11) for more; the catalog when there is nothing
+ * to rebuild or an Oferta the checkout does not sell.
+ */
+export function newCheckoutHref(items: readonly { robotId: string; offer: string; quantity: number }[]): string {
+	if (items.length === 0 || !items.every((item) => isCartOffer(item.offer))) return pendingTimeoutRetry.href;
+	const lines = items.map((item) => ({ robot: item.robotId, offer: item.offer as 'one_time' | 'annual', quantity: item.quantity }));
+	if (lines.length === 1 && lines[0].quantity === 1) return checkoutHref(lines[0].robot, lines[0].offer);
+	return cartCheckoutHref(lines);
 }
+
+// What the order holds (storefront-v2 13): one line per Robô and Oferta, worded like the
+// checkout summary (one source, checkout-form.ts).
+export const orderItems = {
+	heading: 'Seu pedido',
+	detail: summary.lineDetail,
+} as const;
 
 // Brasília is fixed UTC-3 (no DST), the same clock as `formatPurchaseDate` in conta.ts.
 const inBrasilia = (iso: string) => new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);

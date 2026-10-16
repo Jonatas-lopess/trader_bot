@@ -12,7 +12,7 @@
  * blocker).
  */
 
-import { downloadLinkEmail } from '../../content/emails';
+import { downloadLinkEmailFor } from '../../content/emails';
 import { renderEmail } from '../../shared/email-template';
 
 const RESEND_API_URL = 'https://api.resend.com/emails';
@@ -40,9 +40,9 @@ async function readRejectionDetail(response: Response): Promise<string> {
 
 export async function sendDownloadLinkEmail(
 	env: ResendCredentials,
-	params: { to: string; downloadUrl: string }
+	params: { to: string; downloadUrl: string; robotName: string; corretoraAccount: number | null }
 ): Promise<SendDownloadLinkEmailResult> {
-	const email = renderEmail(downloadLinkEmail, { url: params.downloadUrl });
+	const email = renderEmail(downloadLinkEmailFor(params), { url: params.downloadUrl });
 	const response = await fetch(RESEND_API_URL, {
 		method: 'POST',
 		headers: {

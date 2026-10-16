@@ -13,6 +13,7 @@ export async function seedLicense(
 		purchaseStatus?: string;
 		expiresAt?: string;
 		uploadBinary?: boolean;
+		corretoraAccount?: number;
 	} = {}
 ): Promise<{ licenseId: string; customerId: string; email: string }> {
 	const email = options.email ?? `${id}@example.com`;
@@ -21,9 +22,9 @@ export async function seedLicense(
 		.run();
 	await seedCustomer({ purchaseId: id, customerId: `cust-${id}`, email });
 	await env.DB.prepare(
-		'INSERT INTO licenses (purchase_id, robot_id, corretora_account, status, expires_at) VALUES (?, ?, 123456, ?, ?)'
+		'INSERT INTO licenses (purchase_id, robot_id, corretora_account, status, expires_at) VALUES (?, ?, ?, ?, ?)'
 	)
-		.bind(id, 'starter', options.licenseStatus ?? 'active', options.expiresAt ?? '9999-12-31T23:59:59.000Z')
+		.bind(id, 'starter', options.corretoraAccount ?? 123456, options.licenseStatus ?? 'active', options.expiresAt ?? '9999-12-31T23:59:59.000Z')
 		.run();
 	if (options.uploadBinary ?? true) await putLicenseBinary(id);
 	return { licenseId: id, customerId: `cust-${id}`, email };

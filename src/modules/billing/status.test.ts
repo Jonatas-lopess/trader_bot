@@ -161,7 +161,7 @@ describe('derivePurchaseView (pure, appmax-checkout 06)', () => {
 				emvCode: '00020126580014br.gov.bcb.pix0136abc',
 				expiresAt: '2026-10-17T02:59:59.000Z',
 			},
-			line: { robotId: 'robo-a', offer: 'annual' },
+			items: [{ robotId: 'robo-a', offer: 'annual', quantity: 1 }],
 		});
 	});
 
@@ -255,9 +255,42 @@ describe('derivePurchaseView (pure, appmax-checkout 06)', () => {
 		expect(derivePurchaseView([row({ status })], NOW)).toMatchObject({ state: status, instructions: null });
 	});
 
-	it('has no view for no rows, and no single line for a multi-row checkout', () => {
+	it('has no view for no rows', () => {
 		expect(derivePurchaseView([], NOW)).toBeNull();
-		expect(derivePurchaseView([row(), row({ robotId: 'robo-b' })], NOW)?.line).toBeNull();
+	});
+
+	describe('a cart (storefront-v2 13)', () => {
+		const cart = (over: Partial<ReturnType<typeof row>> = {}) => [
+			row({ robotId: 'robo-a', offer: 'one_time' as never, ...over }),
+			row({ robotId: 'robo-b', offer: 'annual', ...over }),
+			row({ robotId: 'robo-a', offer: 'one_time' as never, ...over }),
+		];
+
+		it('lists what was bought once per Robô and Oferta, with the number of Licenças, in order', () => {
+			expect(derivePurchaseView(cart(), NOW)?.items).toEqual([
+				{ robotId: 'robo-a', offer: 'one_time', quantity: 2 },
+				{ robotId: 'robo-b', offer: 'annual', quantity: 1 },
+			]);
+		});
+
+		it('a pending Pix cart shows one Pix for the whole order', () => {
+			expect(derivePurchaseView(cart(), NOW)).toMatchObject({ state: 'awaiting_pix', instructions: { kind: 'pix', emvCode: '00020126580014br.gov.bcb.pix0136abc' } });
+		});
+
+		it('a pending Boleto cart shows one Boleto for the whole order', () => {
+			expect(derivePurchaseView(cart({ paymentMethod: 'boleto', paymentInstructions: BOLETO }), NOW)).toMatchObject({
+				state: 'awaiting_boleto',
+				instructions: { kind: 'boleto', dueDate: '2026-10-19' },
+			});
+		});
+
+		it('a card cart in antifraud review is card_in_review', () => {
+			expect(derivePurchaseView(cart({ paymentMethod: 'card', paymentInstructions: null }), NOW)?.state).toBe('card_in_review');
+		});
+
+		it.each(['active', 'rejected', 'refunded'] as const)('a %s order shows that state for the whole order', (status) => {
+			expect(derivePurchaseView(cart({ status }), NOW)).toMatchObject({ state: status, instructions: null });
+		});
 	});
 });
 

@@ -4,6 +4,7 @@ import {
 	formatDeadline,
 	formatDueDate,
 	newCheckoutHref,
+	orderItems,
 	pendingTimeoutRetry,
 	rejectedMessage,
 	withdrawalNotice,
@@ -43,12 +44,6 @@ describe('checkout confirmation copy', () => {
 		expect(confirmationMessages.card_in_review).not.toMatch(/confirmado|aprovado!/i);
 	});
 
-	it('an expired Pix or overdue Boleto starts a new checkout of the same Robô and Oferta, or the catalog for a cart', () => {
-		expect(newCheckoutHref({ robotId: 'robo-a', offer: 'annual' })).toBe('/checkout?robot=robo-a&offer=annual');
-		expect(newCheckoutHref({ robotId: 'robo-a', offer: 'monthly' })).toBe('/catalog');
-		expect(newCheckoutHref(null)).toBe('/catalog');
-	});
-
 	it('formats the Pix deadline and the Boleto due date in Brasília time', () => {
 		expect(formatDeadline('2026-10-17T02:59:59.000Z')).toBe('16/10/2026 às 23:59');
 		expect(formatDueDate('2026-10-19')).toBe('19/10/2026');
@@ -58,5 +53,34 @@ describe('checkout confirmation copy', () => {
 		for (const message of Object.values(confirmationMessages)) {
 			expect(message).not.toMatch(/desistir/i);
 		}
+	});
+
+	describe('newCheckoutHref: a new checkout of what was bought, never resuming the order', () => {
+		it('a single Licença goes back to its own checkout', () => {
+			expect(newCheckoutHref([{ robotId: 'robo-a', offer: 'annual', quantity: 1 }])).toBe('/checkout?robot=robo-a&offer=annual');
+		});
+
+		it('a cart goes to the checkout of every line', () => {
+			expect(
+				newCheckoutHref([
+					{ robotId: 'robo-a', offer: 'one_time', quantity: 2 },
+					{ robotId: 'robo-b', offer: 'annual', quantity: 1 },
+				])
+			).toBe('/checkout?line=robo-a%3Aone_time%3A2&line=robo-b%3Aannual%3A1');
+		});
+
+		it('nothing to retry, or a Mensal, goes to the catalog', () => {
+			expect(newCheckoutHref([])).toBe('/catalog');
+			expect(newCheckoutHref([{ robotId: 'robo-a', offer: 'monthly', quantity: 1 }])).toBe('/catalog');
+		});
+	});
+
+	it('the order list labels each line with its Oferta and number of Licenças', () => {
+		expect(orderItems.heading).not.toBe('');
+		expect(orderItems.detail('Compra', 2)).toMatch(/2 licenças/);
+	});
+
+	it('the rejected copy covers every Licença of the order', () => {
+		expect(rejectedMessage.value).toMatch(/Licenças do seu pedido/);
 	});
 });

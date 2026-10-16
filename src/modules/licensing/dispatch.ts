@@ -7,7 +7,8 @@
  *
  * Per-Licença (catalog-pivot ticket 08, ADR-0006): minting is refused unless the Licença is
  * `active`, i.e. the Corretora account is bound, the binary compiled and uploaded, and the
- * purchase not revoked.
+ * purchase not revoked. A cart of N Licenças gets N e-mails, one as each Licença is activated,
+ * never batched; each names its Robô and Corretora account (storefront-v2 13).
  */
 
 // Explicit `.ts` extensions here (unlike this repo's usual extensionless
@@ -50,7 +51,18 @@ export async function dispatchDownloadLink(
 	const { token } = await mintDownloadToken(env, { customerId: customer.id, licenseId: params.licenseId });
 	const downloadUrl = new URL(`/download/${token}`, params.origin).toString();
 
-	const sent = await sendDownloadLinkEmail(env, { to: email, downloadUrl });
+	// The catalog name for the e-mail; the slug when the Robô is no longer in the catalog table.
+	const named = await env.DB.prepare(
+		'SELECT l.robot_id AS robot_id, l.corretora_account AS corretora_account, r.name AS name FROM licenses l LEFT JOIN robots r ON r.slug = l.robot_id WHERE l.purchase_id = ?'
+	)
+		.bind(params.licenseId)
+		.first<{ robot_id: string; corretora_account: number | null; name: string | null }>();
+	const sent = await sendDownloadLinkEmail(env, {
+		to: email,
+		downloadUrl,
+		robotName: named?.name ?? named?.robot_id ?? '',
+		corretoraAccount: named?.corretora_account ?? null,
+	});
 	if (!sent.ok) return { ok: false, reason: 'email_failed', detail: sent.detail };
 
 	return { ok: true, email, downloadUrl };

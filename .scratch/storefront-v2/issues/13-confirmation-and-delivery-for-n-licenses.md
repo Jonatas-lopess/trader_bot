@@ -9,9 +9,21 @@
 
 **Blocked by:** 11, 12, appmax-checkout 06.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Cart purchase shows all Robôs and the right aggregate state for card, Pix and Boleto
-- [ ] Each Licença gets its own account entry, compile and download link
-- [ ] Single-item confirmation unchanged
-- [ ] Typecheck and the full test suite pass
+- [x] Cart purchase shows all Robôs and the right aggregate state for card, Pix and Boleto (view-model tested; the rendered page not checked in a browser, see Comments)
+- [ ] Each Licença gets its own account entry, compile and download link (per-Licença e-mail tested here; the full chain is ticket 15's end-to-end test)
+- [x] Single-item confirmation unchanged
+- [ ] Typecheck and the full test suite pass (typecheck and the touched test files pass; the full suite runs once at the end of the batch, recorded in ticket 15)
+
+## Comments
+
+- `/billing/status` and the page already resolved by `checkout_id` (ticket 10, appmax-checkout 06); nothing changed there. `derivePurchaseView` now returns `items` (one entry per Robô and Oferta with its number of Licenças) instead of `line`; Pix and Boleto come from the first pending row, which is the order's since the pay endpoint stores them on every row (ticket 11). Tests cover a 3-row cart pending by Pix, Boleto and card, and active, rejected and refunded.
+- The page lists the order ("Seu pedido": Robô name from the catalog, `Oferta · N licenças`, worded by `summary.lineDetail` of `checkout-form.ts`) above the instructions, for single purchases too. Item order follows the rows (`created_at`, then `id`); a cart's rows are inserted in one batch, so their order is stable across reloads but not necessarily the cart's.
+- "Gerar novo Pix" / "Fazer um novo pedido" (`newCheckoutHref`) now rebuild a cart's checkout (`/checkout?line=...`) instead of sending a cart to the catalog; a single Licença keeps `/checkout?robot=&offer=`.
+- The `rejected` copy (launch-blocked) now speaks of "as Licenças do seu pedido", which covers one or several.
+- Delivery: `dispatch.ts`/`activate.ts` were already per Licença (`license_id = purchase_id`) and nothing is sent before a Licença is `active`. The download e-mail now names the Robô (catalog name, slug fallback) in the subject and first line, plus the Corretora account, so a Cliente who receives several links in a row can tell them apart (`downloadLinkEmailFor` in `content/emails.ts`). One e-mail per Licença, not batched.
+- `/conta` already lists one card per Licença with its own account form (01); the three-Licença case is asserted in ticket 15's end-to-end test.
+- The "Entrar na área do cliente" step is unchanged (still the inert label from checkout-webhooks 05; linking it to `/login` was not asked here).
+- Not done: the visual check of `/checkout/confirmacao` for a cart at 390 and 1280 px.
+

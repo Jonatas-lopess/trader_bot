@@ -22,7 +22,7 @@ describe('provisionCustomer', () => {
 	it('creates the customer and attaches the purchase', async () => {
 		await seedPurchase('p-1');
 
-		const result = await provisionCustomer(env, { purchaseId: 'p-1', email: 'ana@example.com' });
+		const result = await provisionCustomer(env, { purchaseIds: ['p-1'], email: 'ana@example.com' });
 
 		expect(result).toMatchObject({ created: true });
 		expect(await getCustomerByPurchaseId(env, 'p-1')).toEqual({ id: result!.id, email: 'ana@example.com' });
@@ -32,8 +32,8 @@ describe('provisionCustomer', () => {
 		await seedPurchase('p-a');
 		await seedPurchase('p-b', 'robo-exemplo-b');
 
-		const first = await provisionCustomer(env, { purchaseId: 'p-a', email: 'ana@example.com' });
-		const second = await provisionCustomer(env, { purchaseId: 'p-b', email: 'ana@example.com' });
+		const first = await provisionCustomer(env, { purchaseIds: ['p-a'], email: 'ana@example.com' });
+		const second = await provisionCustomer(env, { purchaseIds: ['p-b'], email: 'ana@example.com' });
 
 		expect(second!.id).toBe(first!.id);
 		expect(second!.created).toBe(true);
@@ -46,8 +46,8 @@ describe('provisionCustomer', () => {
 		await seedPurchase('p-c1');
 		await seedPurchase('p-c2');
 
-		const first = await provisionCustomer(env, { purchaseId: 'p-c1', email: 'ana@example.com' });
-		const second = await provisionCustomer(env, { purchaseId: 'p-c2', email: '  Ana@Example.COM ' });
+		const first = await provisionCustomer(env, { purchaseIds: ['p-c1'], email: 'ana@example.com' });
+		const second = await provisionCustomer(env, { purchaseIds: ['p-c2'], email: '  Ana@Example.COM ' });
 
 		expect(second!.id).toBe(first!.id);
 		expect(await customerCount()).toBe(1);
@@ -57,8 +57,8 @@ describe('provisionCustomer', () => {
 		await seedPurchase('p-d1');
 		await seedPurchase('p-d2');
 
-		await provisionCustomer(env, { purchaseId: 'p-d1', email: 'ana@example.com' });
-		await provisionCustomer(env, { purchaseId: 'p-d2', email: 'ana+x@example.com' });
+		await provisionCustomer(env, { purchaseIds: ['p-d1'], email: 'ana@example.com' });
+		await provisionCustomer(env, { purchaseIds: ['p-d2'], email: 'ana+x@example.com' });
 
 		expect(await customerCount()).toBe(2);
 	});
@@ -66,8 +66,8 @@ describe('provisionCustomer', () => {
 	it('is idempotent for a reapplied event on the same purchase: created is false', async () => {
 		await seedPurchase('p-e');
 
-		const first = await provisionCustomer(env, { purchaseId: 'p-e', email: 'ana@example.com' });
-		const again = await provisionCustomer(env, { purchaseId: 'p-e', email: 'ana@example.com' });
+		const first = await provisionCustomer(env, { purchaseIds: ['p-e'], email: 'ana@example.com' });
+		const again = await provisionCustomer(env, { purchaseIds: ['p-e'], email: 'ana@example.com' });
 
 		expect(first!.created).toBe(true);
 		expect(again).toEqual({ id: first!.id, created: false });
@@ -77,7 +77,7 @@ describe('provisionCustomer', () => {
 	it('returns null and writes nothing for a malformed email', async () => {
 		await seedPurchase('p-f');
 
-		expect(await provisionCustomer(env, { purchaseId: 'p-f', email: 'not-an-email' })).toBeNull();
+		expect(await provisionCustomer(env, { purchaseIds: ['p-f'], email: 'not-an-email' })).toBeNull();
 		expect(await customerCount()).toBe(0);
 	});
 });

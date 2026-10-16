@@ -307,6 +307,133 @@ describe('handleWebhook', () => {
 		});
 	});
 
+	describe('an order holding several purchases (storefront-v2 12, ADR-0008)', () => {
+		// A cart of 2 × Compra of one Robô and 1 × Anual of another: three rows, one Appmax order.
+		const GROUP = [
+			{ suffix: 'a1', robot: 'robo-a', offer: 'one_time', amount: 99_700 },
+			{ suffix: 'a2', robot: 'robo-a', offer: 'one_time', amount: 99_700 },
+			{ suffix: 'b1', robot: 'robo-b', offer: 'annual', amount: 59_700 },
+		];
+		const TOTAL = 2 * 99_700 + 59_700;
+
+		async function seedGroup(name: string, status = 'pending'): Promise<string[]> {
+			const ids = GROUP.map(({ suffix }) => `${name}-${suffix}`);
+			await env.DB.batch(
+				GROUP.map(({ robot, offer, amount }, index) =>
+					env.DB.prepare(
+						"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id, checkout_id) VALUES (?, ?, ?, ?, ?, 'appmax', ?, ?)"
+					).bind(ids[index], robot, offer, amount, status, `ord_${name}`, ids[0])
+				)
+			);
+			return ids;
+		}
+
+		async function groupState(ids: string[]) {
+			const { results } = await env.DB.prepare(
+				`SELECT p.id, p.status, p.customer_id, l.expires_at, l.status AS license_status
+				 FROM purchases p LEFT JOIN licenses l ON l.purchase_id = p.id
+				 WHERE p.id IN (?, ?, ?) ORDER BY p.id`
+			)
+				.bind(...ids)
+				.all<{ id: string; status: string; customer_id: string | null; expires_at: string | null; license_status: string | null }>();
+			return results;
+		}
+
+		const resendCalls = (spy: ReturnType<typeof mockAppmax>) =>
+			spy.mock.calls.filter((call) => call[0]?.toString().includes('api.resend.com')).length;
+
+		it('activates every row when the reported sub_total equals the sum of the rows: one Cliente, one login link, one Licença per row', async () => {
+			const ids = await seedGroup('grp-ok');
+			const fetchSpy = mockAppmax({ status: 'aprovado', email: 'grupo@example.com', subTotal: TOTAL });
+
+			const result = await handleWebhook(env, JSON.stringify({ event: 'order_approved', data: { order_id: 'ord_grp-ok' } }));
+
+			expect(result).toEqual({ status: 200 });
+			const rows = await groupState(ids);
+			expect(rows.map((row) => row.status)).toEqual(['active', 'active', 'active']);
+			expect(new Set(rows.map((row) => row.customer_id)).size).toBe(1);
+			expect(rows[0].customer_id).not.toBeNull();
+			expect(rows.map((row) => row.license_status)).toEqual(['awaiting_account', 'awaiting_account', 'awaiting_account']);
+			expect(rows.find((row) => row.id === 'grp-ok-b1')?.expires_at).not.toBe('9999-12-31T23:59:59.000Z');
+			expect(rows.find((row) => row.id === 'grp-ok-a1')?.expires_at).toBe('9999-12-31T23:59:59.000Z');
+			const { results: customers } = await env.DB.prepare('SELECT id FROM customers WHERE email = ?').bind('grupo@example.com').all();
+			expect(customers).toHaveLength(1);
+			expect(await loginTokenCountFor(rows[0].customer_id!)).toBe(1);
+			expect(resendCalls(fetchSpy)).toBe(1);
+			expect(Sentry.captureMessage).not.toHaveBeenCalled();
+		});
+
+		it('rejects every row on a mismatch with one Sentry report of the order, the expected sum and the reported value', async () => {
+			const ids = await seedGroup('grp-bad');
+			// The amount of one row is not the order's total.
+			mockAppmax({ status: 'aprovado', email: 'grupo-bad@example.com', subTotal: 99_700 });
+
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', data: { order_id: 'ord_grp-bad' } }));
+
+			const rows = await groupState(ids);
+			expect(rows.map((row) => row.status)).toEqual(['rejected', 'rejected', 'rejected']);
+			expect(rows.every((row) => row.customer_id === null && row.license_status === null)).toBe(true);
+			const mismatchReports = vi.mocked(Sentry.captureMessage).mock.calls.filter(([message]) => String(message).includes('amount mismatch'));
+			expect(mismatchReports).toHaveLength(1);
+			expect(mismatchReports[0][1]).toMatchObject({
+				extra: { order_id: 'ord_grp-bad', expected_cents: TOTAL, reported_cents: 99_700, rows: 3 },
+			});
+		});
+
+		it('a redelivered or reordered event leaves the same final state and sends no second login link', async () => {
+			const ids = await seedGroup('grp-redo');
+			const fetchSpy = mockAppmax({ status: 'aprovado', email: 'grupo-redo@example.com', subTotal: TOTAL });
+			const paid = JSON.stringify({ event: 'order_paid', data: { order_id: 'ord_grp-redo' } });
+
+			await handleWebhook(env, paid);
+			await handleWebhook(env, paid);
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', data: { order_id: 'ord_grp-redo' } }));
+			vi.restoreAllMocks();
+			// A late "Boleto created" whose refetch still says pendente (stale read) cannot pull them back.
+			mockAppmax({ status: 'pendente', paymentMethod: 'boleto' });
+			await handleWebhook(env, JSON.stringify({ event: 'order_billet_created', data: { order_id: 'ord_grp-redo' } }));
+
+			const rows = await groupState(ids);
+			expect(rows.map((row) => row.status)).toEqual(['active', 'active', 'active']);
+			expect(rows.map((row) => row.license_status)).toEqual(['awaiting_account', 'awaiting_account', 'awaiting_account']);
+			expect(await loginTokenCountFor(rows[0].customer_id!)).toBe(1);
+			expect(resendCalls(fetchSpy)).toBe(1);
+		});
+
+		it('a Boleto created then paid moves every row from pending to active', async () => {
+			const ids = await seedGroup('grp-boleto');
+			mockAppmax({ status: 'pendente', paymentMethod: 'boleto' });
+			await handleWebhook(env, JSON.stringify({ event: 'order_billet_created', data: { order_id: 'ord_grp-boleto' } }));
+			expect((await groupState(ids)).map((row) => row.status)).toEqual(['pending', 'pending', 'pending']);
+
+			vi.restoreAllMocks();
+			mockAppmax({ status: 'aprovado', paymentMethod: 'boleto', email: 'grupo-boleto@example.com', subTotal: TOTAL });
+			await handleWebhook(env, JSON.stringify({ event: 'order_paid', data: { order_id: 'ord_grp-boleto' } }));
+
+			const rows = await groupState(ids);
+			expect(rows.map((row) => row.status)).toEqual(['active', 'active', 'active']);
+			expect(rows.every((row) => row.license_status === 'awaiting_account')).toBe(true);
+		});
+
+		it('a refund of the order refunds every row and ends every Licença now', async () => {
+			const ids = await seedGroup('grp-refund');
+			mockAppmax({ status: 'aprovado', email: 'grupo-refund@example.com', subTotal: TOTAL });
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', data: { order_id: 'ord_grp-refund' } }));
+
+			vi.restoreAllMocks();
+			mockAppmax({ status: 'estornado', subTotal: TOTAL });
+			const before = Date.now();
+			await handleWebhook(env, JSON.stringify({ event: 'order_refund', data: { order_id: 'ord_grp-refund' } }));
+
+			const rows = await groupState(ids);
+			expect(rows.map((row) => row.status)).toEqual(['refunded', 'refunded', 'refunded']);
+			for (const row of rows) {
+				expect(new Date(row.expires_at!).getTime()).toBeGreaterThanOrEqual(before - 1000);
+				expect(new Date(row.expires_at!).getTime()).toBeLessThanOrEqual(Date.now());
+			}
+		});
+	});
+
 	describe('Licença expiry (license-expiry.ts)', () => {
 		async function expiryOf(id: string): Promise<string | null> {
 			const row = await env.DB.prepare('SELECT expires_at FROM licenses WHERE purchase_id = ?')

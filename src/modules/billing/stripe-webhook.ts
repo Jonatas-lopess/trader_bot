@@ -28,8 +28,7 @@ import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
 	checkReportedAmount,
-	findPurchaseByProviderRef,
-	findPurchaseIdByProviderRef,
+	findPurchasesByProviderRef,
 	reportAmountCheck,
 	reportMissingBuyerDocument,
 	PAID_AT_SQL,
@@ -137,10 +136,12 @@ async function onSubscriptionBecameActive(
 		return;
 	}
 
-	const purchaseId = await findPurchaseIdByProviderRef(env, 'stripe', ref);
-	if (purchaseId === null) return;
+	// Every row of the order (a cart is one row per Licença, ADR-0008): one Cliente, one login link.
+	const purchases = await findPurchasesByProviderRef(env, 'stripe', ref);
+	if (purchases.length === 0) return;
+	const purchaseId = purchases[0].id;
 
-	const customer = await provisionCustomer(env, { purchaseId, email });
+	const customer = await provisionCustomer(env, { purchaseIds: purchases.map((purchase) => purchase.id), email });
 	if (customer === null) {
 		// Malformed address: never fall back to the raw value (normalize-email.ts).
 		console.error(`onSubscriptionBecameActive: malformed buyer email for purchase_id=${purchaseId} — customers row not created`);
@@ -223,18 +224,18 @@ export async function handleStripeWebhook(
 	);
 
 	// Licença expiry derived from the new status in the same batch (license-expiry.ts).
-	const purchase = await findPurchaseByProviderRef(env, 'stripe', ref);
-	const syncStatement =
-		purchase === null
-			? null
-			: licenseSyncStatement(env, {
-					purchaseId: purchase.id,
-					robotId: purchase.robotId,
-					offer: purchase.offer,
-					status: checked.status,
-					now: new Date(),
-				});
-	const [result] = await env.DB.batch(syncStatement === null ? [casStatement] : [casStatement, syncStatement]);
+	const now = new Date();
+	const syncStatements = (await findPurchasesByProviderRef(env, 'stripe', ref)).flatMap((purchase) => {
+		const statement = licenseSyncStatement(env, {
+			purchaseId: purchase.id,
+			robotId: purchase.robotId,
+			offer: purchase.offer,
+			status: checked.status,
+			now,
+		});
+		return statement === null ? [] : [statement];
+	});
+	const [result] = await env.DB.batch([casStatement, ...syncStatements]);
 
 	if (result.meta.changes > 0) reportAmountCheck('stripe', checked);
 

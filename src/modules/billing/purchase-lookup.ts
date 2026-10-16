@@ -53,18 +53,22 @@ export async function findPurchaseIdByProviderRef(
 	return row?.id ?? null;
 }
 
-/** Immutable purchase facts the Licença sync needs (`licenseSyncStatement`), looked up before the status CAS so both can share one `DB.batch`. */
-export async function findPurchaseByProviderRef(
+/**
+ * Immutable facts of every purchase row the gateway reference matches, oldest first: the rows of
+ * one order (a cart is one row per Licença sharing `appmax_order_id`, ADR-0008). The Licença sync
+ * (`licenseSyncStatement`) needs them before the status CAS so both can share one `DB.batch`.
+ */
+export async function findPurchasesByProviderRef(
 	env: LookupEnv,
 	provider: ProviderId,
 	ref: { orderId: string | null; subscriptionId: string | null }
-): Promise<{ id: string; robotId: string; offer: PurchaseOffer } | null> {
-	const row = await env.DB.prepare(
-		'SELECT id, robot_id, offer FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+): Promise<{ id: string; robotId: string; offer: PurchaseOffer }[]> {
+	const { results } = await env.DB.prepare(
+		'SELECT id, robot_id, offer FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) ORDER BY created_at, id'
 	)
 		.bind(provider, ref.orderId, ref.subscriptionId)
-		.first<{ id: string; robot_id: string; offer: PurchaseOffer }>();
-	return row === null ? null : { id: row.id, robotId: row.robot_id, offer: row.offer };
+		.all<{ id: string; robot_id: string; offer: PurchaseOffer }>();
+	return results.map((row) => ({ id: row.id, robotId: row.robot_id, offer: row.offer }));
 }
 
 export type CheckoutPurchase = {
@@ -110,7 +114,8 @@ export async function findByCheckout(env: LookupEnv, checkoutId: string): Promis
 	}));
 }
 
-type AmountFacts = { purchaseId: string; expectedCents: number };
+/** `purchaseId` is the order's checkout id (its first row's id); `expectedCents` the sum over its `rows` rows. */
+type AmountFacts = { purchaseId: string; orderId: string | null; rows: number; expectedCents: number };
 
 export type AmountCheck =
 	| { status: PurchaseStatus; unchecked?: AmountFacts }
@@ -118,8 +123,9 @@ export type AmountCheck =
 
 /**
  * Price integrity after payment (ADR-0006, PLANNING.md §6): when the authoritative refetch
- * says a purchase is paid (`active`), the amount the gateway reports must equal the row's
- * stored `amount_cents`. Never the live catalog, so repricing between session creation and
+ * says a purchase is paid (`active`), the amount the gateway reports must equal the stored
+ * `amount_cents`, summed over every row of the order (ADR-0008: a cart is one row per Licença
+ * sharing the order id; a single purchase is a group of one). Never the live catalog, so repricing between session creation and
  * payment cannot flag a legitimate payment. A mismatch downgrades the outcome to `rejected`;
  * the Cliente was charged, so the caller reports it (`reportAmountCheck`) and never provisions.
  *
@@ -135,30 +141,32 @@ export async function checkReportedAmount(
 ): Promise<AmountCheck> {
 	if (authoritative.status !== 'active') return { status: authoritative.status };
 
-	const row = await env.DB.prepare(
-		'SELECT id, amount_cents FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+	const group = await env.DB.prepare(
+		`SELECT MIN(COALESCE(checkout_id, id)) AS id, COUNT(*) AS row_count, SUM(amount_cents) AS expected FROM purchases
+		 WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?)`
 	)
 		.bind(provider, ref.orderId, ref.subscriptionId)
-		.first<{ id: string; amount_cents: number }>();
-	if (row === null) return { status: 'active' };
+		.first<{ id: string | null; row_count: number; expected: number | null }>();
+	if (group === null || group.id === null || group.expected === null) return { status: 'active' };
 
-	const facts = { purchaseId: row.id, expectedCents: row.amount_cents };
+	const facts = { purchaseId: group.id, orderId: ref.orderId, rows: group.row_count, expectedCents: group.expected };
 	if (authoritative.reportedAmountCents === null) return { status: 'active', unchecked: facts };
-	if (authoritative.reportedAmountCents === row.amount_cents) return { status: 'active' };
+	if (authoritative.reportedAmountCents === group.expected) return { status: 'active' };
 	return { status: 'rejected', mismatch: { ...facts, reportedCents: authoritative.reportedAmountCents } };
 }
 
 /** Sentry reports for an `AmountCheck`. Call only once the CAS actually applied, so a stale or replayed event does not re-report. */
 export function reportAmountCheck(provider: ProviderId, checked: AmountCheck): void {
 	if ('mismatch' in checked) {
-		const { purchaseId, expectedCents, reportedCents } = checked.mismatch;
+		const { purchaseId, orderId, rows, expectedCents, reportedCents } = checked.mismatch;
 		Sentry.captureMessage('amount mismatch: payment received but reported amount differs from the stored expectation', {
 			level: 'error',
-			extra: { provider, purchase_id: purchaseId, expected_cents: expectedCents, reported_cents: reportedCents },
+			extra: { provider, purchase_id: purchaseId, order_id: orderId, rows, expected_cents: expectedCents, reported_cents: reportedCents },
 		});
 	} else if (checked.unchecked !== undefined) {
+		const { purchaseId, orderId, rows, expectedCents } = checked.unchecked;
 		Sentry.captureMessage('no reported amount on the authoritative response; activated unchecked', {
-			extra: { provider, purchase_id: checked.unchecked.purchaseId, expected_cents: checked.unchecked.expectedCents },
+			extra: { provider, purchase_id: purchaseId, order_id: orderId, rows, expected_cents: expectedCents },
 		});
 	}
 }
@@ -174,12 +182,13 @@ export async function reportMissingBuyerDocument(
 	provider: ProviderId,
 	ref: { orderId: string | null; subscriptionId: string | null }
 ): Promise<void> {
+	// Every row of an order carries the buyer fields (pay.ts copies them), so one missing row is enough to report.
 	const row = await env.DB.prepare(
-		'SELECT id, buyer_document FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) LIMIT 1'
+		'SELECT id FROM purchases WHERE provider = ? AND (appmax_order_id = ? OR appmax_subscription_id = ?) AND buyer_document IS NULL ORDER BY created_at, id LIMIT 1'
 	)
 		.bind(provider, ref.orderId, ref.subscriptionId)
-		.first<{ id: string; buyer_document: string | null }>();
-	if (row === null || row.buyer_document !== null) return;
+		.first<{ id: string }>();
+	if (row === null) return;
 	Sentry.captureMessage('no buyer document on the authoritative response; NFS-e needs it entered by hand', {
 		extra: { provider, purchase_id: row.id },
 	});

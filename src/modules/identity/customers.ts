@@ -13,14 +13,16 @@ import type { ProviderId, PurchaseStatus } from '../billing/payment-provider';
 type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
 
 /**
- * Find-or-create the Cliente by normalized email, then attach the purchase to it
+ * Find-or-create the Cliente by normalized email, then attach the purchases to it
  * (`purchases.customer_id`, migration 0011; ADR-0006 "Identity is per email"). A repeat buyer
- * resolves to the same `customers` row however the address is cased or padded.
+ * resolves to the same `customers` row however the address is cased or padded. `purchaseIds`
+ * are the rows of one paid order: a cart of N Licenças is N rows (ADR-0008), all attached to the
+ * one Cliente in one statement.
  *
- * `created` means "this purchase was newly attached", not "a customers row was inserted": the
- * caller (`webhook.ts`'s `onSubscriptionBecameActive`) gates the magic-link send on it, so a
- * reapplied or renewal event for an already-attached purchase is a no-op, while a repeat buyer's
- * second purchase still gets its own link.
+ * `created` means "at least one of these purchases was newly attached", not "a customers row was
+ * inserted": the caller (`webhook.ts`'s `onSubscriptionBecameActive`) gates the magic-link send on
+ * it, so a reapplied or renewal event for an already-attached order is a no-op, while a repeat
+ * buyer's next order still gets its own link.
  *
  * Both writes are single atomic statements (`ON CONFLICT(email) DO NOTHING`, then
  * `UPDATE ... WHERE customer_id IS NULL`); the `SELECT` between them only resolves the id the
@@ -29,24 +31,26 @@ type CustomersEnv = Pick<Cloudflare.Env, 'DB'>;
  */
 export async function provisionCustomer(
 	env: CustomersEnv,
-	params: { purchaseId: string; email: string }
+	params: { purchaseIds: readonly string[]; email: string }
 ): Promise<{ id: string; created: boolean } | null> {
 	const email = normalizeEmail(params.email);
-	if (email === null) return null;
+	if (email === null || params.purchaseIds.length === 0) return null;
 
 	await env.DB.prepare('INSERT INTO customers (id, email) VALUES (?, ?) ON CONFLICT(email) DO NOTHING')
 		.bind(crypto.randomUUID(), email)
 		.run();
 	const customer = await env.DB.prepare('SELECT id FROM customers WHERE email = ?').bind(email).first<{ id: string }>();
 
-	const attached = await env.DB.prepare('UPDATE purchases SET customer_id = ? WHERE id = ? AND customer_id IS NULL')
-		.bind(customer!.id, params.purchaseId)
+	const attached = await env.DB.prepare(
+		'UPDATE purchases SET customer_id = ? WHERE customer_id IS NULL AND id IN (SELECT value FROM json_each(?))'
+	)
+		.bind(customer!.id, JSON.stringify(params.purchaseIds))
 		.run();
 	if (attached.meta.changes > 0) return { id: customer!.id, created: true };
 
 	// Already attached by an earlier delivery: report the Cliente it belongs to.
 	const owner = await env.DB.prepare('SELECT customer_id FROM purchases WHERE id = ?')
-		.bind(params.purchaseId)
+		.bind(params.purchaseIds[0])
 		.first<{ customer_id: string | null }>();
 	return { id: owner?.customer_id ?? customer!.id, created: false };
 }

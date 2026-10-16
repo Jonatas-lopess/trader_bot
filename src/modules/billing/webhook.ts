@@ -12,6 +12,12 @@
  *   4. A single compare-and-swap UPDATE applies it, ranked by rigidity so a
  *      less-current event can never undo a more-current one.
  *
+ * An order can hold several purchase rows (a cart, storefront-v2 12, ADR-0008): they share
+ * `appmax_order_id`, so the amount check compares against their sum, the one CAS moves all of
+ * them (`meta.changes` is the row count, read only as "> 0"), each row gets its own Licença sync
+ * in the same batch, and the Cliente is provisioned once. Refund, chargeback and cancel move the
+ * whole order; a per-Licença partial refund is manual (docs/ops/withdrawal-refund.md).
+ *
  * `src/pages/billing/webhook.ts` is the thin Astro adapter around this.
  */
 
@@ -24,7 +30,7 @@ import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
 	checkReportedAmount,
-	findPurchaseByProviderRef,
+	findPurchasesByProviderRef,
 	findPurchaseIdByProviderRef,
 	reportAmountCheck,
 	reportMissingBuyerDocument,
@@ -92,9 +98,11 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
  * makes that safe to call again (own idempotency, per this function's
  * original doc comment).
  *
- * Resolves `subscriptions.id` (our own PK, needed by `provisionCustomer`)
- * with one `SELECT` by `appmax_order_id`/`appmax_subscription_id` — the
- * same columns the CAS `UPDATE` above just matched on. This is a read of
+ * Resolves every purchase row of the order (our own PKs, needed by
+ * `provisionCustomer`; a cart is one row per Licença, ADR-0008, so the
+ * Cliente is provisioned once and every row attached to it) with one
+ * `SELECT` by `appmax_order_id`/`appmax_subscription_id` — the same columns
+ * the CAS `UPDATE` above just matched on. This is a read of
  * the row this same request just wrote, not a TOCTOU race: the state
  * transition itself was already decided atomically by the CAS `UPDATE`;
  * this lookup only resolves an id for a write that's already committed to
@@ -129,10 +137,12 @@ async function onSubscriptionBecameActive(
 	// the test-only Stripe driver (docs/adr/0005-stripe-test-driver.md) —
 	// same defense-in-depth stripe-webhook.ts's own CAS applies in reverse,
 	// even though the two gateways' id formats don't collide in practice.
-	const purchaseId = await findPurchaseIdByProviderRef(env, 'appmax', ref);
-	if (purchaseId === null) return;
+	// Every row of the order (a cart is one row per Licença, ADR-0008): one Cliente, one login link.
+	const purchases = await findPurchasesByProviderRef(env, 'appmax', ref);
+	if (purchases.length === 0) return;
+	const purchaseId = purchases[0].id;
 
-	const customer = await provisionCustomer(env, { purchaseId, email });
+	const customer = await provisionCustomer(env, { purchaseIds: purchases.map((purchase) => purchase.id), email });
 	if (customer === null) {
 		// Malformed address: never fall back to the raw value (normalize-email.ts).
 		console.error(`onSubscriptionBecameActive: malformed buyer email for purchase_id=${purchaseId} — customers row not created`);
@@ -221,21 +231,23 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 
 	// Licença expiry is derived from the new status in the same batch (one transaction), so
 	// no path edits `licenses.expires_at` on its own (license-expiry.ts).
-	const purchase = await findPurchaseByProviderRef(env, 'appmax', {
+	// One Licença per row of the order (ADR-0008); each statement is guarded by its own row's status.
+	const purchases = await findPurchasesByProviderRef(env, 'appmax', {
 		orderId: event.orderId,
 		subscriptionId: event.subscriptionId,
 	});
-	const syncStatement =
-		purchase === null
-			? null
-			: licenseSyncStatement(env, {
-					purchaseId: purchase.id,
-					robotId: purchase.robotId,
-					offer: purchase.offer,
-					status: checked.status,
-					now: new Date(),
-				});
-	const [result] = await env.DB.batch(syncStatement === null ? [casStatement] : [casStatement, syncStatement]);
+	const now = new Date();
+	const syncStatements = purchases.flatMap((purchase) => {
+		const statement = licenseSyncStatement(env, {
+			purchaseId: purchase.id,
+			robotId: purchase.robotId,
+			offer: purchase.offer,
+			status: checked.status,
+			now,
+		});
+		return statement === null ? [] : [statement];
+	});
+	const [result] = await env.DB.batch([casStatement, ...syncStatements]);
 
 	if (result.meta.changes > 0) reportAmountCheck('appmax', checked);
 

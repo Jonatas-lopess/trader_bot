@@ -30,6 +30,29 @@ no `customers` row, no login email, no Licença.
 
 Do not edit `amount_cents` to match: it is the record of what the Cliente agreed to pay.
 
+### A cart (several Licenças in one order)
+
+The rows of one order share `appmax_order_id` and `checkout_id` (ADR-0008), and the webhook
+compares Appmax's `sub_total` with the **sum** of their `amount_cents`: a mismatch rejects every
+row, with one Sentry event carrying `order_id`, `rows`, the expected sum and the reported value
+(`purchase_id` is the checkout id). Release the whole order, never part of it:
+
+```sql
+SELECT id, robot_id, offer, amount_cents, status FROM purchases WHERE checkout_id = '<purchase_id>';
+UPDATE purchases SET status = 'active', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE checkout_id = '<purchase_id>' AND status = 'rejected';
+```
+
+`provision-customer` with any row's id attaches every row of the checkout and sends one login
+e-mail. The SQL flip does not create the Licenças the webhook would have: create one per row
+(Compra perpetual, Anual 12 months from now):
+
+```sql
+INSERT INTO licenses (purchase_id, robot_id, expires_at)
+SELECT id, robot_id, CASE offer WHEN 'one_time' THEN '9999-12-31T23:59:59.000Z' ELSE strftime('%Y-%m-%dT%H:%M:%fZ', 'now', '+12 months') END
+FROM purchases WHERE checkout_id = '<purchase_id>' AND status = 'active'
+ON CONFLICT (purchase_id) DO NOTHING;
+```
+
 ## An antifraud refusal shows as `refunded` (pending sandbox check)
 
 A card paid on our own checkout (ADR-0007) sits in antifraud review (`autorizado`) before it is

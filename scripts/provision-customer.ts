@@ -17,6 +17,8 @@
  *
  * Usage: pnpm run provision-customer -- --purchase-id=<purchases.id> --email=<email> [--origin=<url>]
  *
+ * Any row of a cart's checkout will do: every row sharing its `checkout_id` is attached.
+ *
  * Same `getPlatformProxy`/`--experimental-strip-types` shape as
  * `scripts/send-download-link.ts` — see that file's header for why.
  */
@@ -70,7 +72,16 @@ async function main() {
 			return;
 		}
 
-		const customer = await provisionCustomer(proxy.env, { purchaseId, email });
+		// A cart is one row per Licença sharing `checkout_id` (ADR-0008): attach every row of the
+		// checkout to the one Cliente, with one login e-mail.
+		const { results: group } = await proxy.env.DB.prepare(
+			'SELECT id FROM purchases WHERE checkout_id = (SELECT COALESCE(checkout_id, id) FROM purchases WHERE id = ?)'
+		)
+			.bind(purchaseId)
+			.all<{ id: string }>();
+		const purchaseIds = group.length === 0 ? [purchaseId] : group.map((row) => row.id);
+
+		const customer = await provisionCustomer(proxy.env, { purchaseIds, email });
 		if (customer === null) {
 			console.error(`Could not provision customer: "${email}" is not a valid email address.`);
 			process.exitCode = 1;

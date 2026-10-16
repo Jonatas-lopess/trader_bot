@@ -10,12 +10,21 @@
 
 **Blocked by:** 10, appmax-checkout 07.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: webhook with D1 real and a mocked authoritative refetch: N-row success, mismatch, redelivery, refund, boleto-then-paid ordering.
 
-- [ ] Sum check passes for N rows, rejects a mismatch for all rows
-- [ ] One Cliente, one login link, N Licenças after activation
-- [ ] Redelivery and out-of-order events leave the same final state
-- [ ] Single-row orders behave exactly as before
-- [ ] Typecheck and the full test suite pass
+- [x] Sum check passes for N rows, rejects a mismatch for all rows
+- [x] One Cliente, one login link, N Licenças after activation
+- [x] Redelivery and out-of-order events leave the same final state
+- [x] Single-row orders behave exactly as before
+- [ ] Typecheck and the full test suite pass (typecheck and the touched test files pass; the full suite runs once at the end of the batch, recorded in ticket 15)
+
+## Comments
+
+- `checkReportedAmount` sums `amount_cents` over every row matching the order (one aggregate query); a single purchase is a group of one, so its behavior is unchanged. The Sentry `amount mismatch` / `no reported amount` events now carry `order_id` and `rows` next to `purchase_id` (the checkout id, `COALESCE(checkout_id, id)`) and the expected sum; one event per applied CAS, as before.
+- The CAS was already one `UPDATE ... WHERE appmax_order_id = ?` over every row; `meta.changes` is only read as `> 0`. `findPurchaseByProviderRef` became `findPurchasesByProviderRef` (all rows, oldest first) and the batch is `[cas, ...one licenseSyncStatement per row]`, each guarded by its own row's status, so N Licenças are created on activation and N are ended on refund or chargeback in the same transaction.
+- `provisionCustomer` takes `purchaseIds` and attaches them all in one `UPDATE ... id IN (SELECT value FROM json_each(?))`; `created` is "any row newly attached", so the login link goes out once per order. Same change in `stripe-webhook.ts` (single rows there) and `scripts/provision-customer.ts`, which now attaches every row of the given purchase's checkout.
+- `reportMissingBuyerDocument` reports the first row of the order still without a document.
+- Ops: `docs/ops/withdrawal-refund.md` gains "One Licença of a cart (partial refund)", manual, with the unverified risk that Appmax moves a partially refunded order to `estornado` (which would refund every row; the doc says how to restore). `docs/ops/rejected-purchases.md` gains how to release a rejected cart as a whole, including creating its Licenças (the SQL flip skips the webhook's activation step, which was also true for single purchases).
+

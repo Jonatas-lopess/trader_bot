@@ -55,6 +55,31 @@ placeholder until a lawyer words it).
 
    Expect `p.status = 'refunded'` and `l.expires_at` at or before the refund time.
 
+## One Licença of a cart (partial refund)
+
+A cart is one Appmax order with one `purchases` row per Licença; the rows share
+`appmax_order_id` and `checkout_id` (ADR-0008, storefront-v2 12). The webhook treats the order
+as one unit: an `estornado` refetch refunds **every** row and ends every Licença of the order.
+There is no tooling for refunding one Licença out of several; it is manual:
+
+1. List the order's rows and pick the one being withdrawn (the Cliente names the Robô; with two
+   Licenças of the same Robô, the Corretora account tells them apart):
+
+   ```sql
+   SELECT p.id, p.robot_id, p.offer, p.amount_cents, p.status, l.corretora_account FROM purchases p LEFT JOIN licenses l ON l.purchase_id = p.id WHERE p.checkout_id = '<checkout_id>' ORDER BY p.created_at, p.id;
+   ```
+
+2. Refund only that row's `amount_cents` in the Appmax dashboard (partial refund).
+3. **Check what the order's status became in Appmax.** Whether a partial refund leaves the order
+   `aprovado` or moves it to `estornado` is unverified (appmax-checkout 08). If it moved to
+   `estornado`, the webhook has refunded every row: restore the rows that were not refunded and
+   their Licenças' expiry by hand (`status = 'active'`; `licenses.expires_at` back to
+   `9999-12-31T23:59:59.000Z` for a Compra or `paid_at` + 12 months for an Anual), and report it.
+4. Revoke the withdrawn row with the two statements under "If the webhook never arrives", with
+   that row's id.
+
+The same holds for a chargeback of a cart: it moves the whole order.
+
 ## If the webhook never arrives
 
 Do not edit `purchases.status` by hand unless the refund is confirmed in Appmax and the

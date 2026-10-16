@@ -52,7 +52,9 @@ if (Astro.request.method === 'POST') {
 	values = readRobotForm(await Astro.request.formData());
 	const result = await updateRobot(env, slug, values);
 	if (result === null) return new Response(null, { status: 404 });
-	if (result.ok) return Astro.redirect(`/admin/robos/${result.slug}?ok=saved`, 303);
+	// The empty fragment stops a `#galeria` left by a gallery action from carrying over, so the
+	// saved flash at the top is what the admin sees.
+	if (result.ok) return Astro.redirect(`/admin/robos/${result.slug}?ok=saved#`, 303);
 	errors = result.errors;
 	Astro.response.status = 422;
 }

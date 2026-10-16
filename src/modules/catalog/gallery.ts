@@ -99,16 +99,20 @@ export const galleryAnchor = 'galeria';
 export const galleryPagePath = (slug: string): string => `/admin/robos/${encodeURIComponent(slug)}#${galleryAnchor}`;
 
 /** Flash keys a successful gallery action redirects with (`?ok=`); worded in `src/content/admin.ts`. */
-export type GalleryFlashKey = 'gallery-added' | 'gallery-removed' | 'gallery-video-added';
+export type GalleryFlashKey = 'gallery-added' | 'gallery-removed' | 'gallery-video-added' | 'gallery-caption-saved' | 'gallery-moved';
 
 /**
  * The 303 after a gallery POST: back to the edit page's gallery section with a flash key or an
  * error code, never free text (the page looks both up in its content file).
  */
-export function galleryRedirect(origin: string, slug: string, outcome: { ok: GalleryFlashKey } | { error: GalleryErrorCode }): Response {
+export function galleryRedirect(
+	origin: string,
+	slug: string,
+	outcome: { ok: GalleryFlashKey } | { error: GalleryErrorCode } | null
+): Response {
 	const target = new URL(`/admin/robos/${encodeURIComponent(slug)}`, origin);
-	if ('ok' in outcome) target.searchParams.set('ok', outcome.ok);
-	else target.searchParams.set('error', outcome.error);
+	if (outcome !== null && 'ok' in outcome) target.searchParams.set('ok', outcome.ok);
+	else if (outcome !== null) target.searchParams.set('error', outcome.error);
 	target.hash = galleryAnchor;
 	return new Response(null, { status: 303, headers: { Location: target.toString() } });
 }
@@ -408,6 +412,62 @@ export async function addVideo(env: Pick<GalleryEnv, 'DB'>, slug: string, url: s
 	if (await insertItem(env, slug, crypto.randomUUID(), { kind: 'video', youtubeId })) return { ok: true };
 	return { ok: false, error: (await robotExists(env, slug)) ? 'gallery-full' : 'not-found' };
 }
+
+/**
+ * Sets an item's caption (also its alt text). Trimmed; blank clears it; longer than the limit
+ * (in characters, not bytes) is `caption-too-long` and keeps the old one.
+ */
+export async function setCaption(env: Pick<GalleryEnv, 'DB'>, slug: string, id: string, caption: string): Promise<ItemResult> {
+	const text = caption.trim();
+	if ([...text].length > GALLERY_LIMITS.maxCaptionLength) return { ok: false, error: 'caption-too-long' };
+	const result = await env.DB.prepare('UPDATE robot_gallery_items SET caption = ? WHERE id = ? AND robot_slug = ?')
+		.bind(text === '' ? null : text, id, slug)
+		.run();
+	return result.meta.changes > 0 ? { ok: true } : { ok: false, error: 'not-found' };
+}
+
+/**
+ * Rewrites the positions of a Robô's items in one D1 batch. Ids in `ids` that are not this
+ * Robô's items (foreign, stale, repeated) are ignored; items the list leaves out keep their
+ * current order after the listed ones. Every UPDATE is scoped to the Robô, so nothing outside it
+ * moves and nothing is created.
+ */
+export async function reorderGallery(env: Pick<GalleryEnv, 'DB'>, slug: string, ids: readonly string[]): Promise<ItemResult> {
+	const current = (await listGallery(env, slug)).map((item) => item.id);
+	const known = new Set(current);
+	const listed = [...new Set(ids.filter((id) => known.has(id)))];
+	const rest = current.filter((id) => !listed.includes(id));
+	const order = [...listed, ...rest];
+	if (order.length === 0) return { ok: true };
+	await env.DB.batch(
+		order.map((id, position) =>
+			env.DB.prepare('UPDATE robot_gallery_items SET position = ? WHERE id = ? AND robot_slug = ?').bind(position, id, slug)
+		)
+	);
+	return { ok: true };
+}
+
+/** Moves one item a place up or down. Up on the first and down on the last change nothing. */
+export async function moveItem(env: Pick<GalleryEnv, 'DB'>, slug: string, id: string, direction: 'up' | 'down'): Promise<ItemResult> {
+	const order = (await listGallery(env, slug)).map((item) => item.id);
+	const from = order.indexOf(id);
+	if (from < 0) return { ok: false, error: 'not-found' };
+	const to = direction === 'up' ? from - 1 : from + 1;
+	if (to < 0 || to >= order.length) return { ok: true };
+	[order[from], order[to]] = [order[to], order[from]];
+	return reorderGallery(env, slug, order);
+}
+
+/**
+ * The statement that moves a Robô's gallery rows to its new slug, for the rename batch in
+ * `updateRobot` (`./admin.ts`). Like the Ofertas statement next to it, it acts only once the old
+ * slug is gone from `robots`, so a rename the SQL guard refused moves nothing. R2 keys hold the
+ * item id, not the slug, so no object moves.
+ */
+export const renameGalleryStatement = (env: Pick<GalleryEnv, 'DB'>, fromSlug: string, toSlug: string): D1PreparedStatement =>
+	env.DB.prepare(
+		'UPDATE robot_gallery_items SET robot_slug = ? WHERE robot_slug = ? AND NOT EXISTS (SELECT 1 FROM robots WHERE slug = ?)'
+	).bind(toSlug, fromSlug, fromSlug);
 
 /**
  * Removes one item of this Robô: the row first, then the stored file (an image's object; a

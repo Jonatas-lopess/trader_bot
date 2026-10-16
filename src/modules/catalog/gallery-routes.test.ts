@@ -4,9 +4,11 @@ import { jpegBytes, pngBytes, svgBytes, upload } from '../../../test/gallery-fix
 import { POST as postImages } from '../../pages/admin/robos/[slug]/galeria/imagens';
 import { POST as postRemove } from '../../pages/admin/robos/[slug]/galeria/[id]/remover';
 import { POST as postVideo } from '../../pages/admin/robos/[slug]/galeria/video';
+import { POST as postCaption } from '../../pages/admin/robos/[slug]/galeria/[id]/legenda';
+import { POST as postMove } from '../../pages/admin/robos/[slug]/galeria/[id]/mover';
 import { GET as getMedia } from '../../pages/media/[id]';
 import { createSession, SESSION_COOKIE_NAME } from '../identity/session';
-import { addImages, listGallery, MAX_UPLOAD_REQUEST_BYTES } from './gallery';
+import { addImages, addVideo, listGallery, MAX_UPLOAD_REQUEST_BYTES } from './gallery';
 import { clearCatalog, seedRobot } from './test-helpers';
 
 // Seam 2 of .scratch/robot-gallery/spec.md: the admin gallery routes and the media route, called
@@ -59,6 +61,19 @@ const videoRequest = (url: string, headers: Record<string, string> = { Cookie: a
 		body: new URLSearchParams({ url }),
 		headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
 	});
+
+const itemFormRequest = (id: string, action: 'legenda' | 'mover', fields: Record<string, string>, headers: Record<string, string> = { Cookie: adminCookie, Origin: origin }) =>
+	new Request(`${origin}/admin/robos/robo-a/galeria/${id}/${action}`, {
+		method: 'POST',
+		body: new URLSearchParams(fields),
+		headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
+	});
+
+async function seededVideo(youtubeId = 'dQw4w9WgXcQ'): Promise<string> {
+	await addVideo(env, 'robo-a', `https://youtu.be/${youtubeId}`);
+	const items = await listGallery(env, 'robo-a');
+	return items[items.length - 1].id;
+}
 
 const mediaRequest = (id: string, headers: Record<string, string> = {}) => new Request(`${origin}/media/${id}`, { headers });
 
@@ -151,7 +166,27 @@ describe('the gate on every gallery action', () => {
 		},
 		video: async (headers: Record<string, string>) =>
 			postVideo(context(videoRequest('https://youtu.be/dQw4w9WgXcQ', headers), { slug: 'robo-a' })),
+		caption: async (headers: Record<string, string>) => {
+			const id = await seededVideo();
+			return postCaption(context(itemFormRequest(id, 'legenda', { caption: 'hijack' }, headers), { slug: 'robo-a', id }));
+		},
+		move: async (headers: Record<string, string>) => {
+			await seededVideo('aaaaaaaaaaa');
+			const id = await seededVideo('bbbbbbbbbbb');
+			return postMove(context(itemFormRequest(id, 'mover', { direction: 'up' }, headers), { slug: 'robo-a', id }));
+		},
 	};
+
+	it.each(['caption', 'move'] as const)('%s: a refused caller changes neither captions nor order', async (action) => {
+		for (const headers of [{ Origin: origin }, { Cookie: adminCookie, Origin: 'https://evil.example' }] as Record<string, string>[]) {
+			await actions[action](headers);
+		}
+		const items = await listGallery(env, 'robo-a');
+		expect(items.every((i) => i.caption === null)).toBe(true);
+		expect(items.map((i) => (i.kind === 'video' ? i.youtubeId : ''))).toEqual(
+			action === 'move' ? ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'aaaaaaaaaaa', 'bbbbbbbbbbb'] : ['dQw4w9WgXcQ', 'dQw4w9WgXcQ']
+		);
+	});
 
 	it.each(Object.keys(actions) as (keyof typeof actions)[])('%s: anonymous and non-admin get an empty 404 and change nothing', async (action) => {
 		const callers: Record<string, string>[] = [{ Origin: origin }, { Cookie: clienteCookie, Origin: origin }];
@@ -160,10 +195,10 @@ describe('the gate on every gallery action', () => {
 			expect(response.status).toBe(404);
 			expect(await response.text()).toBe('');
 		}
-		// The remove action seeds one image per call itself; nothing else may appear or go.
-		const seeded = action === 'remove' ? 2 : 0;
-		expect(await listGallery(env, 'robo-a')).toHaveLength(seeded);
-		expect(await storedKeys()).toHaveLength(seeded);
+		// Some actions seed their own items per call (two calls here); nothing else may appear or go.
+		const seededRows = { upload: 0, remove: 2, video: 0, caption: 2, move: 4 }[action];
+		expect(await listGallery(env, 'robo-a')).toHaveLength(seededRows);
+		expect(await storedKeys()).toHaveLength(action === 'remove' ? 2 : 0);
 	});
 
 	it.each(Object.keys(actions) as (keyof typeof actions)[])('%s: a cross-origin admin POST gets 403', async (action) => {
@@ -224,6 +259,38 @@ describe('POST /admin/robos/<slug>/galeria/video', () => {
 		const response = await postVideo(context(videoRequest('https://youtu.be/dQw4w9WgXcQ'), { slug: 'no-such-robot' }));
 
 		expect(response.status).toBe(404);
+	});
+});
+
+describe('POST /admin/robos/<slug>/galeria/<id>/legenda and /mover', () => {
+	it('saves a caption and redirects with a flash', async () => {
+		const id = await seededVideo();
+
+		const response = await postCaption(context(itemFormRequest(id, 'legenda', { caption: 'Demonstração' }), { slug: 'robo-a', id }));
+
+		expect(response.headers.get('Location')).toBe(`${origin}/admin/robos/robo-a?ok=gallery-caption-saved#galeria`);
+		expect((await listGallery(env, 'robo-a'))[0].caption).toBe('Demonstração');
+	});
+
+	it('refuses a caption over the limit with caption-too-long', async () => {
+		const id = await seededVideo();
+
+		const response = await postCaption(context(itemFormRequest(id, 'legenda', { caption: 'x'.repeat(141) }), { slug: 'robo-a', id }));
+
+		expect(response.headers.get('Location')).toBe(`${origin}/admin/robos/robo-a?error=caption-too-long#galeria`);
+	});
+
+	it('moves an item and redirects with a flash; an unknown direction changes nothing', async () => {
+		await seededVideo('aaaaaaaaaaa');
+		const id = await seededVideo('bbbbbbbbbbb');
+
+		const bad = await postMove(context(itemFormRequest(id, 'mover', { direction: 'sideways' }), { slug: 'robo-a', id }));
+		expect(bad.headers.get('Location')).toBe(`${origin}/admin/robos/robo-a#galeria`);
+		expect((await listGallery(env, 'robo-a')).map((i) => (i.kind === 'video' ? i.youtubeId : ''))).toEqual(['aaaaaaaaaaa', 'bbbbbbbbbbb']);
+
+		const response = await postMove(context(itemFormRequest(id, 'mover', { direction: 'up' }), { slug: 'robo-a', id }));
+		expect(response.headers.get('Location')).toBe(`${origin}/admin/robos/robo-a?ok=gallery-moved#galeria`);
+		expect((await listGallery(env, 'robo-a')).map((i) => (i.kind === 'video' ? i.youtubeId : ''))).toEqual(['bbbbbbbbbbb', 'aaaaaaaaaaa']);
 	});
 });
 

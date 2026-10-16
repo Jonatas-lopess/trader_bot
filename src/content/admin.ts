@@ -167,7 +167,7 @@ export const fieldHelp: Partial<Record<keyof typeof fieldLabels, string>> = {
 export const slugLockedNote =
 	'Este Robô já foi comprado: o identificador não pode mais mudar, porque as compras e os arquivos em robots/<slug>/ apontam para ele.';
 export const slugRenameNote =
-	'Ainda sem compras, dá para mudar o identificador. Se você já enviou arquivos para robots/<slug>/, mova-os junto.';
+	'Ainda sem compras, dá para mudar o identificador. A galeria acompanha sozinha; se você já enviou arquivos para robots/<slug>/, mova-os junto.';
 
 export const priceHelp =
 	'Em reais, com vírgula ou ponto (ex.: 997,00). Deixe em branco para não oferecer. Preços novos valem só para compras novas.';
@@ -230,6 +230,13 @@ export const gallery = {
 	addVideoHelp: 'Cole o link do vídeo (youtube.com/watch?v=..., youtu.be/..., /shorts/...). Só o vídeo é guardado, não o link.',
 	addVideoPlaceholder: 'https://youtu.be/...',
 	addVideoSubmit: 'Adicionar vídeo',
+	captionLabel: 'Legenda (opcional)',
+	captionHelp: (max: number) => `Até ${max} caracteres. Também é o texto alternativo para leitores de tela. Vazio remove.`,
+	captionSubmit: 'Salvar legenda',
+	moveUpLabel: 'Subir',
+	moveDownLabel: 'Descer',
+	moveUpLabelFor: (position: number) => `Mover o item ${position} para cima`,
+	moveDownLabelFor: (position: number) => `Mover o item ${position} para baixo`,
 	removeLabel: 'Remover',
 	removeConfirmTitle: 'Remover este item?',
 	removeConfirmMessage: 'O item sai da galeria e, se for uma imagem, o arquivo é apagado. Não dá para desfazer.',
@@ -261,6 +268,8 @@ const galleryFlashTexts: Record<GalleryFlashKey, string> = {
 	'gallery-added': 'Imagens adicionadas à galeria.',
 	'gallery-removed': 'Item removido da galeria.',
 	'gallery-video-added': 'Vídeo adicionado à galeria.',
+	'gallery-caption-saved': 'Legenda salva.',
+	'gallery-moved': 'Ordem da galeria atualizada.',
 };
 /** The success line for a gallery `?ok=` value; null for an absent or unknown one. */
 export const galleryFlashText = (param: string | null): string | null =>

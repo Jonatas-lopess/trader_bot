@@ -15,12 +15,15 @@ import {
 	validateRobotForm,
 	type RobotFormInput,
 } from './admin';
+import { pngBytes, upload } from '../../../test/gallery-fixtures';
+import { addImages, addVideo, listGallery, moveItem, openMedia, setCaption } from './gallery';
 import { getPublishedBySlug, listOffersFor, listPublishedWithOffers, lookupOffer } from './robots';
 import { clearCatalog, seedRobot } from './test-helpers';
 
 // Purchases are not part of the catalog, so the tests that seed them clean up themselves.
 beforeEach(async () => {
 	await clearCatalog();
+	await env.DB.prepare('DELETE FROM robot_gallery_items').run();
 	await env.DB.prepare("DELETE FROM purchases WHERE id LIKE 'purchase-robo-%'").run();
 });
 
@@ -54,6 +57,23 @@ function staleSlugCheck(slug: string): typeof env {
 					const statement = target.prepare(sql);
 					if (!sql.startsWith('SELECT 1 AS hit FROM robots WHERE slug')) return statement;
 					return { bind: (value: string) => (value === slug ? { first: async () => null } : statement.bind(value)) };
+				};
+			}
+			const value = Reflect.get(target, prop);
+			return typeof value === 'function' ? value.bind(target) : value;
+		},
+	});
+	return { ...env, DB } as typeof env;
+}
+
+/** An env whose "is this slug bought" read says no, as if the purchase landed just after the check. */
+function staleLockCheck(): typeof env {
+	const DB = new Proxy(env.DB, {
+		get(target, prop) {
+			if (prop === 'prepare') {
+				return (sql: string) => {
+					if (!sql.startsWith('SELECT 1 AS hit FROM purchases WHERE robot_id')) return target.prepare(sql);
+					return { bind: () => ({ first: async () => null }) };
 				};
 			}
 			const value = Reflect.get(target, prop);
@@ -309,6 +329,56 @@ describe('updateRobot', () => {
 		const kept = await updateRobot(env, 'robo-a', validForm({ slug: 'robo-a', name: 'Renomeado', status: 'available' }));
 		expect(kept).toEqual({ ok: true, slug: 'robo-a' });
 		expect((await getRobotForAdmin(env, 'robo-a'))?.name).toBe('Renomeado');
+	});
+
+	it('carries the gallery (items, order, captions) to the new slug, and the media route still serves it', async () => {
+		await seedRobot({ slug: 'robo-a', status: 'available', offers: { one_time: 99700 } });
+		await addImages(env, 'robo-a', [upload(pngBytes(1, 1)), upload(pngBytes(2, 2))]);
+		await addVideo(env, 'robo-a', 'https://youtu.be/dQw4w9WgXcQ');
+		const [first, second, video] = await listGallery(env, 'robo-a');
+		await setCaption(env, 'robo-a', second.id, 'Gráfico de resultado');
+		await moveItem(env, 'robo-a', video.id, 'up');
+		const before = await listGallery(env, 'robo-a');
+
+		const result = await updateRobot(env, 'robo-a', validForm({ slug: 'robo-b', status: 'available' }));
+
+		expect(result).toEqual({ ok: true, slug: 'robo-b' });
+		expect(await listGallery(env, 'robo-a')).toEqual([]);
+		const after = await listGallery(env, 'robo-b');
+		expect(after.map(({ id, kind, caption, position }) => ({ id, kind, caption, position }))).toEqual(
+			before.map(({ id, kind, caption, position }) => ({ id, kind, caption, position }))
+		);
+		expect(after.map((i) => i.id)).toEqual([first.id, video.id, second.id]);
+		const served = await openMedia(env, first.id, async () => false);
+		expect(served).toMatchObject({ ok: true });
+		if (served.ok) await served.body.cancel();
+	});
+
+	it('leaves the gallery on the old slug when the rename is refused', async () => {
+		await seedRobot({ slug: 'robo-a', status: 'available', offers: { one_time: 99700 } });
+		await addVideo(env, 'robo-a', 'https://youtu.be/dQw4w9WgXcQ');
+		await seedPurchase('robo-a', 99700);
+
+		expect(await updateRobot(env, 'robo-a', validForm({ slug: 'robo-b', status: 'available' }))).toEqual({
+			ok: false,
+			errors: { slug: 'slug-locked' },
+		});
+
+		expect(await listGallery(env, 'robo-a')).toHaveLength(1);
+		expect(await listGallery(env, 'robo-b')).toEqual([]);
+	});
+
+	it('leaves the gallery on the old slug when a purchase lands between the check and the write', async () => {
+		await seedRobot({ slug: 'robo-a', status: 'available', offers: { one_time: 99700 } });
+		await addVideo(env, 'robo-a', 'https://youtu.be/dQw4w9WgXcQ');
+		await seedPurchase('robo-a', 99700);
+
+		const result = await updateRobot(staleLockCheck(), 'robo-a', validForm({ slug: 'robo-b', status: 'available' }));
+
+		expect(result).toEqual({ ok: false, errors: { slug: 'slug-locked' } });
+		expect(await getRobotForAdmin(env, 'robo-a')).not.toBeNull();
+		expect(await listGallery(env, 'robo-a')).toHaveLength(1);
+		expect(await listGallery(env, 'robo-b')).toEqual([]);
 	});
 
 	it('changes the checkout price but never an existing purchase amount', async () => {

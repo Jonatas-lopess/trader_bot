@@ -14,6 +14,7 @@
  */
 
 import { CART_OFFERS, SLUG_PATTERN } from '../../shared/cart-limits';
+import { renameGalleryStatement } from './gallery';
 import { OFFER_ORDER_SQL, ROBOT_COLUMNS, groupOffersBySlug, toRobot, type OfferName, type Robot, type RobotOffer, type RobotRow, type RobotStatus } from './robots';
 
 type CatalogAdminEnv = Pick<Cloudflare.Env, 'DB'>;
@@ -451,6 +452,8 @@ export async function updateRobot(
 		env.DB.prepare(
 			'UPDATE robot_offers SET robot_slug = ? WHERE robot_slug = ? AND NOT EXISTS (SELECT 1 FROM robots WHERE slug = ?)'
 		).bind(robot.slug, currentSlug, currentSlug),
+		// The gallery follows the same way (robot-gallery 03); its R2 keys do not hold the slug.
+		renameGalleryStatement(env, currentSlug, robot.slug),
 		env.DB.prepare('DELETE FROM robot_offers WHERE robot_slug = ? AND EXISTS (SELECT 1 FROM robots WHERE slug = ?)').bind(
 			robot.slug,
 			robot.slug

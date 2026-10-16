@@ -10,6 +10,7 @@ import {
 	methods,
 	payErrors,
 	securityNote,
+	summary,
 	unavailable,
 	withdrawalNote,
 } from './checkout-form';
@@ -75,6 +76,10 @@ describe('checkout form copy', () => {
 		expect(withdrawalNote).toBe(buyWithdrawalNote);
 		expect(withdrawalNote.text.blocked).toBe(true);
 		expect(withdrawalNote.text.value).not.toMatch(/garantia/i);
+	});
+
+	it('never calls what is bought a "pedido" (CONTEXT.md: Compra, Carrinho, Licença)', () => {
+		for (const text of [summary.heading, summary.linesLabel, ...Object.values(payErrors)]) expect(text).not.toMatch(/pedido/i);
 	});
 
 	it('the unavailable state links back to the catalog', () => {

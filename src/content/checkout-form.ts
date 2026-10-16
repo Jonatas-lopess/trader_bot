@@ -23,8 +23,8 @@ export { formatBrl };
 export const checkoutOfferLabels: Record<OfferName, string> = offerLabels;
 
 export const summary = {
-	heading: 'Resumo do pedido',
-	linesLabel: 'Itens do pedido',
+	heading: 'Resumo da compra',
+	linesLabel: 'Robôs e Licenças',
 	totalLabel: 'Total',
 	/** Under each Robô's name: the Oferta and how many Licenças (one per Corretora account, ADR-0008). */
 	lineDetail: (offerLabel: string, quantity: number): string =>
@@ -111,7 +111,7 @@ export const payErrors: Record<PayErrorCode, string> = {
 	provider_unavailable: 'Não conseguimos falar com o meio de pagamento agora. Tente de novo em alguns instantes.',
 	rate_limited: 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.',
 	network: 'Sem conexão com o servidor. Verifique sua internet e tente de novo.',
-	invalid_request: 'Não conseguimos processar o pedido. Recarregue a página e tente de novo.',
+	invalid_request: 'Não conseguimos processar o pagamento. Recarregue a página e tente de novo.',
 	unknown_offer: 'Esta oferta não está mais disponível. Volte ao catálogo e escolha de novo.',
 	offer_not_supported: 'Esta oferta ainda não pode ser comprada por aqui. Volte ao catálogo e escolha outra.',
 	method_not_allowed: 'Esta forma de pagamento não está disponível para esta oferta.',

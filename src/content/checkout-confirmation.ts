@@ -22,7 +22,7 @@ export const confirmationHeading = 'Confirmando seu pagamento';
 // PLANNING.md §6 Price integrity: the Cliente *was* charged, so this never says
 // otherwise and never invites a second purchase. Wording is legal/support-facing.
 export const rejectedMessage = launchBlocking(
-	'Recebemos o seu pagamento, mas ele precisa de uma verificação manual antes de liberarmos as Licenças do seu pedido. Nossa equipe entrará em contato por e-mail. Não é necessário pagar novamente; se preferir, fale com o suporte.',
+	'Recebemos o seu pagamento, mas ele precisa de uma verificação manual antes de liberarmos as suas Licenças. Nossa equipe entrará em contato por e-mail. Não é necessário pagar novamente; se preferir, fale com o suporte.',
 	'ADR-0006 / PLANNING.md §6 Price integrity: placeholder copy for a paid-but-rejected purchase (amount mismatch); needs support-channel and legal wording before launch.'
 );
 
@@ -64,7 +64,7 @@ export const confirmationMessages: Record<
 	awaiting_boleto:
 		'Recebemos seu Boleto. A confirmação pode levar até 1 dia útil — avisaremos por e-mail assim que o pagamento for confirmado.',
 	boleto_overdue:
-		'O vencimento deste Boleto passou. Se você já pagou, a confirmação pode levar até 1 dia útil e avisaremos por e-mail. Se ainda não pagou, faça um novo pedido.',
+		'O vencimento deste Boleto passou. Se você já pagou, a confirmação pode levar até 1 dia útil e avisaremos por e-mail. Se ainda não pagou, gere um novo Boleto.',
 	awaiting_pix:
 		'Pague com o Pix abaixo. Assim que o pagamento for confirmado, esta página se atualiza sozinha e o acesso chega por e-mail.',
 	pix_expired: 'O prazo deste Pix acabou e ele não pode mais ser pago. Gere um novo Pix para concluir a compra.',
@@ -125,7 +125,7 @@ export const boletoInstructions = {
 // bought (the same Robô and Oferta, or every line of a cart), like `pendingTimeoutRetry`.
 export const pixExpiredRetryLabel = 'Gerar novo Pix';
 export const cardDeclinedRetryLabel = 'Tentar de novo';
-export const boletoOverdueRetryLabel = 'Fazer um novo pedido';
+export const boletoOverdueRetryLabel = 'Gerar novo Boleto';
 
 /**
  * A new checkout of what the order held: the single-item checkout for one Licença, the cart
@@ -142,7 +142,7 @@ export function newCheckoutHref(items: readonly { robotId: string; offer: string
 // What the order holds (storefront-v2 13): one line per Robô and Oferta, worded like the
 // checkout summary (one source, checkout-form.ts).
 export const orderItems = {
-	heading: 'Seu pedido',
+	heading: 'Suas Licenças',
 	detail: summary.lineDetail,
 } as const;
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+	boletoOverdueRetryLabel,
 	confirmationMessages,
 	formatDeadline,
 	formatDueDate,
@@ -86,6 +87,12 @@ describe('checkout confirmation copy', () => {
 	});
 
 	it('the rejected copy covers every Licença of the order', () => {
-		expect(rejectedMessage.value).toMatch(/Licenças do seu pedido/);
+		expect(rejectedMessage.value).toMatch(/suas Licenças/);
+	});
+
+	it('never calls what was bought a "pedido" (CONTEXT.md: Compra, Carrinho, Licença)', () => {
+		for (const text of [...Object.values(confirmationMessages), boletoOverdueRetryLabel, orderItems.heading]) {
+			expect(text).not.toMatch(/pedido/i);
+		}
 	});
 });

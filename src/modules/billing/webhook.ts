@@ -3,6 +3,8 @@
  * concurrency — compare-and-swap, not read-then-write"). Every delivery:
  *
  *   1. Raw payload logged unconditionally (independent of everything below).
+ *      An event outside `APPMAX_ORDER_EVENTS` (and not `subscription_*`) stops
+ *      here with a 200: stored, acknowledged, never acted on.
  *   2. Idempotency claimed via one INSERT; a duplicate stops here.
  *   3. Appmax's own API re-fetches the referenced record's authoritative
  *      status — the payload's own status field is never trusted, only used
@@ -14,7 +16,7 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
-import { fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
+import { classifyWebhookEvent, fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
 import { licenseSyncStatement } from '../licensing/license-expiry';
@@ -157,6 +159,12 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	await logDelivery(env, idempotencyKey, rawBody);
 
 	if (event === null) return { status: 200 };
+
+	if (classifyWebhookEvent(event.event) === 'unknown') {
+		// Stored above for support and replay; acknowledged so Appmax does not retry it.
+		console.info(`handleWebhook: ignored Appmax event ${event.event.slice(0, 64)}`);
+		return { status: 200 };
+	}
 
 	const isFirstDelivery = await claimIdempotency(env, idempotencyKey);
 	if (!isFirstDelivery) return { status: 200 };

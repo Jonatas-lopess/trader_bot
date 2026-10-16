@@ -60,7 +60,7 @@ describe('checkout-webhooks end to end', () => {
 		const reference = await startCheckout('ord_e2e_happy');
 		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'pending' });
 
-		const webhook = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_happy' }));
+		const webhook = await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_e2e_happy' }));
 		expect(webhook).toEqual({ status: 200 });
 
 		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'active' });
@@ -79,7 +79,7 @@ describe('checkout-webhooks end to end', () => {
 
 		const reference = await startCheckout('ord_e2e_boleto');
 
-		const created = await handleWebhook(env, JSON.stringify({ event: 'order.created', order_id: 'ord_e2e_boleto' }));
+		const created = await handleWebhook(env, JSON.stringify({ event: 'order_billet_created', order_id: 'ord_e2e_boleto' }));
 		expect(created).toEqual({ status: 200 });
 		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'awaiting_boleto' });
 
@@ -94,7 +94,7 @@ describe('checkout-webhooks end to end', () => {
 			}
 			throw new Error(`unexpected fetch: ${url}`);
 		});
-		const paid = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_boleto' }));
+		const paid = await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_e2e_boleto' }));
 		expect(paid).toEqual({ status: 200 });
 		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'active' });
 	});
@@ -120,10 +120,10 @@ describe('checkout-webhooks end to end', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		const eventActive = handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_concurrent' }));
+		const eventActive = handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_concurrent' }));
 		const eventCanceled = handleWebhook(
 			env,
-			JSON.stringify({ event: 'subscription.canceled', subscription_id: 'sub_concurrent', order_id: 'ord_concurrent' })
+			JSON.stringify({ event: 'subscription_cancelled', subscription_id: 'sub_concurrent', order_id: 'ord_concurrent' })
 		);
 		const [resultActive, resultCanceled] = await Promise.all([eventActive, eventCanceled]);
 

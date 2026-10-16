@@ -138,7 +138,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 
 		// 2. Paid webhook: amount matches → active, buyer fiscal data and paid_at persisted.
 		orderResponse = { status: 'aprovado', email, subTotalCents: purchase.amount_cents };
-		expect(await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }))).toEqual({ status: 200 });
+		expect(await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: orderId }))).toEqual({ status: 200 });
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'active' });
 		const paid = await env.DB.prepare('SELECT buyer_name, buyer_document, paid_at FROM purchases WHERE id = ?')
 			.bind(purchase.id)
@@ -188,7 +188,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 
 		// 8. Refund (7-day withdrawal): the already-minted link stops working.
 		orderResponse = { status: 'estornado', email, subTotalCents: purchase.amount_cents };
-		await handleWebhook(env, JSON.stringify({ event: 'order.refunded', order_id: orderId }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_refund', order_id: orderId }));
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'refunded' });
 		expect(await resolveDownload(env, token)).toEqual({ ok: false, status: 404 });
 		expect(await resolveAccountView(env, accountRequest(cookie))).toMatchObject({ robots: [{ licenses: [{ license: { status: 'revoked' } }] }] });
@@ -200,7 +200,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		const purchase = await startCheckout(orderId, 'one_time');
 
 		orderResponse = { status: 'pendente', paymentMethod: 'boleto' };
-		await handleWebhook(env, JSON.stringify({ event: 'order.created', order_id: orderId }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_billet_created', order_id: orderId }));
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'awaiting_boleto' });
 		expect(await licenseOf(purchase.id)).toBeNull();
 
@@ -210,7 +210,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 			email: 'compra-boleto@example.com',
 			subTotalCents: purchase.amount_cents,
 		};
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: orderId }));
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'active' });
 		expect((await licenseOf(purchase.id))?.status).toBe('awaiting_account');
 	});
@@ -221,7 +221,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		const purchase = await startCheckout(orderId, 'one_time');
 
 		orderResponse = { status: 'aprovado', email: 'compra-mismatch@example.com', subTotalCents: purchase.amount_cents - 1 };
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: orderId }));
 
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'rejected' });
 		expect(await licenseOf(purchase.id)).toBeNull();
@@ -243,7 +243,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 			.run();
 
 		orderResponse = { status: 'aprovado', paymentMethod: 'cartao', email, subTotalCents: purchase.amount_cents };
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: orderId }));
 		expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'active' });
 
 		const cookie = await loginCookie(email);
@@ -278,7 +278,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 			mockOutbound(orderId);
 			const purchase = await startCheckout(orderId, 'one_time');
 			orderResponse = { status: 'aprovado', email, subTotalCents: purchase.amount_cents };
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: orderId }));
 			expect(await getPurchaseStatus(env, purchase.id)).toEqual({ ok: true, state: 'active' });
 			purchases.push({ id: purchase.id, amount: purchase.amount_cents });
 		}
@@ -322,7 +322,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 		// Revoking one Licença (refund of its order) leaves the other's link working.
 		mockOutbound('ord_cat_repeat_1');
 		orderResponse = { status: 'estornado', email, subTotalCents: first.amount };
-		await handleWebhook(env, JSON.stringify({ event: 'order.refunded', order_id: 'ord_cat_repeat_1' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_refund', order_id: 'ord_cat_repeat_1' }));
 		expect(await resolveDownload(env, tokens[0])).toEqual({ ok: false, status: 404 });
 		expect((await resolveDownload(env, tokens[1])).ok).toBe(true);
 	});
@@ -341,7 +341,7 @@ describe('catalog-pivot end to end', { timeout: 60_000 }, () => {
 				.bind(purchase.id, purchase.amount_cents, orderId, `asub_cat_repeat_m${n}`)
 				.run();
 			orderResponse = { status: 'aprovado', paymentMethod: 'cartao', email, subTotalCents: purchase.amount_cents };
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: orderId }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: orderId }));
 			purchases.push(purchase);
 		}
 

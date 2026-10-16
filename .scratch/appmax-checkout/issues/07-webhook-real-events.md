@@ -11,14 +11,23 @@
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: `handleWebhook` against D1 with the order refetch mocked from the documented shape, one case per mapped event and status (the table above).
 
-- [ ] Each documented event in the table is handled by refetch and produces the expected row transition (card approved, Pix paid, Boleto compensated, refund, chargeback)
-- [ ] `order_pix_expired`, `payment_not_authorized` and `order_billet_overdue` leave `pending` rows `pending`, and never overwrite a higher-ranked status
-- [ ] A forged payload with decimal amounts or a different status changes nothing beyond what the refetch says
-- [ ] Unknown event: logged, `200`, no state change
-- [ ] Refetch failure: `502` and the idempotency key is released
-- [ ] `recusado_por_risco` behavior documented in the ops doc and the ticket comments (decision pending 08)
-- [ ] Typecheck and the full test suite pass
+- [x] Each documented event in the table is handled by refetch and produces the expected row transition (card approved, Pix paid, Boleto compensated, refund, chargeback)
+- [x] `order_pix_expired`, `payment_not_authorized` and `order_billet_overdue` leave `pending` rows `pending`, and never overwrite a higher-ranked status
+- [x] A forged payload with decimal amounts or a different status changes nothing beyond what the refetch says
+- [x] Unknown event: logged, `200`, no state change
+- [x] Refetch failure: `502` and the idempotency key is released
+- [x] `recusado_por_risco` behavior documented in the ops doc and the ticket comments (decision pending 08)
+- [x] Typecheck and the full test suite pass
+
+## Comments
+
+- Event table: `APPMAX_ORDER_EVENTS` in `appmax-client.ts`, a typed map whose values only describe the event; `classifyWebhookEvent` says `order`, `subscription` (any `subscription_*`, so existing Mensal rows keep their refetch until 09) or `unknown`. Unknown events are stored in `webhook_deliveries`, logged by name with `console.info`, answered `200`, never claimed or refetched.
+- Event names are normalized to snake_case (`OrderPaidByPix` reads as `order_paid_by_pix`), and the idempotency key uses the normalized name.
+- `parseWebhookPayload` also reads a bare `data.id` as the order id, only when no subscription id is present.
+- `recusado_por_risco` (decision pending 08): the mapping stays `refunded`, documented at `mapOrderStatus` and in `docs/ops/rejected-purchases.md` ("An antifraud refusal shows as `refunded`"), with what the operator checks before acting.
+- No fetch timeout was added to the refetch: a slow refetch past Appmax's 5 s still lands, and Appmax's retry then reads as a duplicate (`200`). Revisit if 08 shows slow sandbox answers.
+- Follow-up noted, not built: an event lost beyond Appmax's retry window leaves a paid order `pending`; a reconciliation on confirmation-page poll is the cheap fix if 08 shows retries failing.

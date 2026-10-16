@@ -7,7 +7,7 @@ import { handleWebhook } from './webhook';
 vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
 
 const ALLOWED_IP = '203.0.113.10';
-const validPayload = JSON.stringify({ event: 'order.paid', order_id: 'ord_hardening' });
+const validPayload = JSON.stringify({ event: 'order_approved', order_id: 'ord_hardening' });
 
 function envWithAllowedIp() {
 	return { ...env, APPMAX_WEBHOOK_IPS: ALLOWED_IP };
@@ -32,7 +32,7 @@ describe('checkWebhookRequest', () => {
 			}
 			return new Response(JSON.stringify({ data: { order: { status: 'aprovado' } } }), { status: 200 });
 		});
-		const payload = JSON.stringify({ event: 'order.paid', order_id: 'ord_hardening_passthrough' });
+		const payload = JSON.stringify({ event: 'order_approved', order_id: 'ord_hardening_passthrough' });
 
 		const hardening = await checkWebhookRequest(envWithAllowedIp(), { sourceIp: ALLOWED_IP, rawBody: payload });
 		expect(hardening).toEqual({ ok: true });

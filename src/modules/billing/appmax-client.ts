@@ -379,36 +379,76 @@ export async function getOrder(env: AppmaxCredentials, orderId: string): Promise
 }
 
 /**
- * Webhook payload shape: `event`, `order_id`, `subscription_id`. Unlike the
- * rest of this file, these three field names carry higher confidence — they
- * appear verbatim in spec.md's Implementation Decisions ("Idempotency key:
- * `order_id + event` ... `subscription_id + order_id + event` (Appmax's own
- * recommendation)"), which spec.md says was transcribed from "Appmax's
- * documented best practice pasted into this effort's originating
- * conversation" — i.e. someone read the real docs for this one detail. The
- * rest of the payload's shape is still unverified.
+ * Webhook payload: `event`, and the order/subscription ids. Envelope per docs.appmax.com.br
+ * (PLANNING.md §13): `{event, event_type, site_id, app_id, client_key, external_key, data,
+ * partner_merchant}`. Which id fields `data` carries per event is not documented on the
+ * pages read, so the reading stays tolerant (`data.order_id`, `data.id`, then a top-level
+ * fallback); ticket 08 pins it from real rows in `webhook_deliveries`. Nothing else in the
+ * payload is read: its status and amounts (decimal reais, unlike the API's cents) are never
+ * trusted, every event is only a hint to refetch the order.
  */
 export type AppmaxWebhookEvent = {
+	/** Normalized to snake_case (`OrderPaidByPix` reads as `order_paid_by_pix`). */
 	event: string;
 	orderId: string | null;
 	subscriptionId: string | null;
 };
 
 /**
+ * The order events this webhook acts on, documented on docs.appmax.com.br (PLANNING.md §13).
+ * The value says what the event means; it decides nothing. Every one of them refetches the
+ * order, and the refetched status (`mapOrderStatus`) decides the transition: so
+ * `order_pix_expired`, `payment_not_authorized` and `order_billet_overdue` leave an unpaid
+ * order `pending` (`cancelado`/`pendente`), and never overwrite a higher-ranked row.
+ */
+export const APPMAX_ORDER_EVENTS = {
+	order_authorized: 'card authorized, antifraud review pending (not paid)',
+	order_approved: 'card approved after antifraud review',
+	order_pix_created: 'Pix issued, awaiting payment',
+	order_paid_by_pix: 'Pix paid',
+	order_billet_created: 'Boleto issued, awaiting payment',
+	order_paid: 'paid (Boleto compensated)',
+	order_pix_expired: 'Pix expired unpaid',
+	order_billet_overdue: 'Boleto past its due date unpaid',
+	order_refund: 'refunded',
+	order_refused_by_risk: 'refused by antifraud',
+	order_chargeback_in_treatment: 'chargeback opened',
+	payment_not_authorized: 'card declined',
+} as const satisfies Record<string, string>;
+
+export type AppmaxOrderEvent = keyof typeof APPMAX_ORDER_EVENTS;
+
+/**
+ * `order`: a documented order event; `subscription`: any `subscription_*` event (Mensal,
+ * standby until ticket 09, keeps the refetch it always had); `unknown`: stored and
+ * acknowledged, never acted on (Appmax documents 42 events, an app only receives those it
+ * holds the permission for).
+ */
+export function classifyWebhookEvent(event: string): 'order' | 'subscription' | 'unknown' {
+	if (Object.hasOwn(APPMAX_ORDER_EVENTS, event)) return 'order';
+	if (event.startsWith('subscription_')) return 'subscription';
+	return 'unknown';
+}
+
+/** `OrderPaidByPix` and `order_paid_by_pix` are the same event; the docs show the latter. */
+function normalizeEventName(raw: string): string {
+	return raw.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase();
+}
+
+/**
  * Returns `null` for a payload that isn't a recognisable Appmax webhook — ticket 06's
  * payload-shape validation is the hardening layer; this is just enough to not crash on
- * garbage. The documented envelope is `{event, event_type, data{order_id, ...}}`
- * (docs.appmax.com.br/guides/webhooks); a top-level id is still accepted as a fallback.
+ * garbage.
  */
 export function parseWebhookPayload(raw: unknown): AppmaxWebhookEvent | null {
-	if (typeof raw !== 'object' || raw === null) return null;
-	const body = raw as Record<string, unknown>;
-	if (typeof body.event !== 'string' || body.event === '') return null;
-	const data = typeof body.data === 'object' && body.data !== null ? (body.data as Record<string, unknown>) : {};
-	const orderId = idFrom(data.order_id) ?? idFrom(body.order_id);
-	const subscriptionId = idFrom(data.subscription_id) ?? idFrom(body.subscription_id);
+	if (!isRecord(raw)) return null;
+	if (typeof raw.event !== 'string' || raw.event === '') return null;
+	const data = isRecord(raw.data) ? raw.data : {};
+	const subscriptionId = idFrom(data.subscription_id) ?? idFrom(raw.subscription_id);
+	// A bare `data.id` is read as the order only when nothing says this is a subscription's.
+	const orderId = idFrom(data.order_id) ?? idFrom(raw.order_id) ?? (subscriptionId === null ? idFrom(data.id) : null);
 	if (orderId === null && subscriptionId === null) return null;
-	return { event: body.event, orderId, subscriptionId };
+	return { event: normalizeEventName(raw.event), orderId, subscriptionId };
 }
 
 /**
@@ -506,6 +546,10 @@ function mapOrderStatus(status: string): AppmaxPurchaseStatus {
 		case 'pendente_integracao':
 			return 'active';
 		case 'estornado':
+		// With own-form card payments, `autorizado` then `recusado_por_risco` is the normal
+		// antifraud refusal, where money may never have moved. Kept at `refunded` until the
+		// sandbox shows what it means (appmax-checkout 07/08); the operator checks before
+		// revoking (docs/ops/rejected-purchases.md).
 		case 'recusado_por_risco':
 			return 'refunded';
 		case 'chargeback_em_tratativa':

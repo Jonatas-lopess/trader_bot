@@ -63,7 +63,7 @@ describe('buyer fiscal data — Appmax', () => {
 		await seedPurchase('fis-ok', 'ord_fis_ok');
 		mockAppmax({ customer: { ...CUSTOMER, email: 'ok@example.com' } });
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_fis_ok' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_fis_ok' }));
 
 		expect(await buyerOf('fis-ok')).toEqual({
 			status: 'active',
@@ -77,7 +77,7 @@ describe('buyer fiscal data — Appmax', () => {
 		await seedPurchase('fis-cnpj', 'ord_fis_cnpj');
 		mockAppmax({ customer: { ...CUSTOMER, email: 'cnpj@example.com', document_number: '12.345.678/0001-95' } });
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_fis_cnpj' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_fis_cnpj' }));
 
 		expect((await buyerOf('fis-cnpj'))?.buyer_document).toBe('12345678000195');
 	});
@@ -86,7 +86,7 @@ describe('buyer fiscal data — Appmax', () => {
 		await seedPurchase('fis-none', 'ord_fis_none');
 		mockAppmax({ customer: { name: 'Maria da Silva', email: 'no-doc@example.com', document_number: null } });
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_fis_none' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_fis_none' }));
 
 		const row = await buyerOf('fis-none');
 		expect(row?.status).toBe('active');
@@ -102,7 +102,7 @@ describe('buyer fiscal data — Appmax', () => {
 		await seedPurchase('fis-alnum', 'ord_fis_alnum');
 		mockAppmax({ customer: { ...CUSTOMER, email: 'alnum@example.com', document_number: '12.ABC.345/01DE-35' } });
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_fis_alnum' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_fis_alnum' }));
 
 		expect((await buyerOf('fis-alnum'))?.buyer_document).toBeNull();
 	});
@@ -110,11 +110,11 @@ describe('buyer fiscal data — Appmax', () => {
 	it('first stored value wins: a later event cannot overwrite an invoiced buyer', async () => {
 		await seedPurchase('fis-first', 'ord_fis_first');
 		mockAppmax({ customer: { ...CUSTOMER, email: 'first@example.com' } });
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_fis_first' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_fis_first' }));
 
 		vi.restoreAllMocks();
 		mockAppmax({ customer: { name: 'Someone Else', email: 'first@example.com', document_number: '98765432100' } });
-		await handleWebhook(env, JSON.stringify({ event: 'order.integrated', order_id: 'ord_fis_first' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_paid', order_id: 'ord_fis_first' }));
 
 		expect(await buyerOf('fis-first')).toMatchObject({ buyer_name: 'Maria da Silva', buyer_document: '12345678909' });
 	});
@@ -123,7 +123,7 @@ describe('buyer fiscal data — Appmax', () => {
 		await seedPurchase('fis-bad', 'ord_fis_bad');
 		mockAppmax({ customer: { ...CUSTOMER, email: 'bad@example.com', document_number: '123' } });
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_fis_bad' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_fis_bad' }));
 
 		expect((await buyerOf('fis-bad'))?.buyer_document).toBeNull();
 	});
@@ -135,7 +135,7 @@ describe('buyer fiscal data — Appmax', () => {
 		await handleWebhook(
 			env,
 			JSON.stringify({
-				event: 'order.paid',
+				event: 'order_approved',
 				order_id: 'ord_fis_tamper',
 				buyer_document: '99999999999',
 				data: {
@@ -154,12 +154,12 @@ describe('buyer fiscal data — Appmax', () => {
 	it('a later event without customer data does not erase what was stored', async () => {
 		await seedPurchase('fis-keep', 'ord_fis_keep');
 		mockAppmax({ customer: { ...CUSTOMER, email: 'keep@example.com' } });
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_fis_keep' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_fis_keep' }));
 
 		vi.restoreAllMocks();
 		vi.clearAllMocks();
 		mockAppmax({ customer: { email: 'keep@example.com' } });
-		await handleWebhook(env, JSON.stringify({ event: 'order.integrated', order_id: 'ord_fis_keep' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_paid', order_id: 'ord_fis_keep' }));
 
 		expect(await buyerOf('fis-keep')).toEqual({
 			status: 'active',

@@ -9,14 +9,22 @@
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seams: gallery module (parser table-test of accepted and rejected shapes, cap shared with images) and the add-video route gates.
 
-- [ ] Each accepted URL shape yields the same stored id; tracking parameters and extra path parts are dropped
-- [ ] A non-YouTube host, a lookalike host, a missing or malformed id and an empty value are refused with `invalid-youtube-url`; nothing is stored
-- [ ] The admin list shows the video's thumbnail and it can be removed
-- [ ] The 12-item cap counts images and videos together
-- [ ] Non-admin 404 and cross-origin 403 on the add-video action
-- [ ] Works with JavaScript off
+- [x] Each accepted URL shape yields the same stored id; tracking parameters and extra path parts are dropped
+- [x] A non-YouTube host, a lookalike host, a missing or malformed id and an empty value are refused with `invalid-youtube-url`; nothing is stored
+- [x] The admin list shows the video's thumbnail and it can be removed
+- [x] The 12-item cap counts images and videos together
+- [x] Non-admin 404 and cross-origin 403 on the add-video action
+- [x] Works with JavaScript off
 - [ ] Typecheck and the full test suite pass
+
+## Comments
+
+- Done on `track/robot-gallery`. `parseYoutubeUrl`, `addVideo`, `youtubeEmbedUrl` (`www.youtube-nocookie.com/embed/<id>`) and `youtubeThumbnailUrl` (`i.ytimg.com/vi/<id>/hqdefault.jpg`) in `src/modules/catalog/gallery.ts`; route `src/pages/admin/robos/[slug]/galeria/video.ts`; add-video form and video thumbnails in `admin-gallery.astro`.
+- Hosts match exactly: `youtu.be`, `youtube.com`, `www.youtube.com`, `m.youtube.com`; http/https only, no port, no credentials. A link pasted without a scheme is accepted (the input is `type="text"` so the browser does not block it). Query parameters other than `v` and path parts after the id are dropped. `/live/` links are not accepted (not in the spec).
+- The landing's video section has no embed URL set yet (`videoUrl` is empty), so there was no host convention to reuse; the gallery uses the privacy-enhanced host as the spec says.
+- Browser-checked against a local build, JS on and off: add, thumbnail, lookalike refused with message, pasted link not reflected, remove.
+- Full-suite box left for the final run (ticket 05).

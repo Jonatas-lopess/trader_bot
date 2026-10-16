@@ -99,7 +99,7 @@ export const galleryAnchor = 'galeria';
 export const galleryPagePath = (slug: string): string => `/admin/robos/${encodeURIComponent(slug)}#${galleryAnchor}`;
 
 /** Flash keys a successful gallery action redirects with (`?ok=`); worded in `src/content/admin.ts`. */
-export type GalleryFlashKey = 'gallery-added' | 'gallery-removed';
+export type GalleryFlashKey = 'gallery-added' | 'gallery-removed' | 'gallery-video-added';
 
 /**
  * The 303 after a gallery POST: back to the edit page's gallery section with a flash key or an
@@ -232,6 +232,54 @@ export function sniffImage(bytes: Uint8Array): SniffedImage {
 }
 
 // ---------------------------------------------------------------------
+// YouTube
+// ---------------------------------------------------------------------
+
+const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
+const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com']);
+
+/**
+ * The 11-character video id from a pasted YouTube link: `youtube.com/watch?v=`, `youtu.be/`,
+ * `/shorts/`, `/embed/` and `m.youtube.com`, with or without a scheme, tracking parameters or
+ * extra path parts after the id.
+ * Hosts match exactly (no lookalikes); anything else, or an id that is not 11 of
+ * `[A-Za-z0-9_-]`, is `null`.
+ */
+export function parseYoutubeUrl(input: string): string | null {
+	const text = input.trim();
+	if (text === '') return null;
+	let url: URL;
+	try {
+		url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`);
+	} catch {
+		return null;
+	}
+	if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+	if (url.port !== '' || url.username !== '' || url.password !== '') return null;
+
+	const host = url.hostname.toLowerCase();
+	const parts = url.pathname.split('/').filter((part) => part !== '');
+	let id: string | null = null;
+	// Path parts after the id (and every query parameter but `v`) are dropped.
+	if (host === 'youtu.be') {
+		id = parts[0] ?? null;
+	} else if (YOUTUBE_HOSTS.has(host)) {
+		if (parts.length === 1 && parts[0] === 'watch') id = url.searchParams.get('v');
+		else if (parts.length >= 2 && (parts[0] === 'shorts' || parts[0] === 'embed')) id = parts[1];
+	}
+	return id !== null && YOUTUBE_ID.test(id) ? id : null;
+}
+
+/** The privacy-enhanced embed, rebuilt from the stored id (never from what the admin pasted). */
+export const youtubeEmbedUrl = (id: string): string => `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
+
+/** YouTube's static thumbnail for a video, shown before play. */
+export const youtubeThumbnailUrl = (id: string): string => `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+
+/** Pixel size of `hqdefault.jpg`, so the thumbnail's box is reserved before it loads. */
+export const YOUTUBE_THUMBNAIL_SIZE = { width: 480, height: 360 } as const;
+
+// ---------------------------------------------------------------------
 // Reads
 // ---------------------------------------------------------------------
 
@@ -352,6 +400,14 @@ export async function addImages(env: GalleryEnv, slug: string, files: readonly B
 }
 
 export type ItemResult = { ok: true } | { ok: false; error: GalleryErrorCode };
+
+/** Adds a video from a pasted YouTube link; only its id is stored. Counts toward the same cap as images. */
+export async function addVideo(env: Pick<GalleryEnv, 'DB'>, slug: string, url: string): Promise<ItemResult> {
+	const youtubeId = parseYoutubeUrl(url);
+	if (youtubeId === null) return { ok: false, error: 'invalid-youtube-url' };
+	if (await insertItem(env, slug, crypto.randomUUID(), { kind: 'video', youtubeId })) return { ok: true };
+	return { ok: false, error: (await robotExists(env, slug)) ? 'gallery-full' : 'not-found' };
+}
 
 /**
  * Removes one item of this Robô: the row first, then the stored file (an image's object; a

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { jpegBytes, pngBytes, svgBytes, upload } from '../../../test/gallery-fixtures';
 import { POST as postImages } from '../../pages/admin/robos/[slug]/galeria/imagens';
 import { POST as postRemove } from '../../pages/admin/robos/[slug]/galeria/[id]/remover';
+import { POST as postVideo } from '../../pages/admin/robos/[slug]/galeria/video';
 import { GET as getMedia } from '../../pages/media/[id]';
 import { createSession, SESSION_COOKIE_NAME } from '../identity/session';
 import { addImages, listGallery, MAX_UPLOAD_REQUEST_BYTES } from './gallery';
@@ -51,6 +52,13 @@ async function uploadRequest(files: File[], headers: Record<string, string> = { 
 
 const removeRequest = (id: string, headers: Record<string, string> = { Cookie: adminCookie, Origin: origin }) =>
 	new Request(`${origin}/admin/robos/robo-a/galeria/${id}/remover`, { method: 'POST', headers });
+
+const videoRequest = (url: string, headers: Record<string, string> = { Cookie: adminCookie, Origin: origin }) =>
+	new Request(`${origin}/admin/robos/robo-a/galeria/video`, {
+		method: 'POST',
+		body: new URLSearchParams({ url }),
+		headers: { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' },
+	});
 
 const mediaRequest = (id: string, headers: Record<string, string> = {}) => new Request(`${origin}/media/${id}`, { headers });
 
@@ -141,17 +149,21 @@ describe('the gate on every gallery action', () => {
 			const [item] = await listGallery(env, 'robo-a');
 			return postRemove(context(removeRequest(item.id, headers), { slug: 'robo-a', id: item.id }));
 		},
+		video: async (headers: Record<string, string>) =>
+			postVideo(context(videoRequest('https://youtu.be/dQw4w9WgXcQ', headers), { slug: 'robo-a' })),
 	};
 
 	it.each(Object.keys(actions) as (keyof typeof actions)[])('%s: anonymous and non-admin get an empty 404 and change nothing', async (action) => {
-		const before = await storedKeys();
 		const callers: Record<string, string>[] = [{ Origin: origin }, { Cookie: clienteCookie, Origin: origin }];
 		for (const headers of callers) {
 			const response = await actions[action](headers);
 			expect(response.status).toBe(404);
 			expect(await response.text()).toBe('');
 		}
-		expect((await storedKeys()).length).toBe(action === 'remove' ? before.length + 2 : before.length);
+		// The remove action seeds one image per call itself; nothing else may appear or go.
+		const seeded = action === 'remove' ? 2 : 0;
+		expect(await listGallery(env, 'robo-a')).toHaveLength(seeded);
+		expect(await storedKeys()).toHaveLength(seeded);
 	});
 
 	it.each(Object.keys(actions) as (keyof typeof actions)[])('%s: a cross-origin admin POST gets 403', async (action) => {
@@ -188,6 +200,30 @@ describe('POST /admin/robos/<slug>/galeria/<id>/remover', () => {
 		const response = await postRemove(context(removeRequest('no-such-id'), { slug: 'robo-a', id: 'no-such-id' }));
 
 		expect(response.headers.get('Location')).toBe(`${origin}/admin/robos/robo-a?error=not-found#galeria`);
+	});
+});
+
+describe('POST /admin/robos/<slug>/galeria/video', () => {
+	it('adds the video and redirects with a flash', async () => {
+		const response = await postVideo(context(videoRequest('https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=3'), { slug: 'robo-a' }));
+
+		expect(response.status).toBe(303);
+		expect(response.headers.get('Location')).toBe(`${origin}/admin/robos/robo-a?ok=gallery-video-added#galeria`);
+		expect(await listGallery(env, 'robo-a')).toEqual([expect.objectContaining({ kind: 'video', youtubeId: 'dQw4w9WgXcQ' })]);
+	});
+
+	it('redirects with invalid-youtube-url for a bad link, never echoing it', async () => {
+		const response = await postVideo(context(videoRequest('https://evil.example/<script>'), { slug: 'robo-a' }));
+
+		const location = response.headers.get('Location') ?? '';
+		expect(location).toBe(`${origin}/admin/robos/robo-a?error=invalid-youtube-url#galeria`);
+		expect(await listGallery(env, 'robo-a')).toEqual([]);
+	});
+
+	it('is an empty 404 for an unknown Robô', async () => {
+		const response = await postVideo(context(videoRequest('https://youtu.be/dQw4w9WgXcQ'), { slug: 'no-such-robot' }));
+
+		expect(response.status).toBe(404);
 	});
 });
 

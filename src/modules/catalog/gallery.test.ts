@@ -11,7 +11,17 @@ import {
 	webpLosslessBytes,
 	webpLossyBytes,
 } from '../../../test/gallery-fixtures';
-import { addImages, GALLERY_LIMITS, listGallery, openMedia, removeItem } from './gallery';
+import {
+	addImages,
+	addVideo,
+	GALLERY_LIMITS,
+	listGallery,
+	openMedia,
+	parseYoutubeUrl,
+	removeItem,
+	youtubeEmbedUrl,
+	youtubeThumbnailUrl,
+} from './gallery';
 import { clearCatalog, seedRobot } from './test-helpers';
 
 async function storedKeys(): Promise<string[]> {
@@ -180,6 +190,115 @@ describe('addImages', () => {
 
 		expect(await storedKeys()).toEqual([]);
 		expect(await listGallery(env, 'robo-a')).toEqual([]);
+	});
+});
+
+describe('parseYoutubeUrl', () => {
+	const id = 'dQw4w9WgXcQ';
+
+	it.each([
+		`https://www.youtube.com/watch?v=${id}`,
+		`https://youtube.com/watch?v=${id}`,
+		`http://www.youtube.com/watch?v=${id}`,
+		`https://m.youtube.com/watch?v=${id}`,
+		`https://www.youtube.com/watch?feature=share&v=${id}&t=42s`,
+		`https://www.youtube.com/watch?v=${id}&list=PL123&index=2&si=abc`,
+		`https://youtu.be/${id}`,
+		`https://youtu.be/${id}?si=tracking123&t=10`,
+		`https://www.youtube.com/shorts/${id}`,
+		`https://youtube.com/shorts/${id}?feature=share`,
+		`https://www.youtube.com/embed/${id}`,
+		`https://www.youtube.com/embed/${id}?start=5`,
+		`https://www.youtube.com/watch/?v=${id}`,
+		`https://youtu.be/${id}/`,
+		`https://youtu.be/${id}/extra`,
+		`https://www.youtube.com/embed/${id}/extra/more`,
+		`https://www.youtube.com/shorts/${id}/`,
+		`  www.youtube.com/watch?v=${id}  `,
+		`youtu.be/${id}`,
+		`https://WWW.YouTube.com/watch?v=${id}`,
+	])('keeps only the id of %s', (url) => {
+		expect(parseYoutubeUrl(url)).toBe(id);
+	});
+
+	it.each([
+		['empty', ''],
+		['blank', '   '],
+		['not a URL', 'just some text'],
+		['a bare id', id],
+		['another host', `https://vimeo.com/${id}`],
+		['a lookalike host', `https://youtube.com.evil.example/watch?v=${id}`],
+		['a lookalike prefix', `https://notyoutube.com/watch?v=${id}`],
+		['a youtu.be lookalike', `https://youtu.be.evil.example/${id}`],
+		['credentials pointing elsewhere', `https://youtube.com@evil.example/watch?v=${id}`],
+		['a non-web scheme', `javascript://youtube.com/watch?v=${id}`],
+		['a short id', 'https://youtu.be/abc'],
+		['a long id', `https://youtu.be/${id}X`],
+		['an id with forbidden characters', 'https://www.youtube.com/watch?v=dQw4w9WgX<Q'],
+		['a watch URL without v', 'https://www.youtube.com/watch?list=PL123'],
+		['a channel page', 'https://www.youtube.com/@somechannel'],
+		['a playlist', 'https://www.youtube.com/playlist?list=PL1234567890'],
+		['a non-default port', `https://www.youtube.com:8443/watch?v=${id}`],
+	])('refuses %s', (_label, url) => {
+		expect(parseYoutubeUrl(url)).toBeNull();
+	});
+});
+
+describe('addVideo', () => {
+	it('stores only the YouTube id, after the existing items', async () => {
+		await addImages(env, 'robo-a', [upload(pngBytes(1, 1))]);
+
+		const result = await addVideo(env, 'robo-a', 'https://youtu.be/dQw4w9WgXcQ?si=tracking');
+
+		expect(result).toEqual({ ok: true });
+		const items = await listGallery(env, 'robo-a');
+		expect(items.map((i) => i.kind)).toEqual(['image', 'video']);
+		expect(items[1]).toMatchObject({ kind: 'video', youtubeId: 'dQw4w9WgXcQ', caption: null });
+		expect(await storedKeys()).toHaveLength(1);
+	});
+
+	it('refuses an invalid link with invalid-youtube-url and stores nothing', async () => {
+		expect(await addVideo(env, 'robo-a', 'https://vimeo.com/123')).toEqual({ ok: false, error: 'invalid-youtube-url' });
+		expect(await listGallery(env, 'robo-a')).toEqual([]);
+	});
+
+	it('refuses an unknown Robô', async () => {
+		expect(await addVideo(env, 'no-such-robot', 'https://youtu.be/dQw4w9WgXcQ')).toEqual({ ok: false, error: 'not-found' });
+	});
+
+	it('counts videos and images together toward the cap', async () => {
+		await fillGallery('robo-a', GALLERY_LIMITS.maxItems - 1);
+
+		expect(await addVideo(env, 'robo-a', 'https://youtu.be/dQw4w9WgXcQ')).toEqual({ ok: true });
+		expect(await addVideo(env, 'robo-a', 'https://youtu.be/aaaaaaaaaaa')).toEqual({ ok: false, error: 'gallery-full' });
+		expect(await addImages(env, 'robo-a', [upload(pngBytes(1, 1))])).toEqual({ ok: false, error: 'gallery-full', added: 0 });
+		expect(await listGallery(env, 'robo-a')).toHaveLength(GALLERY_LIMITS.maxItems);
+	}, FILL_TIMEOUT);
+
+	it('removes a video by deleting its row only', async () => {
+		await addImages(env, 'robo-a', [upload(pngBytes(1, 1))]);
+		await addVideo(env, 'robo-a', 'https://youtu.be/dQw4w9WgXcQ');
+		const [image, video] = await listGallery(env, 'robo-a');
+
+		expect(await removeItem(env, 'robo-a', video.id)).toEqual({ ok: true });
+
+		expect(await listGallery(env, 'robo-a')).toEqual([image]);
+		expect(await storedKeys()).toEqual([`gallery/${image.id}`]);
+	});
+
+	it('is never served by the media route', async () => {
+		await seedRobot({ slug: 'robo-pub', status: 'available', offers: { one_time: 99700 } });
+		await addVideo(env, 'robo-pub', 'https://youtu.be/dQw4w9WgXcQ');
+		const [video] = await listGallery(env, 'robo-pub');
+
+		expect(await openMedia(env, video.id, async () => true)).toEqual({ ok: false });
+	});
+});
+
+describe('YouTube URLs rebuilt from the id', () => {
+	it('embeds through the privacy-enhanced host and shows the static thumbnail', () => {
+		expect(youtubeEmbedUrl('dQw4w9WgXcQ')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+		expect(youtubeThumbnailUrl('dQw4w9WgXcQ')).toBe('https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
 	});
 });
 

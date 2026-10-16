@@ -224,6 +224,12 @@ export const gallery = {
 	addImagesSubmit: 'Enviar imagens',
 	fullNote: 'A galeria está cheia. Remova um item para adicionar outro.',
 	imageAlt: (position: number) => `Imagem ${position}`,
+	videoAlt: (position: number) => `Miniatura do vídeo ${position}`,
+	videoBadge: 'Vídeo do YouTube',
+	addVideoLabel: 'Adicionar vídeo do YouTube',
+	addVideoHelp: 'Cole o link do vídeo (youtube.com/watch?v=..., youtu.be/..., /shorts/...). Só o vídeo é guardado, não o link.',
+	addVideoPlaceholder: 'https://youtu.be/...',
+	addVideoSubmit: 'Adicionar vídeo',
 	removeLabel: 'Remover',
 	removeConfirmTitle: 'Remover este item?',
 	removeConfirmMessage: 'O item sai da galeria e, se for uma imagem, o arquivo é apagado. Não dá para desfazer.',
@@ -254,6 +260,7 @@ export const galleryErrorText = (param: string | null): string | null =>
 const galleryFlashTexts: Record<GalleryFlashKey, string> = {
 	'gallery-added': 'Imagens adicionadas à galeria.',
 	'gallery-removed': 'Item removido da galeria.',
+	'gallery-video-added': 'Vídeo adicionado à galeria.',
 };
 /** The success line for a gallery `?ok=` value; null for an absent or unknown one. */
 export const galleryFlashText = (param: string | null): string | null =>

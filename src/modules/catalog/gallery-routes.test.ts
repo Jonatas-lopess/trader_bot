@@ -122,19 +122,29 @@ describe('POST /admin/robos/<slug>/galeria/imagens', () => {
 		expect(await response.text()).toBe('');
 	});
 
-	it('refuses a declared Content-Length over the ceiling before reading the body', async () => {
-		let pulled = false;
+	/** A multipart-looking body of `chunks` x 64 KiB that records how far it was read. */
+	function trackedBody(chunks: number) {
+		const state = { pulled: 0, cancelled: false };
+		const chunk = new Uint8Array(64 * 1024);
 		// highWaterMark 0: the stream pulls only when someone reads it.
-		const body = new ReadableStream(
+		const stream = new ReadableStream<Uint8Array>(
 			{
 				pull(controller) {
-					pulled = true;
-					controller.close();
+					if (state.pulled === chunks) return controller.close();
+					state.pulled++;
+					controller.enqueue(chunk);
+				},
+				cancel() {
+					state.cancelled = true;
 				},
 			},
 			{ highWaterMark: 0 }
 		);
-		const request = new Request(`${origin}/admin/robos/robo-a/galeria/imagens`, {
+		return { stream, state };
+	}
+
+	const oversizeRequest = (body: ReadableStream<Uint8Array>) =>
+		new Request(`${origin}/admin/robos/robo-a/galeria/imagens`, {
 			method: 'POST',
 			body,
 			headers: {
@@ -145,14 +155,33 @@ describe('POST /admin/robos/<slug>/galeria/imagens', () => {
 			},
 		});
 
-		const response = await postImages(context(request, { slug: 'robo-a' }));
+	it('refuses a declared Content-Length over the ceiling with a readable page, never parsing or storing the body', async () => {
+		// Not valid multipart: had the route parsed it, the answer would be a redirect, not a 413.
+		const { stream, state } = trackedBody(4);
+
+		const response = await postImages(context(oversizeRequest(stream), { slug: 'robo-a' }));
 
 		expect(response.status).toBe(413);
 		expect(response.headers.get('Content-Type')).toContain('text/html');
-		expect(await response.text()).toContain('/admin/robos/robo-a#galeria');
-		expect(pulled).toBe(false);
-		expect(request.bodyUsed).toBe(false);
+		const page = await response.text();
+		expect(page).toContain('/admin/robos/robo-a#galeria');
+		expect(page).toContain('5 MB');
+		// Drained to the end so a browser still sending can read the answer.
+		expect(state.pulled).toBe(4);
+		expect(await listGallery(env, 'robo-a')).toEqual([]);
+		expect(await storedKeys()).toEqual([]);
 	});
+
+	it('stops draining an oversize body past a bound', async () => {
+		const chunksPastBound = Math.ceil((2 * MAX_UPLOAD_REQUEST_BYTES) / (64 * 1024)) + 50;
+		const { stream, state } = trackedBody(chunksPastBound);
+
+		const response = await postImages(context(oversizeRequest(stream), { slug: 'robo-a' }));
+
+		expect(response.status).toBe(413);
+		expect(state.cancelled).toBe(true);
+		expect(state.pulled).toBeLessThan(chunksPastBound);
+	}, 60_000);
 });
 
 describe('the gate on every gallery action', () => {

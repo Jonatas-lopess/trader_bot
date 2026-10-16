@@ -30,11 +30,39 @@ function tooLargePage(slug: string): Response {
 	});
 }
 
+/**
+ * Reads and throws away an oversize upload's bytes, up to `MAX_DISCARD_BYTES`, without parsing or
+ * keeping them. A browser that is still sending when the answer arrives drops that answer (a
+ * blank page in Chromium, checked in robot-gallery 05), so the refusal is decided first and the
+ * rest of the upload is drained before answering, the way a web server's lingering close does.
+ * Past the bound the stream is cancelled; the edge caps request bodies anyway.
+ */
+const MAX_DISCARD_BYTES = 2 * MAX_UPLOAD_REQUEST_BYTES;
+async function discardBody(request: Request): Promise<void> {
+	if (request.body === null) return;
+	const reader = request.body.getReader();
+	let seen = 0;
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) return;
+			seen += value.byteLength;
+			if (seen > MAX_DISCARD_BYTES) {
+				await reader.cancel();
+				return;
+			}
+		}
+	} catch {
+		// a client that hung up: nothing left to answer
+	}
+}
+
 // Upload images to a Robô's gallery (.scratch/robot-gallery/issues/01-image-gallery-admin.md).
 // Order of checks: not an admin is an empty 404, a foreign Origin is 403, then the declared
-// Content-Length is held against a hard ceiling before a byte of the body is read (a missing
-// length is refused too: browsers always send one for a form post). Only then is the multipart
-// body parsed; the gallery module judges every file by its bytes.
+// Content-Length is held against a hard ceiling before the body is parsed (a missing length is
+// refused too: browsers always send one for a form post). An oversize body is never parsed or
+// stored, only drained (bounded) so the browser shows the 413 page. Otherwise the multipart body
+// is parsed; the gallery module judges every file by its bytes.
 export const POST: APIRoute = async ({ request, params, url }) => {
 	const gate = await gateAdmin(request, env, { checkOrigin: true });
 	if (!gate.ok) return gate.response;
@@ -42,7 +70,10 @@ export const POST: APIRoute = async ({ request, params, url }) => {
 
 	const declared = request.headers.get('Content-Length');
 	if (declared === null || !/^\d+$/.test(declared)) return new Response(null, { status: 411 });
-	if (Number(declared) > MAX_UPLOAD_REQUEST_BYTES) return tooLargePage(slug);
+	if (Number(declared) > MAX_UPLOAD_REQUEST_BYTES) {
+		await discardBody(request);
+		return tooLargePage(slug);
+	}
 
 	let form: FormData;
 	try {

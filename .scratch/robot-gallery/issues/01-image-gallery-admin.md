@@ -31,7 +31,7 @@ TDD seams: the gallery module (against real D1 and R2 test bindings, small gener
 ## Comments
 
 - Done on `track/robot-gallery`. Migration `0016_robot_gallery.sql`; module `src/modules/catalog/gallery.ts`; routes `src/pages/admin/robos/[slug]/galeria/imagens.ts`, `.../galeria/[id]/remover.ts`, `src/pages/media/[id].ts`; UI `src/components/admin-gallery.astro`; ADR-0009. Binding `ROBOT_MEDIA` (bucket `trader-bot-robot-media`) declared in `wrangler.jsonc`; the bucket itself is a manual step (ticket 05).
-- Upload ceiling: `MAX_UPLOAD_REQUEST_BYTES` = 5 files x 5 MB + 64 KB. A missing `Content-Length` is 411; over the ceiling is a 413 HTML page with a link back.
+- Upload ceiling: `MAX_UPLOAD_REQUEST_BYTES` = 5 files x 5 MB + 64 KB. A missing `Content-Length` is 411; over the ceiling is a 413 HTML page with a link back. The refusal is decided on the declared length before the body is touched; since ticket 05 the body is then drained (discarded, never parsed or stored, bounded at 2x the ceiling) before answering, because Chromium shows a blank page when the answer arrives mid-upload.
 - One deviation from the spec's wording: the media route also serves an **archived** Robô's images to an admin (private, no-store), so the thumbnails on an archived Robô's edit page are not broken. Anonymous callers still get 404 for draft and archived, as the acceptance criterion says.
 - Browser-checked against a local build (`wrangler dev` on `dist/server`), JS on and off: upload, thumbnails, SVG and oversize refusals, confirm-then-remove, no gallery on `/admin/robos/new`. WebP and AVIF are proven by the module tests (header fixtures), not by real files in the browser.
 - Full-suite box left for the final run (ticket 05).

@@ -27,7 +27,8 @@ status gate is the real control. Responses carry the content type sniffed at upl
 `X-Content-Type-Options: nosniff`.
 
 **Uploads are judged by their bytes.** The admin route checks the declared `Content-Length`
-against a hard ceiling before reading the body; the module then sniffs each file's magic number
+against a hard ceiling before touching the body; an oversize body is only drained (discarded,
+bounded) so the browser can show the refusal page, never parsed or stored. The module then sniffs each file's magic number
 (JPEG, PNG, WebP, AVIF only; no SVG, which is a document that can carry script) and reads the
 pixel size from the header. The filename and the browser's claimed type are never stored or
 used. Nothing is resized or transcoded: the 10 ms CPU budget (PLANNING §3) rules it out, and

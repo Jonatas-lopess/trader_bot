@@ -229,3 +229,17 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 Mensal / Assinatura is on standby (ADR-0008); `appmax-checkout` 09 is deferred with it.
 
 Frontier: 01, 02 and 04 (independent); 16 after 04, then 14. 11 to 13 also wait on `appmax-checkout` 04 to 07, so the cart builds on the own checkout instead of rewriting it twice.
+
+## robot-gallery
+
+Spec: [.scratch/robot-gallery/spec.md](.scratch/robot-gallery/spec.md). Images (R2) and YouTube videos on a Robô, managed in the admin and shown in the "Saiba mais" modal.
+
+| # | Ticket | Blocked by | Status |
+| --- | --- | --- | --- |
+| 01 | [Image gallery in the admin: upload, list, remove](.scratch/robot-gallery/issues/01-image-gallery-admin.md) | — | done |
+| 02 | [Video items from YouTube links](.scratch/robot-gallery/issues/02-youtube-video-items.md) | 01 | ready-for-agent |
+| 03 | [Captions, reordering and slug rename](.scratch/robot-gallery/issues/03-captions-reorder-rename.md) | 01 | ready-for-agent |
+| 04 | [Gallery in the "Saiba mais" modal](.scratch/robot-gallery/issues/04-gallery-in-saiba-mais-modal.md) | 01, 02 | ready-for-agent |
+| 05 | [End-to-end verification and setup checklist](.scratch/robot-gallery/issues/05-end-to-end-verification.md) | 01, 02, 03, 04 | ready-for-agent |
+
+Frontier: 02 and 03. The media bucket and its binding are a manual Cloudflare step (05).

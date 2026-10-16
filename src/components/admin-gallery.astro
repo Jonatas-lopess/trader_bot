@@ -1,0 +1,95 @@
+---
+// Robô gallery section — src/components/admin-gallery.astro
+//
+// The gallery area of a Robô's edit page (.scratch/robot-gallery/spec.md), below the Robô form
+// and separate from it: every action is its own small POST form to
+// `/admin/robos/<slug>/galeria/*`, which saves at once and redirects back here (`#galeria`) with a
+// flash, so it works with JavaScript off. Removing asks first through confirm-dialog.astro (the
+// page renders it); without JavaScript the form submits directly. Thumbnails of images come from
+// the media route, which serves an unpublished Robô's images to an admin only.
+//
+// Copy comes from src/content/admin.ts — see docs/agents/content-files.md.
+import { gallery as copy } from '../content/admin';
+import { GALLERY_LIMITS, galleryAnchor, mediaPath, type GalleryItem } from '../modules/catalog/gallery';
+
+type Props = {
+	slug: string;
+	items: GalleryItem[];
+	/** The success line of the last gallery action, if any. */
+	flash: string | null;
+	/** The failure line of the last gallery action, if any. */
+	error: string | null;
+};
+
+const { slug, items, flash, error } = Astro.props;
+const base = `/admin/robos/${encodeURIComponent(slug)}/galeria`;
+const full = items.length >= GALLERY_LIMITS.maxItems;
+
+const buttonClass =
+	'button-h-sm inline-flex items-center justify-center rounded-sm border border-border-subtle px-3 text-body-sm font-medium text-text-primary transition-colors hover:bg-surface-overlay';
+const primaryButtonClass =
+	'button-h-sm inline-flex w-fit items-center justify-center rounded-sm bg-brand-primary px-4 text-body-sm font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover';
+const inputClass =
+	'w-full rounded-md border-w-1 border-border-high-contrast bg-surface-raised px-4 py-2 text-body text-text-primary focus:border-border-accent focus:shadow-focus-ring focus:outline-none';
+---
+
+<section id={galleryAnchor} aria-labelledby="galeria-heading" class="flex w-full max-w-3xl scroll-mt-24 flex-col gap-6 border-t border-border-subtle pt-8">
+	<div class="flex flex-col gap-2">
+		<div class="flex flex-wrap items-baseline justify-between gap-3">
+			<h2 id="galeria-heading" class="text-heading-2 font-bold text-text-primary">{copy.heading}</h2>
+			<p class="font-mono text-body-sm text-text-secondary">{copy.count(items.length, GALLERY_LIMITS.maxItems)}</p>
+		</div>
+		<p class="text-body-sm text-text-secondary">{copy.intro}</p>
+	</div>
+
+	{flash && <p class="rounded-md border-w-1 border-success bg-success-subtle p-4 text-body text-text-primary" role="status">{flash}</p>}
+	{error && <p class="rounded-md border-w-1 border-danger bg-danger-subtle p-4 text-body text-text-primary" role="alert">{error}</p>}
+
+	{
+		items.length === 0 ? (
+			<p class="text-body text-text-secondary">{copy.empty}</p>
+		) : (
+			<ol role="list" class="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+				{items.map((item, index) => (
+					<li class="flex flex-col gap-3 rounded-md border border-border-subtle bg-surface-raised p-3">
+						{item.kind === 'image' && (
+							<img
+								src={mediaPath(item.id)}
+								width={item.width}
+								height={item.height}
+								loading="lazy"
+								alt={item.caption ?? copy.imageAlt(index + 1)}
+								class="aspect-video w-full rounded-sm bg-surface-sunken object-contain"
+							/>
+						)}
+						<form
+							method="POST"
+							action={`${base}/${encodeURIComponent(item.id)}/remover`}
+							data-confirm-title={copy.removeConfirmTitle}
+							data-confirm-message={copy.removeConfirmMessage}
+							data-confirm-accept={copy.removeConfirmAccept}
+							data-confirm-tone="danger"
+						>
+							<button type="submit" class={buttonClass}>{copy.removeLabel}</button>
+						</form>
+					</li>
+				))}
+			</ol>
+		)
+	}
+
+	{
+		full ? (
+			<p class="text-body-sm text-text-secondary">{copy.fullNote}</p>
+		) : (
+			<form method="POST" action={`${base}/imagens`} enctype="multipart/form-data" class="flex flex-col gap-3">
+				<label class="flex flex-col gap-2">
+					<span class="text-body-sm text-text-secondary">{copy.addImagesLabel}</span>
+					<input type="file" name="images" multiple required accept="image/jpeg,image/png,image/webp,image/avif" class={inputClass} />
+				</label>
+				<span class="text-caption text-text-secondary">{copy.addImagesHelp(GALLERY_LIMITS.maxImageBytes, GALLERY_LIMITS.maxFilesPerRequest)}</span>
+				<button type="submit" class={primaryButtonClass}>{copy.addImagesSubmit}</button>
+			</form>
+		)
+	}
+</section>

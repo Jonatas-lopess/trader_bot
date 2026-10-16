@@ -9,6 +9,7 @@
  */
 
 import type { FieldErrorCode, FieldName } from '../modules/catalog/admin';
+import { GALLERY_LIMITS, type GalleryErrorCode, type GalleryFlashKey } from '../modules/catalog/gallery';
 import type { OfferName, RobotStatus } from '../modules/catalog/robots';
 
 export type AdminLink = { label: string; href: string; description: string };
@@ -203,6 +204,60 @@ export const flashTexts = {
 /** The flash line for a `?ok=` value; null for an absent or unknown one. */
 export const flashText = (param: string | null): string | null =>
 	param !== null && Object.hasOwn(flashTexts, param) ? flashTexts[param as keyof typeof flashTexts] : null;
+
+// ---------------------------------------------------------------------
+// Robô gallery (edit page section) — .scratch/robot-gallery/spec.md
+// ---------------------------------------------------------------------
+
+const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
+
+export const gallery = {
+	heading: 'Galeria',
+	intro:
+		'Imagens e vídeos mostrados no "Saiba mais" do catálogo quando o Robô está publicado. Cada ação aqui salva na hora, separada do formulário acima.',
+	count: (count: number, max: number) => `${count} de ${max} itens`,
+	empty: 'Nenhum item ainda.',
+	newRobotNote: 'A galeria aparece depois que o Robô é criado: crie o Robô e adicione imagens e vídeos na página de edição.',
+	addImagesLabel: 'Adicionar imagens',
+	addImagesHelp: (maxBytes: number, maxFiles: number) =>
+		`JPEG, PNG, WebP ou AVIF, até ${megabytes(maxBytes)} cada, até ${maxFiles} por envio. As imagens não são redimensionadas.`,
+	addImagesSubmit: 'Enviar imagens',
+	fullNote: 'A galeria está cheia. Remova um item para adicionar outro.',
+	imageAlt: (position: number) => `Imagem ${position}`,
+	removeLabel: 'Remover',
+	removeConfirmTitle: 'Remover este item?',
+	removeConfirmMessage: 'O item sai da galeria e, se for uma imagem, o arquivo é apagado. Não dá para desfazer.',
+	removeConfirmAccept: 'Remover',
+	/** The readable page a no-JavaScript upload lands on when the request is over the ceiling. */
+	tooLargePage: {
+		title: 'Envio grande demais',
+		backLabel: 'Voltar para a galeria',
+	},
+} as const;
+
+const galleryErrorTexts: Record<GalleryErrorCode, string> = {
+	'no-files': 'Escolha ao menos uma imagem para enviar.',
+	'too-many-files': `Envie no máximo ${GALLERY_LIMITS.maxFilesPerRequest} imagens por vez.`,
+	'file-too-large': `Uma das imagens passa de ${megabytes(GALLERY_LIMITS.maxImageBytes)}. Reduza o arquivo e tente de novo; nada foi enviado.`,
+	'unsupported-type': 'Um dos arquivos não é uma imagem JPEG, PNG, WebP ou AVIF (SVG não é aceito). Nada foi enviado.',
+	'unreadable-image': 'Um dos arquivos parece uma imagem, mas está incompleto ou corrompido. Nada foi enviado.',
+	'gallery-full': `A galeria chegou ao limite de ${GALLERY_LIMITS.maxItems} itens; o que passou do limite não foi adicionado.`,
+	'invalid-youtube-url': 'Link do YouTube inválido. Cole o link de um vídeo (youtube.com/watch?v=..., youtu.be/..., /shorts/...).',
+	'caption-too-long': `A legenda pode ter até ${GALLERY_LIMITS.maxCaptionLength} caracteres.`,
+	'request-too-large': `O envio passa do limite de ${GALLERY_LIMITS.maxFilesPerRequest} imagens de até ${megabytes(GALLERY_LIMITS.maxImageBytes)} cada. Envie menos arquivos ou arquivos menores.`,
+	'not-found': 'Item não encontrado: talvez já tenha sido removido.',
+};
+/** The failure line for a gallery `?error=` value; null for an absent or unknown one. */
+export const galleryErrorText = (param: string | null): string | null =>
+	param !== null && Object.hasOwn(galleryErrorTexts, param) ? galleryErrorTexts[param as GalleryErrorCode] : null;
+
+const galleryFlashTexts: Record<GalleryFlashKey, string> = {
+	'gallery-added': 'Imagens adicionadas à galeria.',
+	'gallery-removed': 'Item removido da galeria.',
+};
+/** The success line for a gallery `?ok=` value; null for an absent or unknown one. */
+export const galleryFlashText = (param: string | null): string | null =>
+	param !== null && Object.hasOwn(galleryFlashTexts, param) ? galleryFlashTexts[param as GalleryFlashKey] : null;
 
 /** Failed status changes (`?error=`). */
 export const statusErrorTexts = {

@@ -1,0 +1,119 @@
+---
+// Robô gallery — src/components/robot-gallery.astro
+//
+// The images and videos of one Robô (robot-gallery 04, ADR-0009), rendered inside the card's
+// `[data-robot-more-body]` (robot-details.astro) so the "Saiba mais" modal clones it with the rest.
+// Nothing is rendered for a Robô without media.
+//
+// Without JavaScript the card's <details> opens inline and every item shows in order: images are
+// plain <img>, a video is its poster linking to the YouTube page. With JavaScript, the modal's
+// copy is enhanced by src/shared/gallery-viewer.ts: one item at a time as the large preview, the
+// thumbnail strip (buttons) to switch, and a video's iframe created only when the Cliente presses
+// play, from the embed URL rebuilt on the server from the stored id. Captions are text only.
+//
+// Copy comes from src/content/catalog-page.ts — see docs/agents/content-files.md.
+import { Play } from '@lucide/astro';
+import {
+	galleryLabelFor,
+	galleryPlayLabel,
+	galleryThumbLabel,
+	galleryThumbsLabel,
+	type CardGalleryItem,
+} from '../content/catalog-page';
+
+type Props = {
+	robotName: string;
+	items: CardGalleryItem[];
+};
+
+const { robotName, items } = Astro.props;
+---
+
+{
+	items.length > 0 && (
+		<div data-robot-gallery role="group" aria-label={galleryLabelFor(robotName)} class="flex min-w-0 flex-col gap-3">
+			<ul role="list" class="flex flex-col gap-4">
+				{items.map((item, index) => (
+					<li data-gallery-item data-index={index}>
+						<figure class="flex flex-col gap-2">
+							{item.kind === 'image' ? (
+								<img
+									src={item.src}
+									width={item.width}
+									height={item.height}
+									alt={item.alt}
+									loading="lazy"
+									decoding="async"
+									class="h-auto max-h-[60dvh] w-full rounded-md bg-surface-sunken object-contain"
+								/>
+							) : (
+								<a
+									href={item.watchHref}
+									target="_blank"
+									rel="noopener noreferrer"
+									data-gallery-play
+									data-embed-src={item.embedSrc}
+									data-title={item.alt}
+									class="group relative block aspect-video w-full overflow-hidden rounded-md bg-surface-sunken focus-visible:shadow-focus-ring focus-visible:outline-none"
+								>
+									<img
+										src={item.posterSrc}
+										width={item.width}
+										height={item.height}
+										alt=""
+										loading="lazy"
+										decoding="async"
+										referrerpolicy="no-referrer"
+										class="h-full w-full object-cover"
+									/>
+									<span class="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+										<span class="flex h-14 w-14 items-center justify-center rounded-full bg-brand-primary text-text-on-brand shadow-glow-brand transition-transform group-hover:scale-105">
+											<Play size={24} class="ml-1" fill="currentColor" />
+										</span>
+									</span>
+									<span class="sr-only">{galleryPlayLabel(item.alt)}</span>
+								</a>
+							)}
+							{item.caption && <figcaption class="text-caption text-text-secondary">{item.caption}</figcaption>}
+						</figure>
+					</li>
+				))}
+			</ul>
+
+			{
+				items.length > 1 && (
+					<ul data-gallery-strip hidden role="list" aria-label={galleryThumbsLabel} class="flex min-w-0 gap-2 overflow-x-auto pb-1">
+						{items.map((item, index) => (
+							<li class="shrink-0">
+								<button
+									type="button"
+									data-gallery-thumb
+									data-index={index}
+									aria-label={galleryThumbLabel(index + 1, item.alt)}
+									aria-pressed={index === 0 ? 'true' : 'false'}
+									class="relative block h-14 w-20 overflow-hidden rounded-sm border-w-1 border-border-subtle bg-surface-sunken opacity-70 transition hover:opacity-100 focus-visible:shadow-focus-ring focus-visible:outline-none aria-pressed:border-brand-primary aria-pressed:opacity-100"
+								>
+									<img
+										src={item.kind === 'image' ? item.src : item.posterSrc}
+										width={item.width}
+										height={item.height}
+										alt=""
+										loading="lazy"
+										decoding="async"
+										referrerpolicy="no-referrer"
+										class="h-full w-full object-cover"
+									/>
+									{item.kind === 'video' && (
+										<span class="absolute inset-0 flex items-center justify-center text-text-primary" aria-hidden="true">
+											<Play size={16} fill="currentColor" />
+										</span>
+									)}
+								</button>
+							</li>
+						))}
+					</ul>
+				)
+			}
+		</div>
+	)
+}

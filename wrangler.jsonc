@@ -61,6 +61,15 @@
 		{
 			"binding": "ROBOT_BINARY",
 			"bucket_name": "trader-bot-robot-binary"
+		},
+		// Robô gallery images only (ADR-0009, modules/catalog/gallery.ts): kept apart from the
+		// binary bucket so nothing public ever sits beside a licensed binary. Never public; read
+		// only through the Worker's status-gated `/media/<id>` route. The bucket is created by
+		// hand (`wrangler r2 bucket create trader-bot-robot-media`), see
+		// .scratch/robot-gallery/issues/05-end-to-end-verification.md.
+		{
+			"binding": "ROBOT_MEDIA",
+			"bucket_name": "trader-bot-robot-media"
 		}
 	],
 	// One source's requests to /billing/webhook, per ~2s Appmax's own retry

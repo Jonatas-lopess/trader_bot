@@ -237,10 +237,10 @@ Spec: [.scratch/robot-gallery/spec.md](.scratch/robot-gallery/spec.md). Images (
 
 | # | Ticket | Blocked by | Status |
 | --- | --- | --- | --- |
-| 01 | [Image gallery in the admin: upload, list, remove](.scratch/robot-gallery/issues/01-image-gallery-admin.md) | — | ready-for-agent |
-| 02 | [Video items from YouTube links](.scratch/robot-gallery/issues/02-youtube-video-items.md) | 01 | ready-for-agent |
-| 03 | [Captions, reordering and slug rename](.scratch/robot-gallery/issues/03-captions-reorder-rename.md) | 01 | ready-for-agent |
-| 04 | [Gallery in the "Saiba mais" modal](.scratch/robot-gallery/issues/04-gallery-in-saiba-mais-modal.md) | 01, 02 | ready-for-agent |
-| 05 | [End-to-end verification and setup checklist](.scratch/robot-gallery/issues/05-end-to-end-verification.md) | 01, 02, 03, 04 | ready-for-agent |
+| 01 | [Image gallery in the admin: upload, list, remove](.scratch/robot-gallery/issues/01-image-gallery-admin.md) | — | done |
+| 02 | [Video items from YouTube links](.scratch/robot-gallery/issues/02-youtube-video-items.md) | 01 | done |
+| 03 | [Captions, reordering and slug rename](.scratch/robot-gallery/issues/03-captions-reorder-rename.md) | 01 | done |
+| 04 | [Gallery in the "Saiba mais" modal](.scratch/robot-gallery/issues/04-gallery-in-saiba-mais-modal.md) | 01, 02 | done |
+| 05 | [End-to-end verification and setup checklist](.scratch/robot-gallery/issues/05-end-to-end-verification.md) | 01, 02, 03, 04 | done |
 
-Frontier: 01. The media bucket and its binding are a manual Cloudflare step (05).
+All done in code. Before pushing to `main`: create the `trader-bot-robot-media` R2 bucket by hand (checklist in 05), or the deploy fails.

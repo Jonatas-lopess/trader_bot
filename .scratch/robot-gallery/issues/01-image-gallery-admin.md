@@ -12,18 +12,26 @@ This is the tracer bullet: it carries the schema (one table, one row per item, k
 
 **Blocked by:** None (can start immediately).
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seams: the gallery module (against real D1 and R2 test bindings, small generated fixture images) and the routes (404, 403, size ceiling before body read, media-route gating). Prior art: `catalog/admin.test.ts`, `catalog/robots.test.ts`, `licensing/robot-binary.test.ts`, `identity/admin.test.ts`, the Encomenda body-size-cap tests.
 
-- [ ] Admin uploads valid JPEG, PNG, WebP and AVIF images and sees them as thumbnails on the edit page
-- [ ] A file lying about its type, an SVG, an oversize file, a truncated header and a non-image are refused with a clear code and message; nothing is stored
-- [ ] The 13th item is refused (`gallery-full`), including under two concurrent uploads
-- [ ] Removing an item deletes the row and the R2 object; a missing object does not block removal
-- [ ] A failed insert leaves no R2 object
-- [ ] Non-admin gets an empty 404 and a cross-origin admin POST gets 403 on every gallery action; an over-ceiling `Content-Length` is refused before the body is read
-- [ ] Media route: published Robô served with stored type, `nosniff`, immutable cache; draft and archived are 404 to anonymous; draft served `no-store` to an admin; unknown id and missing object are 404
-- [ ] The gallery section is absent on `/admin/robos/new`
-- [ ] Works with JavaScript off
-- [ ] ADR and PLANNING notes written
-- [ ] Typecheck and the full test suite pass
+- [x] Admin uploads valid JPEG, PNG, WebP and AVIF images and sees them as thumbnails on the edit page
+- [x] A file lying about its type, an SVG, an oversize file, a truncated header and a non-image are refused with a clear code and message; nothing is stored
+- [x] The 13th item is refused (`gallery-full`), including under two concurrent uploads
+- [x] Removing an item deletes the row and the R2 object; a missing object does not block removal
+- [x] A failed insert leaves no R2 object
+- [x] Non-admin gets an empty 404 and a cross-origin admin POST gets 403 on every gallery action; an over-ceiling `Content-Length` is refused before the body is read
+- [x] Media route: published Robô served with stored type, `nosniff`, immutable cache; draft and archived are 404 to anonymous; draft served `no-store` to an admin; unknown id and missing object are 404
+- [x] The gallery section is absent on `/admin/robos/new`
+- [x] Works with JavaScript off
+- [x] ADR and PLANNING notes written
+- [x] Typecheck and the full test suite pass
+
+## Comments
+
+- Done on `track/robot-gallery`. Migration `0017_robot_gallery.sql`; module `src/modules/catalog/gallery.ts`; routes `src/pages/admin/robos/[slug]/galeria/imagens.ts`, `.../galeria/[id]/remover.ts`, `src/pages/media/[id].ts`; UI `src/components/admin-gallery.astro`; ADR-0009. Binding `ROBOT_MEDIA` (bucket `trader-bot-robot-media`) declared in `wrangler.jsonc`; the bucket itself is a manual step (ticket 05).
+- Upload ceiling: `MAX_UPLOAD_REQUEST_BYTES` = 5 files x 5 MB + 64 KB. A missing `Content-Length` is 411; over the ceiling is a 413 HTML page with a link back. The refusal is decided on the declared length before the body is touched; since ticket 05 the body is then drained (discarded, never parsed or stored, bounded at 2x the ceiling) before answering, because Chromium shows a blank page when the answer arrives mid-upload.
+- One deviation from the spec's wording: the media route also serves an **archived** Robô's images to an admin (private, no-store), so the thumbnails on an archived Robô's edit page are not broken. Anonymous callers still get 404 for draft and archived, as the acceptance criterion says.
+- Browser-checked against a local build (`wrangler dev` on `dist/server`), JS on and off: upload, thumbnails, SVG and oversize refusals, confirm-then-remove, no gallery on `/admin/robos/new`. WebP and AVIF are proven by the module tests (header fixtures), not by real files in the browser.
+- Typecheck clean and full suite green on the final branch state (59 files, 878 tests).

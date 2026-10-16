@@ -14,7 +14,7 @@ sentence yet, and ADR-0006 wins.
 Decisions here are binding until changed in this file. Hard-to-reverse choices carry an
 ADR in `docs/adr/`. Domain vocabulary lives in `CONTEXT.md`.
 
-Last updated: 2026-10-12 (storefront v2, ADR-0008)
+Last updated: 2026-10-16 (Robô gallery, ADR-0009)
 
 ---
 
@@ -41,7 +41,7 @@ authenticated customer area, in one codebase.
 - Live Corretora-account enforcement at check-in (1.0.0)
 - Rental-to-Compra conversion (1.0.0)
 - Annual auto-renew and its reminder email (1.0.0)
-- Mensal / Assinatura (on standby: the owner is moving to one Assinatura for all Robôs, ADR-0008), admin upload of the robot binary to R2
+- Mensal / Assinatura (on standby: the owner is moving to one Assinatura for all Robôs, ADR-0008), admin upload of the robot binary to R2 (still out of scope; uploading Robô **gallery images** from the admin is in scope, into a separate media bucket, ADR-0009)
 - Automated NFS-e emission (1.0.0; manual issuance in 0.1 — see §9)
 - Any locale other than pt-BR
 - Paid-traffic tracking pixels and consent management
@@ -83,7 +83,7 @@ tracked as a known risk, not a solved problem.
 | Framework | Astro + `@astrojs/cloudflare` | Marketing pages prerendered; `/catalog` is rendered per request from D1 (ADR-0008) |
 | Hosting | Cloudflare Workers with Static Assets | Not Pages — see ADR-0002 |
 | Database | D1 | Single store for all application state |
-| Object storage | R2 | Robot binary, served through a Worker binding |
+| Object storage | R2 | Robot binary, served through a Worker binding. Robô gallery images live in a second, private bucket (`ROBOT_MEDIA`), uploaded from the admin and served by the Worker only while the Robô is published (ADR-0009); binary upload from the admin stays out of scope |
 | Email | Resend | Plain `fetch`, no SDK |
 | Error tracking | `@sentry/cloudflare`, `Sentry.withSentry` as the outermost Worker export (`sentry.server.config.ts`) | Error capture only, `tracesSampleRate: 0` — no stated need for performance tracing yet. Unset `SENTRY_DSN` ships fine, same gate convention as Appmax/Resend. `environment` tag read per-request off `SENTRY_ENVIRONMENT`, falling back to `'unconfigured'` rather than Sentry's own `'production'` default (sentry-integration/issues/07) |
 | Styling | Tailwind v4, `@theme` tokens | Color, radius, border-width and elevation tokens follow the Figma Variables (`--rt-*`, figma-restyle); layout primitives and the type-size scale are still authored by hand. Roles Figma does not draw are marked "derived, not in Figma" in `global.css` |
@@ -129,7 +129,7 @@ src/
 ├── pages/          Astro routes (presentation)
 ├── components/
 ├── modules/
-│   ├── catalog/    robots and offers in D1, admin CRUD, price lookup (ADR-0008)
+│   ├── catalog/    robots and offers in D1, admin CRUD, price lookup (ADR-0008), Robô gallery (ADR-0009)
 │   ├── billing/    purchases, payment provider, webhooks, dunning, cancellation
 │   ├── identity/   customers, magic-link tokens, sessions, admin gate
 │   ├── licensing/  licenses, expiry, Corretora account binding, binary storage, download tokens, dispatch

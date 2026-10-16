@@ -3,6 +3,9 @@ APPMAX_CLIENT_SECRET=
 # Selects Appmax's hosts (modules/billing/appmax-client.ts): only the literal
 # "production" hits production money; unset or anything else is sandbox.
 APPMAX_ENV=
+# The Appmax app installation id for Appmax JS on /checkout (ADR-0007). Differs per
+# environment and must match APPMAX_ENV, or Appmax answers 404 "Merchant not found".
+APPMAX_EXTERNAL_ID=
 APPMAX_WEBHOOK_IPS=
 RESEND_API_KEY=
 SESSION_SECRET=

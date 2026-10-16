@@ -499,6 +499,13 @@ placeholder in `src/content/encomenda.ts`. Both ship empty in `wrangler.jsonc`; 
 them with `--var` (the CI deploy reads each from the `dev` Environment variable of the same name,
 like `ADMIN_EMAILS`, and passes it only when set, so an unset variable does not blank a dashboard value). `ENCOMENDA_RATE_LIMITER` (3 per 60 s per IP) throttles the form's endpoint.
 
+`APPMAX_EXTERNAL_ID` (appmax-checkout 04, ADR-0007) is the Appmax app installation id `/checkout`
+hands to Appmax JS. Not a secret, but per environment: it must match `APPMAX_ENV`, or Appmax answers
+404 "Merchant not found". Ships empty in `wrangler.jsonc` (Pix and Boleto still work, card
+tokenization fails) and is passed by the CI deploy like `ADMIN_EMAILS`. `PAY_RATE_LIMITER` (5 per
+60 s per IP) throttles `POST /checkout/pay` against card testing; Turnstile on that route is an open
+owner decision.
+
 **Done:**
 
 5. **Contador engaged** for NFS-e.

@@ -10,7 +10,7 @@ The business sells the right to run the robot against a customer's own brokerage
 ## What it does (0.1 scope)
 
 - Landing and `/catalog` pages (pt-BR only)
-- Hosted checkout with card, Boleto and Pix (Appmax)
+- Own checkout form with card, Boleto and Pix on Appmax's API (card tokenized in the browser by Appmax JS, ADR-0007)
 - Magic-link authentication (no passwords)
 - Customer area: license status, key/expiry, Corretora account, cancel Mensal subscription
 - Robot delivery via a signed, expiring download link (email), per license

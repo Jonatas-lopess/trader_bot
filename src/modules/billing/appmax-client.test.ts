@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	appmaxHosts,
+	appmaxScriptUrl,
 	cancelSubscription,
 	createCustomer,
 	createOrder,
@@ -81,6 +82,14 @@ describe('appmaxHosts', () => {
 
 	it.each(['Production', 'prod', '', ' production', 'sandbox', 'staging'])('fails safe to sandbox for %j', (value) => {
 		expect(appmaxHosts(value).apiBaseUrl).toBe(SANDBOX_API);
+	});
+});
+
+describe('appmaxScriptUrl', () => {
+	it('loads the sandbox build unless the environment is exactly "production"', () => {
+		expect(appmaxScriptUrl(undefined)).toBe('https://scripts.sandboxappmax.com.br/appmax.min.js');
+		expect(appmaxScriptUrl('prod')).toBe('https://scripts.sandboxappmax.com.br/appmax.min.js');
+		expect(appmaxScriptUrl('production')).toBe('https://scripts.appmax.com.br/appmax.min.js');
 	});
 });
 

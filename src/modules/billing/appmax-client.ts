@@ -87,6 +87,15 @@ export function appmaxHosts(appmaxEnv: string | undefined): { authUrl: string; a
 }
 
 /**
+ * Appmax JS for the checkout page (ADR-0007; docs.appmax.com.br/guides/appmax-js). Each
+ * environment has its own build with the API host compiled in, so it follows the same switch
+ * as `appmaxHosts`, and `APPMAX_EXTERNAL_ID` must be that environment's installation id.
+ */
+export function appmaxScriptUrl(appmaxEnv: string | undefined): string {
+	return `https://scripts.${appmaxEnv === 'production' ? '' : 'sandbox'}appmax.com.br/appmax.min.js`;
+}
+
+/**
  * Why a call failed, the way callers need to tell them apart: bad credentials, Appmax down
  * (network, 5xx or an unreadable body), or the request itself refused (4xx). `message` is
  * Appmax's own text and may echo personal data: never log it.

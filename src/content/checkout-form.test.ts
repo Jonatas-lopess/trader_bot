@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CART_OFFERS } from '../shared/cart-limits';
 import { buyWithdrawalNote } from './catalog-page';
 import {
+	boletoConfirmationNote,
 	buyerFields,
 	cardAnalysisNote,
 	checkoutOfferLabels,
@@ -63,11 +64,14 @@ describe('checkout form copy', () => {
 		expect(methods.boleto.note).toMatch(/1 dia útil/);
 	});
 
-	it('launch-blocks the unverified claims: security reassurance, card approval time, withdrawal note', () => {
+	it('launch-blocks the unverified claims: security reassurance, card and Boleto approval times, withdrawal note', () => {
 		expect(securityNote.blocked).toBe(true);
 		expect(securityNote.reason).toMatch(/ADR-0007/);
 		expect(cardAnalysisNote.blocked).toBe(true);
 		expect(methods.card.note).toBe(cardAnalysisNote.value);
+		expect(boletoConfirmationNote.blocked).toBe(true);
+		expect(boletoConfirmationNote.reason).toMatch(/ADR-0007/);
+		expect(methods.boleto.note).toBe(boletoConfirmationNote.value);
 		expect(withdrawalNote).toBe(buyWithdrawalNote);
 		expect(withdrawalNote.text.blocked).toBe(true);
 		expect(withdrawalNote.text.value).not.toMatch(/garantia/i);

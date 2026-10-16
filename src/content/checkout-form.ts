@@ -59,15 +59,18 @@ export const cardAnalysisNote = launchBlocking(
 	'Approval-time claim for card antifraud review (`autorizado`, PLANNING.md §13); not sandbox-verified (appmax-checkout 08, ADR-0007).'
 );
 
+// Same kind of approval-time claim, for Boleto compensation.
+export const boletoConfirmationNote = launchBlocking(
+	'A confirmação do Boleto pode levar até 1 dia útil depois do pagamento. O acesso chega por e-mail.',
+	'Approval-time claim for Boleto compensation (PLANNING.md §7 "up to one business day"); not sandbox-verified (appmax-checkout 08, ADR-0007).'
+);
+
 export const methods: Record<PaymentMethod, { label: string; note: string }> = {
 	pix: {
 		label: 'Pix',
 		note: 'Na próxima tela você recebe o QR Code e o código copia e cola. O código tem prazo para ser pago.',
 	},
-	boleto: {
-		label: 'Boleto',
-		note: 'A confirmação do Boleto pode levar até 1 dia útil depois do pagamento. O acesso chega por e-mail.',
-	},
+	boleto: { label: 'Boleto', note: boletoConfirmationNote.value },
 	card: { label: 'Cartão de crédito', note: cardAnalysisNote.value },
 };
 

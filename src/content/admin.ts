@@ -9,7 +9,8 @@
  */
 
 import type { FieldErrorCode, FieldName } from '../modules/catalog/admin';
-import { GALLERY_LIMITS, type GalleryErrorCode, type GalleryFlashKey } from '../modules/catalog/gallery';
+import { GALLERY_LIMITS, type GalleryErrorCode } from '../modules/catalog/gallery';
+import type { GalleryFlashKey } from '../modules/catalog/gallery-paths';
 import type { OfferName, RobotStatus } from '../modules/catalog/robots';
 
 export type AdminLink = { label: string; href: string; description: string };

@@ -19,15 +19,12 @@ import {
 	listPublishedGalleries,
 	moveItem,
 	openMedia,
-	parseYoutubeUrl,
 	removeItem,
-	reorderGallery,
 	setCaption,
-	youtubeEmbedUrl,
-	youtubeThumbnailUrl,
 	type GalleryItem,
 } from './gallery';
 import { clearCatalog, seedRobot } from './test-helpers';
+import { parseYoutubeUrl, youtubeEmbedUrl, youtubeThumbnailUrl } from './youtube';
 
 async function storedKeys(): Promise<string[]> {
 	return (await env.ROBOT_MEDIA.list()).objects.map((o) => o.key);
@@ -346,41 +343,12 @@ describe('setCaption', () => {
 	});
 });
 
-describe('reorder and move', () => {
+describe('move', () => {
 	const videoIds = ['aaaaaaaaaaa', 'bbbbbbbbbbb', 'ccccccccccc', 'ddddddddddd'];
 	const order = async (slug = 'robo-a') => (await listGallery(env, slug)).map((i) => (i.kind === 'video' ? i.youtubeId[0] : '?'));
 
 	beforeEach(async () => {
 		for (const id of videoIds) await addVideo(env, 'robo-a', `https://youtu.be/${id}`);
-	});
-
-	it('rewrites positions in the order given', async () => {
-		const items = await listGallery(env, 'robo-a');
-
-		expect(await reorderGallery(env, 'robo-a', [items[3].id, items[1].id, items[0].id, items[2].id])).toEqual({ ok: true });
-
-		expect(await order()).toEqual(['d', 'b', 'a', 'c']);
-	});
-
-	it('puts the items a partial list leaves out after it, in their current order', async () => {
-		const items = await listGallery(env, 'robo-a');
-
-		await reorderGallery(env, 'robo-a', [items[2].id]);
-
-		expect(await order()).toEqual(['c', 'a', 'b', 'd']);
-	});
-
-	it('ignores foreign, stale and repeated ids, never creating or moving anything outside the Robô', async () => {
-		await seedRobot({ slug: 'robo-b', status: 'draft' });
-		await addVideo(env, 'robo-b', 'https://youtu.be/zzzzzzzzzzz');
-		const [foreign] = await listGallery(env, 'robo-b');
-		const items = await listGallery(env, 'robo-a');
-
-		await reorderGallery(env, 'robo-a', [foreign.id, 'stale-id', items[1].id, items[1].id, items[0].id]);
-
-		expect(await order()).toEqual(['b', 'a', 'c', 'd']);
-		expect(await listGallery(env, 'robo-a')).toHaveLength(4);
-		expect(await listGallery(env, 'robo-b')).toEqual([foreign]);
 	});
 
 	it('moves an item up and down one place', async () => {
@@ -403,8 +371,14 @@ describe('reorder and move', () => {
 	});
 
 	it('answers not-found for an id that is not this Robô item', async () => {
+		await seedRobot({ slug: 'robo-b', status: 'draft' });
+		await addVideo(env, 'robo-b', 'https://youtu.be/zzzzzzzzzzz');
+		const [foreign] = await listGallery(env, 'robo-b');
+
 		expect(await moveItem(env, 'robo-a', 'stale-id', 'up')).toEqual({ ok: false, error: 'not-found' });
+		expect(await moveItem(env, 'robo-a', foreign.id, 'up')).toEqual({ ok: false, error: 'not-found' });
 		expect(await order()).toEqual(['a', 'b', 'c', 'd']);
+		expect(await listGallery(env, 'robo-b')).toEqual([foreign]);
 	});
 });
 

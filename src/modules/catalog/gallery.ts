@@ -7,16 +7,20 @@
  * stored; embed and thumbnail URLs are rebuilt from it, so a pasted URL is never reflected).
  *
  * Callers (the `/admin/robos/<slug>/galeria/*` routes) have already passed `gateAdmin`. Every
- * rule is kept here: an image's type is judged by its leading bytes (JPEG, PNG, WebP, AVIF; no
- * SVG), never by the filename or the browser's claim; its pixel size comes from the header;
- * size, per-request file count, per-Robô item cap and caption length are bounded. Results are
- * codes, never copy (`src/content/admin.ts` words them).
+ * rule is kept here: an image's type is judged by its leading bytes (`./image-sniff.ts`), never
+ * by the filename or the browser's claim; a video is a YouTube id (`./youtube.ts`); size,
+ * per-request file count, per-Robô item cap and caption length are bounded; the media route's
+ * status gate is `openMedia`. Results are codes, never copy (`src/content/admin.ts` words them);
+ * the URLs around the gallery are built in `./gallery-paths.ts`.
  *
  * Write order keeps the gallery from ever showing a broken image: add puts the object first and
  * deletes it again if the row is refused; remove deletes the row first, then the object (a
  * leaked object is invisible). The cap and the position are decided inside the INSERT, so two
  * concurrent uploads cannot exceed the cap.
  */
+
+import { sniffImage, type ImageContentType } from './image-sniff';
+import { parseYoutubeUrl } from './youtube';
 
 type GalleryEnv = Pick<Cloudflare.Env, 'DB' | 'ROBOT_MEDIA'>;
 
@@ -46,8 +50,6 @@ export type GalleryErrorCode =
 	| 'caption-too-long'
 	| 'request-too-large'
 	| 'not-found';
-
-export type ImageContentType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/avif';
 
 type ItemBase = { id: string; robotSlug: string; position: number; caption: string | null };
 export type GalleryImage = ItemBase & {
@@ -90,201 +92,6 @@ function toItem(row: ItemRow): GalleryItem {
 
 /** Where an item's bytes live in `ROBOT_MEDIA`: by item id, never by slug. */
 const mediaKey = (id: string) => `gallery/${id}`;
-
-/** The public URL of an image item (the status-gated media route). */
-export const mediaPath = (id: string): string => `/media/${encodeURIComponent(id)}`;
-
-/** The gallery section of a Robô's edit page, where every gallery action returns. */
-export const galleryAnchor = 'galeria';
-export const galleryPagePath = (slug: string): string => `/admin/robos/${encodeURIComponent(slug)}#${galleryAnchor}`;
-
-/** Flash keys a successful gallery action redirects with (`?ok=`); worded in `src/content/admin.ts`. */
-export type GalleryFlashKey = 'gallery-added' | 'gallery-removed' | 'gallery-video-added' | 'gallery-caption-saved' | 'gallery-moved';
-
-/**
- * The 303 after a gallery POST: back to the edit page's gallery section with a flash key or an
- * error code, never free text (the page looks both up in its content file).
- */
-export function galleryRedirect(
-	origin: string,
-	slug: string,
-	outcome: { ok: GalleryFlashKey } | { error: GalleryErrorCode } | null
-): Response {
-	const target = new URL(`/admin/robos/${encodeURIComponent(slug)}`, origin);
-	if (outcome !== null && 'ok' in outcome) target.searchParams.set('ok', outcome.ok);
-	else if (outcome !== null) target.searchParams.set('error', outcome.error);
-	target.hash = galleryAnchor;
-	return new Response(null, { status: 303, headers: { Location: target.toString() } });
-}
-
-// ---------------------------------------------------------------------
-// Image sniffing
-// ---------------------------------------------------------------------
-
-export type SniffedImage = { ok: true; contentType: ImageContentType; width: number; height: number } | { ok: false; error: 'unsupported-type' | 'unreadable-image' };
-
-const startsWith = (bytes: Uint8Array, at: number, expected: readonly number[]) =>
-	bytes.length >= at + expected.length && expected.every((b, i) => bytes[at + i] === b);
-const asciiAt = (bytes: Uint8Array, at: number, text: string) =>
-	startsWith(bytes, at, [...text].map((c) => c.charCodeAt(0)));
-const u16be = (b: Uint8Array, at: number) => (b[at] << 8) | b[at + 1];
-const u32be = (b: Uint8Array, at: number) => ((b[at] << 24) >>> 0) + ((b[at + 1] << 16) | (b[at + 2] << 8) | b[at + 3]);
-const u16le = (b: Uint8Array, at: number) => b[at] | (b[at + 1] << 8);
-const u24le = (b: Uint8Array, at: number) => b[at] | (b[at + 1] << 8) | (b[at + 2] << 16);
-
-type Size = { width: number; height: number } | null;
-
-function pngSize(b: Uint8Array): Size {
-	if (b.length < 24 || !asciiAt(b, 12, 'IHDR')) return null;
-	return { width: u32be(b, 16), height: u32be(b, 20) };
-}
-
-/** Walks the JPEG segments to the first start-of-frame marker, which carries the pixel size. */
-function jpegSize(b: Uint8Array): Size {
-	let at = 2;
-	while (at + 4 <= b.length) {
-		if (b[at] !== 0xff) return null;
-		const marker = b[at + 1];
-		if (marker === 0xff) {
-			at += 1; // fill byte
-			continue;
-		}
-		// Standalone markers carry no length.
-		if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd8)) {
-			at += 2;
-			continue;
-		}
-		if (marker === 0xd9 || marker === 0xda) return null; // end of image or scan data before any frame header
-		const length = u16be(b, at + 2);
-		if (length < 2) return null;
-		const isFrame = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
-		if (isFrame) {
-			if (at + 9 > b.length) return null;
-			return { height: u16be(b, at + 5), width: u16be(b, at + 7) };
-		}
-		at += 2 + length;
-	}
-	return null;
-}
-
-function webpSize(b: Uint8Array): Size {
-	if (asciiAt(b, 12, 'VP8X') && b.length >= 30) return { width: u24le(b, 24) + 1, height: u24le(b, 27) + 1 };
-	if (asciiAt(b, 12, 'VP8 ') && b.length >= 30 && startsWith(b, 23, [0x9d, 0x01, 0x2a])) {
-		return { width: u16le(b, 26) & 0x3fff, height: u16le(b, 28) & 0x3fff };
-	}
-	if (asciiAt(b, 12, 'VP8L') && b.length >= 25 && b[20] === 0x2f) {
-		const bits = (b[21] | (b[22] << 8) | (b[23] << 16) | (b[24] << 24)) >>> 0;
-		return { width: (bits & 0x3fff) + 1, height: ((bits >>> 14) & 0x3fff) + 1 };
-	}
-	return null;
-}
-
-/** Whether an ISO-BMFF `ftyp` box names the AVIF brand, as major or compatible brand. */
-function isAvif(b: Uint8Array): boolean {
-	if (!asciiAt(b, 4, 'ftyp')) return false;
-	const boxSize = Math.min(u32be(b, 0), b.length);
-	const brands = ['avif', 'avis'];
-	if (brands.some((brand) => asciiAt(b, 8, brand))) return true;
-	for (let at = 16; at + 4 <= boxSize; at += 4) {
-		if (brands.some((brand) => asciiAt(b, at, brand))) return true;
-	}
-	return false;
-}
-
-/**
- * The AVIF pixel size from its `ispe` (image spatial extents) properties. A grid image also has
- * one per tile, so the largest one is the picture's.
- */
-function avifSize(b: Uint8Array): Size {
-	let best: Size = null;
-	for (let at = 4; at + 16 <= b.length; at++) {
-		if (b[at] !== 0x69 || !asciiAt(b, at, 'ispe')) continue;
-		const width = u32be(b, at + 8);
-		const height = u32be(b, at + 12);
-		if (!best || width * height > best.width * best.height) best = { width, height };
-	}
-	return best;
-}
-
-/**
- * Judges an upload by its bytes alone: the magic number picks the type, the header gives the
- * pixel size. Anything else (SVG, HTML, a renamed executable) is `unsupported-type`; a known
- * magic number whose header is cut short or nonsensical is `unreadable-image`.
- */
-export function sniffImage(bytes: Uint8Array): SniffedImage {
-	let contentType: ImageContentType;
-	let size: Size;
-	if (startsWith(bytes, 0, [0xff, 0xd8, 0xff])) {
-		contentType = 'image/jpeg';
-		size = jpegSize(bytes);
-	} else if (startsWith(bytes, 0, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) {
-		contentType = 'image/png';
-		size = pngSize(bytes);
-	} else if (asciiAt(bytes, 0, 'RIFF') && asciiAt(bytes, 8, 'WEBP')) {
-		contentType = 'image/webp';
-		size = webpSize(bytes);
-	} else if (isAvif(bytes)) {
-		contentType = 'image/avif';
-		size = avifSize(bytes);
-	} else {
-		return { ok: false, error: 'unsupported-type' };
-	}
-	if (!size || size.width < 1 || size.height < 1 || size.width > 65535 || size.height > 65535) {
-		return { ok: false, error: 'unreadable-image' };
-	}
-	return { ok: true, contentType, ...size };
-}
-
-// ---------------------------------------------------------------------
-// YouTube
-// ---------------------------------------------------------------------
-
-const YOUTUBE_ID = /^[A-Za-z0-9_-]{11}$/;
-const YOUTUBE_HOSTS = new Set(['youtube.com', 'www.youtube.com', 'm.youtube.com']);
-
-/**
- * The 11-character video id from a pasted YouTube link: `youtube.com/watch?v=`, `youtu.be/`,
- * `/shorts/`, `/embed/` and `m.youtube.com`, with or without a scheme, tracking parameters or
- * extra path parts after the id.
- * Hosts match exactly (no lookalikes); anything else, or an id that is not 11 of
- * `[A-Za-z0-9_-]`, is `null`.
- */
-export function parseYoutubeUrl(input: string): string | null {
-	const text = input.trim();
-	if (text === '') return null;
-	let url: URL;
-	try {
-		url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(text) ? text : `https://${text}`);
-	} catch {
-		return null;
-	}
-	if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
-	if (url.port !== '' || url.username !== '' || url.password !== '') return null;
-
-	const host = url.hostname.toLowerCase();
-	const parts = url.pathname.split('/').filter((part) => part !== '');
-	let id: string | null = null;
-	// Path parts after the id (and every query parameter but `v`) are dropped.
-	if (host === 'youtu.be') {
-		id = parts[0] ?? null;
-	} else if (YOUTUBE_HOSTS.has(host)) {
-		if (parts.length === 1 && parts[0] === 'watch') id = url.searchParams.get('v');
-		else if (parts.length >= 2 && (parts[0] === 'shorts' || parts[0] === 'embed')) id = parts[1];
-	}
-	return id !== null && YOUTUBE_ID.test(id) ? id : null;
-}
-
-/** The privacy-enhanced embed, rebuilt from the stored id (never from what the admin pasted). */
-export const youtubeEmbedUrl = (id: string): string => `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`;
-
-/** The video's own YouTube page: where the poster links when there is no JavaScript to embed it. */
-export const youtubeWatchUrl = (id: string): string => `https://www.youtube.com/watch?v=${encodeURIComponent(id)}`;
-
-/** YouTube's static thumbnail for a video, shown before play. */
-export const youtubeThumbnailUrl = (id: string): string => `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
-
-/** Pixel size of `hqdefault.jpg`, so the thumbnail's box is reserved before it loads. */
-export const YOUTUBE_THUMBNAIL_SIZE = { width: 480, height: 360 } as const;
 
 // ---------------------------------------------------------------------
 // Reads
@@ -452,27 +259,10 @@ export async function setCaption(env: Pick<GalleryEnv, 'DB'>, slug: string, id: 
 }
 
 /**
- * Rewrites the positions of a Robô's items in one D1 batch. Ids in `ids` that are not this
- * Robô's items (foreign, stale, repeated) are ignored; items the list leaves out keep their
- * current order after the listed ones. Every UPDATE is scoped to the Robô, so nothing outside it
- * moves and nothing is created.
+ * Moves one item a place up or down. Up on the first and down on the last change nothing.
+ * The swapped order is written back as positions in one D1 batch, every UPDATE scoped to the
+ * Robô, so nothing outside it moves and nothing is created.
  */
-export async function reorderGallery(env: Pick<GalleryEnv, 'DB'>, slug: string, ids: readonly string[]): Promise<ItemResult> {
-	const current = (await listGallery(env, slug)).map((item) => item.id);
-	const known = new Set(current);
-	const listed = [...new Set(ids.filter((id) => known.has(id)))];
-	const rest = current.filter((id) => !listed.includes(id));
-	const order = [...listed, ...rest];
-	if (order.length === 0) return { ok: true };
-	await env.DB.batch(
-		order.map((id, position) =>
-			env.DB.prepare('UPDATE robot_gallery_items SET position = ? WHERE id = ? AND robot_slug = ?').bind(position, id, slug)
-		)
-	);
-	return { ok: true };
-}
-
-/** Moves one item a place up or down. Up on the first and down on the last change nothing. */
 export async function moveItem(env: Pick<GalleryEnv, 'DB'>, slug: string, id: string, direction: 'up' | 'down'): Promise<ItemResult> {
 	const order = (await listGallery(env, slug)).map((item) => item.id);
 	const from = order.indexOf(id);
@@ -480,7 +270,12 @@ export async function moveItem(env: Pick<GalleryEnv, 'DB'>, slug: string, id: st
 	const to = direction === 'up' ? from - 1 : from + 1;
 	if (to < 0 || to >= order.length) return { ok: true };
 	[order[from], order[to]] = [order[to], order[from]];
-	return reorderGallery(env, slug, order);
+	await env.DB.batch(
+		order.map((itemId, position) =>
+			env.DB.prepare('UPDATE robot_gallery_items SET position = ? WHERE id = ? AND robot_slug = ?').bind(position, itemId, slug)
+		)
+	);
+	return { ok: true };
 }
 
 /**

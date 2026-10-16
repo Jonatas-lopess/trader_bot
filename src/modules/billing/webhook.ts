@@ -23,14 +23,12 @@
 
 import * as Sentry from '@sentry/cloudflare';
 import { classifyWebhookEvent, fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
-import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
-import { licenseSyncStatement } from '../licensing/license-expiry';
+import { orderLicenseSyncStatements, provisionOrderCustomer } from './order-rows';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
 	checkReportedAmount,
-	findPurchasesByProviderRef,
 	findPurchaseIdByProviderRef,
 	reportAmountCheck,
 	reportMissingBuyerDocument,
@@ -138,20 +136,17 @@ async function onSubscriptionBecameActive(
 	// same defense-in-depth stripe-webhook.ts's own CAS applies in reverse,
 	// even though the two gateways' id formats don't collide in practice.
 	// Every row of the order (a cart is one row per Licença, ADR-0008): one Cliente, one login link.
-	const purchases = await findPurchasesByProviderRef(env, 'appmax', ref);
-	if (purchases.length === 0) return;
-	const purchaseId = purchases[0].id;
-
-	const customer = await provisionCustomer(env, { purchaseIds: purchases.map((purchase) => purchase.id), email });
-	if (customer === null) {
-		// Malformed address: never fall back to the raw value (normalize-email.ts).
+	const provisioned = await provisionOrderCustomer(env, 'appmax', ref, email);
+	if (provisioned.kind === 'no_rows') return;
+	if (provisioned.kind === 'malformed_email') {
+		const purchaseId = provisioned.purchaseId;
 		console.error(`onSubscriptionBecameActive: malformed buyer email for purchase_id=${purchaseId} — customers row not created`);
 		Sentry.captureMessage('onSubscriptionBecameActive: malformed buyer email', { extra: { purchase_id: purchaseId } });
 		return;
 	}
-	if (!customer.created) return;
+	if (!provisioned.customer.created) return;
 
-	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
+	await issueMagicLink(env, { customerId: provisioned.customer.id, email, origin: APP_ORIGIN });
 }
 
 export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{ status: number }> {
@@ -232,21 +227,13 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	// Licença expiry is derived from the new status in the same batch (one transaction), so
 	// no path edits `licenses.expires_at` on its own (license-expiry.ts).
 	// One Licença per row of the order (ADR-0008); each statement is guarded by its own row's status.
-	const purchases = await findPurchasesByProviderRef(env, 'appmax', {
-		orderId: event.orderId,
-		subscriptionId: event.subscriptionId,
-	});
-	const now = new Date();
-	const syncStatements = purchases.flatMap((purchase) => {
-		const statement = licenseSyncStatement(env, {
-			purchaseId: purchase.id,
-			robotId: purchase.robotId,
-			offer: purchase.offer,
-			status: checked.status,
-			now,
-		});
-		return statement === null ? [] : [statement];
-	});
+	const syncStatements = await orderLicenseSyncStatements(
+		env,
+		'appmax',
+		{ orderId: event.orderId, subscriptionId: event.subscriptionId },
+		checked.status,
+		new Date()
+	);
 	const [result] = await env.DB.batch([casStatement, ...syncStatements]);
 
 	if (result.meta.changes > 0) reportAmountCheck('appmax', checked);

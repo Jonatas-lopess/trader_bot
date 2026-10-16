@@ -20,7 +20,7 @@ TDD seams: gallery module (caption validation, reorder with valid, partial and f
 - [x] After a slug rename the same items, order and captions appear on the new slug, and the media route still serves them
 - [x] A rename refused because a purchase landed leaves the gallery on the old slug
 - [x] Non-admin 404 and cross-origin 403 on caption and reorder actions
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 
@@ -29,4 +29,4 @@ TDD seams: gallery module (caption validation, reorder with valid, partial and f
 - Caption length counts characters (code points), not bytes. A direction other than `up`/`down` returns to the gallery with no flash and changes nothing.
 - Also: the edit page's "saved" redirect now ends in an empty fragment, so a `#galeria` left by a gallery action does not carry over and hide the saved flash.
 - Browser-checked against a local build, JS on and off: create a draft, add an image and a video, caption (save, alt text, blank clears, 141 chars refused), move, rename the slug; order, captions and the media route survive the rename; anonymous still gets 404 for the draft image.
-- Full-suite box left for the final run (ticket 05).
+- Typecheck clean and full suite green on the final branch state (59 files, 878 tests).

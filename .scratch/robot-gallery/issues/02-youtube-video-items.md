@@ -19,7 +19,7 @@ TDD seams: gallery module (parser table-test of accepted and rejected shapes, ca
 - [x] The 12-item cap counts images and videos together
 - [x] Non-admin 404 and cross-origin 403 on the add-video action
 - [x] Works with JavaScript off
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 
@@ -27,4 +27,4 @@ TDD seams: gallery module (parser table-test of accepted and rejected shapes, ca
 - Hosts match exactly: `youtu.be`, `youtube.com`, `www.youtube.com`, `m.youtube.com`; http/https only, no port, no credentials. A link pasted without a scheme is accepted (the input is `type="text"` so the browser does not block it). Query parameters other than `v` and path parts after the id are dropped. `/live/` links are not accepted (not in the spec).
 - The landing's video section has no embed URL set yet (`videoUrl` is empty), so there was no host convention to reuse; the gallery uses the privacy-enhanced host as the spec says.
 - Browser-checked against a local build, JS on and off: add, thumbnail, lookalike refused with message, pasted link not reflected, remove.
-- Full-suite box left for the final run (ticket 05).
+- Typecheck clean and full suite green on the final branch state (59 files, 878 tests).

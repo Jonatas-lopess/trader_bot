@@ -26,7 +26,7 @@ TDD seams: the gallery module (against real D1 and R2 test bindings, small gener
 - [x] The gallery section is absent on `/admin/robos/new`
 - [x] Works with JavaScript off
 - [x] ADR and PLANNING notes written
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 
@@ -34,4 +34,4 @@ TDD seams: the gallery module (against real D1 and R2 test bindings, small gener
 - Upload ceiling: `MAX_UPLOAD_REQUEST_BYTES` = 5 files x 5 MB + 64 KB. A missing `Content-Length` is 411; over the ceiling is a 413 HTML page with a link back. The refusal is decided on the declared length before the body is touched; since ticket 05 the body is then drained (discarded, never parsed or stored, bounded at 2x the ceiling) before answering, because Chromium shows a blank page when the answer arrives mid-upload.
 - One deviation from the spec's wording: the media route also serves an **archived** Robô's images to an admin (private, no-store), so the thumbnails on an archived Robô's edit page are not broken. Anonymous callers still get 404 for draft and archived, as the acceptance criterion says.
 - Browser-checked against a local build (`wrangler dev` on `dist/server`), JS on and off: upload, thumbnails, SVG and oversize refusals, confirm-then-remove, no gallery on `/admin/robos/new`. WebP and AVIF are proven by the module tests (header fixtures), not by real files in the browser.
-- Full-suite box left for the final run (ticket 05).
+- Typecheck clean and full suite green on the final branch state (59 files, 878 tests).

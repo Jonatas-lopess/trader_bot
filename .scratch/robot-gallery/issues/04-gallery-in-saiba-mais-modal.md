@@ -20,7 +20,7 @@ TDD seam: catalog read side (gallery returned only for published Robôs, in orde
 - [x] Keyboard operation and alt text work; focus return on close is unchanged
 - [x] With JavaScript off the gallery is reachable inline in the card
 - [x] Phone width does not overflow
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
 
 ## Comments
 
@@ -29,4 +29,4 @@ TDD seam: catalog read side (gallery returned only for published Robôs, in orde
 - CSP and framing: checked the real responses of a local build and `dist/client/_headers` (only the `/_astro/*` cache rule). No `Content-Security-Policy` or `X-Frame-Options` is sent, so nothing needs allowing today. If one is added later, it must allow `frame-src https://www.youtube-nocookie.com` and `img-src https://i.ytimg.com 'self'`.
 - **Reviewer note (spec tension):** the spec's decision says the pre-play thumbnail comes from YouTube's static thumbnail URL, so opening the modal loads `i.ytimg.com/vi/<id>/hqdefault.jpg` (with `referrerpolicy="no-referrer"`). No `youtube.com` / `youtube-nocookie.com` request and no iframe happen before play (browser-checked), but `i.ytimg.com` is a Google host. If "no YouTube request" in user story 26 is meant to include the thumbnail CDN, the poster needs a local placeholder instead; that is an owner call, not changed here.
 - Browser-checked against a local build (anonymous, desktop 1280 and phone 390): strip and preview, thumbnail swap by click and by keyboard, caption as alt text and as text only, image box reserved before load (`w-full h-auto` + width/height), iframe only after play, no empty gallery box, no horizontal overflow, focus back on "Saiba mais" on close; admin preview shows a draft's gallery, anonymous gets 404 for its media; after archiving it is gone from the preview and its media is 404; with JavaScript off every item shows inline in the card and the video poster links to the YouTube page.
-- Full-suite box left for the final run (ticket 05).
+- Typecheck clean and full suite green on the final branch state (59 files, 878 tests).

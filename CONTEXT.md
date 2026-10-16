@@ -30,8 +30,10 @@ renewal, nothing else. Compra and Anual are not Assinaturas.
 _Avoid_: contrato, licença, plano
 
 **Encomenda**:
-A Cliente's request for a custom Robô that is not in the Catálogo. A form with no price and no
-payment, answered by the operator. Not a purchase: it never creates a Compra, Licença or Cliente.
+A request for custom work: a new Robô not in the Catálogo, an adjustment to a Robô, or something
+else. Sent by a Cliente or any visitor. A form with no price and no payment, answered by the
+operator. Not a purchase: it never creates a Compra, Licença or Cliente, and an adjustment is not
+tied to a Licença.
 _Avoid_: pedido, compra, orçamento
 
 **Carrinho**:

@@ -1,6 +1,7 @@
 import { env } from 'cloudflare:workers';
 import * as Sentry from '@sentry/cloudflare';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { operatorEmail, whatsappSummary } from '../../content/encomenda';
 import { buildWhatsappHref, normalizeEncomendaInput, submitEncomenda, HONEYPOT_FIELD } from './encomenda';
 
 vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
@@ -14,6 +15,16 @@ const validFields = {
 	corretora: 'XP',
 	consent: 'on',
 };
+
+/** An adjustment to a Robô the sender already runs: no strategy wording, optional fields left blank. */
+const adjustmentFields = {
+	...validFields,
+	strategy: 'Uso o Robô Rompimento 10h.\nQuero trocar o stop para 150 pontos e não abrir posição depois das 16h.',
+	market: '',
+	corretora: '',
+};
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 describe('normalizeEncomendaInput', () => {
 	it('normalizes a valid submission', () => {
@@ -198,7 +209,9 @@ describe('submitEncomenda', () => {
 		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		const payload = sentPayload(fetchSpy);
 		expect(payload).toMatchObject({ to: ['ops@example.com'], reply_to: 'maria@example.com' });
-		expect(payload.subject).toBe(`Nova Encomenda de Robô ${lead.id.slice(0, 8)}`);
+		// Fixed prefix, one space, the first 8 characters of the lead id: nothing from user input.
+		expect(payload.subject).toBe(`${operatorEmail.subjectPrefix} ${lead.id.slice(0, 8)}`);
+		expect(payload.subject).not.toContain('Maria');
 		expect(payload.text).toContain(validFields.strategy);
 		expect(payload.html).toBeUndefined();
 		expect(await deadLetters()).toEqual([]);
@@ -211,6 +224,72 @@ describe('submitEncomenda', () => {
 		const payload = sentPayload(fetchSpy);
 		expect(payload.reply_to).toBeUndefined();
 		expect(payload.text).toContain('11912345678');
+	});
+
+	it('labels the operator e-mail with the content-file labels and indents every line of the main text', async () => {
+		const fetchSpy = resend();
+		const text = 'linha um\nBcc: evil@example.com\nlinha três';
+		await submitEncomenda(submitEnv(), { fields: { ...validFields, strategy: text }, ip: '203.0.113.9' });
+
+		const [lead] = await leads();
+		const lines = sentPayload(fetchSpy).text.split('\n');
+		const { labels } = operatorEmail;
+		expect(lines[0]).toBe(operatorEmail.bodyIntro);
+		expect(lines).toEqual(
+			expect.arrayContaining([
+				`${labels.id}: ${lead.id}`,
+				`${labels.name}: Maria Souza`,
+				`${labels.email}: maria@example.com`,
+				`${labels.phone}: ${operatorEmail.noPhone}`,
+				`${labels.market}: Mini índice`,
+				`${labels.corretora}: XP`,
+			])
+		);
+		const textStart = lines.indexOf(`${labels.strategy}:`);
+		expect(textStart).toBeGreaterThan(0);
+		expect(lines.slice(textStart + 1)).toEqual(['  linha um', '  Bcc: evil@example.com', '  linha três']);
+	});
+
+	it('prefills the WhatsApp summary with the content-file intro, the name and the main text', async () => {
+		resend();
+		const result = await submitEncomenda(submitEnv(), { fields: validFields, ip: '203.0.113.9' });
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+		const lines = decodeURIComponent(result.whatsappHref!.split('?text=')[1]).split('\n');
+		expect(lines[0]).toBe(whatsappSummary.intro.value);
+		expect(lines).toContain(`${whatsappSummary.name}: Maria Souza`);
+		expect(lines).toContain(`${whatsappSummary.market}: Mini índice`);
+		expect(lines).toContain(`${whatsappSummary.corretora}: XP`);
+		expect(lines).toContain(`${whatsappSummary.strategy}: ${validFields.strategy}`);
+	});
+
+	it('takes an adjustment to an existing Robô like any other request: stored, e-mailed and summarized', async () => {
+		const fetchSpy = resend();
+		const result = await submitEncomenda(submitEnv(), { fields: adjustmentFields, ip: '203.0.113.9' });
+
+		expect(result.ok).toBe(true);
+		if (!result.ok) return;
+
+		const [lead] = await leads();
+		expect(lead).toMatchObject({ strategy: adjustmentFields.strategy, market: '', corretora: '' });
+		expect(lead.notified_at).not.toBeNull();
+
+		const { labels } = operatorEmail;
+		const emailLines = sentPayload(fetchSpy).text.split('\n');
+		expect(emailLines).toEqual(
+			expect.arrayContaining([
+				`${labels.market}: ${operatorEmail.blank}`,
+				`${labels.corretora}: ${operatorEmail.blank}`,
+				'  Uso o Robô Rompimento 10h.',
+				'  Quero trocar o stop para 150 pontos e não abrir posição depois das 16h.',
+			])
+		);
+
+		const summary = decodeURIComponent(result.whatsappHref!.split('?text=')[1]);
+		expect(summary).toContain(adjustmentFields.strategy);
+		expect(summary).not.toContain(`${whatsappSummary.market}:`);
+		expect(summary).not.toContain(`${whatsappSummary.corretora}:`);
 	});
 
 	it('still succeeds when Resend refuses: the lead is stored and the e-mail sits in the dead letter', async () => {
@@ -304,7 +383,7 @@ describe('submitEncomenda', () => {
 		const payload = sentPayload(fetchSpy);
 		expect(payload.to).toEqual(['ops@example.com']);
 		expect(payload.reply_to).toBe('maria@example.com');
-		expect(payload.subject).toMatch(/^Nova Encomenda de Robô [0-9a-f]{8}$/);
+		expect(payload.subject).toMatch(new RegExp(`^${escapeRegExp(operatorEmail.subjectPrefix)} [0-9a-f]{8}$`));
 		expect(payload.subject).not.toMatch(/[\r\n]/);
 		// In the plain-text body the attack is inert text: no CR, and no header-looking line of its own.
 		expect(payload.text).not.toContain('\r');

@@ -12,7 +12,7 @@ Text and domain language only. No new field, no schema change: the `custom_order
 
 **Blocked by:** None (can start immediately). Ticket 14 is done and is the code this amends.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: `modules/orders/encomenda.ts`, in `modules/orders/encomenda.test.ts`. The page is checked in the browser. Write the test changes first (red), then the copy.
 
@@ -25,13 +25,24 @@ Tests to update or add (checked against the current suite; `encomenda-request.te
 - **Keep unchanged:** field-error codes (`strategy_invalid` etc. are internal codes, not copy), honeypot, per-IP rate limit, header-injection attempt in name and e-mail, stored-when-send-fails and parked-when-send-fails, unset `ORDER_NOTIFY_EMAIL`. If the message for `strategy_invalid` changes, no test changes: tests assert codes.
 - Lengths (10 to 2,000 characters for the main text) are unchanged, so the boundary cases stay; if the owner-approved wording changes the limits, that is a new decision, not this ticket.
 
-- [ ] The page no longer says the request must be for a new Robô; an adjustment request reads as a normal use of the form
-- [ ] The main field's label, hint and error message describe "what you want" rather than "your strategy" only
-- [ ] Operator e-mail and WhatsApp summary use the new wording; the e-mail is still plain text with a fixed subject plus the lead id
-- [ ] Tests no longer hard-code the old subject or labels (they import them from `content/encomenda.ts`) and include an adjustment-style submission that is stored, e-mailed and summarized for WhatsApp
-- [ ] Submitting works exactly as before (stored first, e-mail parked on failure, honeypot and rate limit unchanged); `custom_orders` and the endpoints are untouched
-- [ ] No-JS result page and success state use the new wording
-- [ ] `CONTEXT.md`, ADR-0008 and `PLANNING.md` agree on the wider definition; nothing still calls the Encomenda a custom-Robô request only; the privacy TODO line names the data in the new terms
-- [ ] New or changed unapproved copy is wrapped in `launchBlocking`
+- [x] The page no longer says the request must be for a new Robô; an adjustment request reads as a normal use of the form
+- [x] The main field's label, hint and error message describe "what you want" rather than "your strategy" only
+- [x] Operator e-mail and WhatsApp summary use the new wording; the e-mail is still plain text with a fixed subject plus the lead id
+- [x] Tests no longer hard-code the old subject or labels (they import them from `content/encomenda.ts`) and include an adjustment-style submission that is stored, e-mailed and summarized for WhatsApp
+- [x] Submitting works exactly as before (stored first, e-mail parked on failure, honeypot and rate limit unchanged); `custom_orders` and the endpoints are untouched
+- [x] No-JS result page and success state use the new wording
+- [x] `CONTEXT.md`, ADR-0008 and `PLANNING.md` agree on the wider definition; nothing still calls the Encomenda a custom-Robô request only; the privacy TODO line names the data in the new terms
+- [x] New or changed unapproved copy is wrapped in `launchBlocking`
 - [ ] Looks right at 390 and 1280 px; errors announced and focus managed as before
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
+
+## Comments
+
+Decisions (implementation: `src/content/encomenda.ts`, `src/modules/orders/encomenda.ts`, `src/modules/orders/encomenda.test.ts`, `src/pages/encomenda.astro`, `src/pages/encomenda/resultado.astro`, `src/content/legal.ts`, `CONTEXT.md`, ADR-0008, `PLANNING.md`).
+
+- **Known limit, not a feature.** An adjustment request is not tied to a Licença: the form does not check that the sender owns the Robô they name, and nothing downstream does either. The operator sees only the free text.
+- **Copy.** Page title, description, heading, intro, the main field's label, hint and error (`strategy_invalid`), the Mercado and Corretora hints, the consent line, the success message and the WhatsApp intro are new and wrapped in `launchBlocking` (one shared reason citing this ticket). Wrapped strings that sit inside existing shapes (`fields`, `fieldErrors`) are unwrapped with `.value` inside the content file, as `conta.ts` does, so their consumers did not change; `pageTitle`, `pageDescription`, `heading` and `whatsappSummary.intro` are now wrappers and their consumers read `.value`. The operator e-mail is read only by the operator and stays unwrapped, as in 14. Success heading, result-page title and error heading already said "encomenda" without "de Robô" and were kept. Field keys, error codes and the `custom_orders` columns are unchanged.
+- **Blank optional fields in the operator e-mail.** Read "omit the blank optional lines" as the WhatsApp behaviour (unchanged): the operator e-mail still prints the Mercado and Corretora lines with `(em branco)`, as in 14, since this ticket is wording only. The adjustment test pins that.
+- **Tests.** Subject expectations (including the header-injection case) are built from `operatorEmail.subjectPrefix`; new cases cover the e-mail labels and line-by-line indentation, the WhatsApp summary, and an adjustment request with blank optional fields. Red came from `whatsappSummary.intro` becoming a `launchBlocking` value; the rest are characterization tests that the reword would have broken had they kept the literals.
+- **Seen in a browser.** The built `/encomenda` page was screenshotted with headless Chromium at 390 and 1280 px and reads correctly. Markup and the form script are unchanged, so error announcement and focus handling are as in 14; they were not re-driven interactively, so the box stays unticked for the manual pass 14 also left open.
+- **Not changed.** `.scratch/storefront-v2/spec.md` story 35 and ADR-0008's Context still say "custom-Robô request": both record what was asked at the time, and the ADR now carries the amendment.

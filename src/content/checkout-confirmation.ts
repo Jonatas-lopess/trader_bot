@@ -56,7 +56,8 @@ export const confirmationMessages: Record<
 	| 'boleto_overdue'
 	| 'awaiting_pix'
 	| 'pix_expired'
-	| 'card_in_review',
+	| 'card_in_review'
+	| 'card_declined',
 	string
 > = {
 	pending: 'Aguardando confirmação do pagamento…',
@@ -70,6 +71,8 @@ export const confirmationMessages: Record<
 	// `autorizado` is antifraud review, not payment (PLANNING.md §13): never says it was paid.
 	card_in_review:
 		'Seu pagamento com cartão está em análise. Avisaremos por e-mail assim que ele for aprovado, e esta página se atualiza sozinha.',
+	// Appmax refused the card (appmax-checkout 05): nothing to wait for, the retry is a new checkout.
+	card_declined: 'O pagamento com cartão não foi autorizado. Tente de novo com outro cartão ou outra forma de pagamento.',
 	active: 'Pagamento confirmado!',
 	past_due:
 		'Houve um problema com a cobrança. Entre em contato com o suporte para regularizar sua cobrança.',
@@ -121,6 +124,7 @@ export const boletoInstructions = {
 // An expired Pix or an overdue Boleto is never resumed: the retry is a new checkout of what was
 // bought (the same Robô and Oferta, or every line of a cart), like `pendingTimeoutRetry`.
 export const pixExpiredRetryLabel = 'Gerar novo Pix';
+export const cardDeclinedRetryLabel = 'Tentar de novo';
 export const boletoOverdueRetryLabel = 'Fazer um novo pedido';
 
 /**

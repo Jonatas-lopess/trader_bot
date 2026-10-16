@@ -47,6 +47,7 @@ import { normalizeBuyerInput, type BuyerInput, type FieldErrors } from './buyer-
 import type { CheckoutRow } from './checkout-lines';
 import { paymentMethodsFor, type PaymentMethod } from './payment-provider';
 import { priceCheckout, type RawCheckoutLine } from './price-checkout';
+import { CARD_DECLINED_MARKER } from './status';
 
 type PayEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'PAY_RATE_LIMITER'> & {
 	APPMAX_ENV?: string;
@@ -224,8 +225,10 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 				holderDocument: buyer.document,
 				softDescriptor: SOFT_DESCRIPTOR,
 			});
-			// A refused order cannot be paid again: the retry needs a fresh reference.
+			// A refused order cannot be paid again: the retry needs a fresh reference. The decline is
+			// recorded so a repeated POST of this attempt lands on a page that says so (status.ts).
 			if ((!paid.ok && paid.reason === 'not_authorized') || (paid.ok && paid.orderStatus.toLowerCase() === 'cancelado')) {
+				await recordDecline(env, purchaseId);
 				return { ok: false, status: 402, code: 'card_declined', reference: crypto.randomUUID() };
 			}
 			if (!paid.ok) {
@@ -298,4 +301,9 @@ async function storeInstructions(env: PayEnv, checkoutId: string, instructions: 
 	await env.DB.prepare('UPDATE purchases SET payment_instructions = ? WHERE checkout_id = ?')
 		.bind(JSON.stringify(instructions), checkoutId)
 		.run();
+}
+
+/** A refused card leaves its rows `pending`; the marker in the same column tells the page it was declined. */
+async function recordDecline(env: PayEnv, checkoutId: string): Promise<void> {
+	await env.DB.prepare('UPDATE purchases SET payment_instructions = ? WHERE checkout_id = ?').bind(CARD_DECLINED_MARKER, checkoutId).run();
 }

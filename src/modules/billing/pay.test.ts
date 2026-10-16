@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearCatalog, seedRobot } from '../catalog/test-helpers';
 import { resetAppmaxTokenCache } from './appmax-client';
 import { pay } from './pay';
+import { getPurchaseStatus } from './status';
 import { handleWebhook } from './webhook';
 
 vi.mock('@sentry/cloudflare', () => ({ captureMessage: vi.fn(), captureException: vi.fn() }));
@@ -273,7 +274,17 @@ describe('pay (POST /checkout/pay)', () => {
 			expect(JSON.stringify(row)).not.toContain(CARD_TOKEN);
 		});
 
-	});
+		it('a repeated POST of the declined attempt lands on a page that says declined, never "em análise"', async () => {
+			const calls = mockAppmax({ 'credit-card': () => json({ message: 'Payment not authorized' }, 422) });
+			const request = body({ method: 'card', token: CARD_TOKEN });
+
+			await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+			const replayed = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			expect(replayed).toEqual({ ok: true, redirectUrl: `/checkout/confirmacao?ref=${request.reference}` });
+			expect(pathsOf(calls).filter((path) => path === '/v1/payments/credit-card')).toHaveLength(1);
+			expect(await getPurchaseStatus(env, request.reference)).toEqual({ ok: true, state: 'card_declined' });
+		});
 	});
 
 	describe('Appmax failures', () => {

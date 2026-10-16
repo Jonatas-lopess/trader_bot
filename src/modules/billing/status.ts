@@ -8,7 +8,9 @@
  * so a reload shows the same Pix again. They are gateway data, so they are validated here
  * before any page renders them: only an `https:` PDF link and a `data:image/png;base64,` or
  * `https:` QR source survive; a missing or unparseable value degrades to the generic pending
- * message, never to an error page.
+ * message, never to an error page. For a card the same column holds only `{"declined": true}`,
+ * written by `pay.ts` when Appmax refused the payment: the row stays `pending` (nothing was paid),
+ * and this marker is what tells a refused card from one in antifraud review.
  */
 
 import type { PurchaseOffer } from '../catalog/robots';
@@ -27,7 +29,8 @@ export type PurchaseState =
 	| 'boleto_overdue'
 	| 'awaiting_pix'
 	| 'pix_expired'
-	| 'card_in_review';
+	| 'card_in_review'
+	| 'card_declined';
 
 export type PixView = {
 	kind: 'pix';
@@ -157,6 +160,13 @@ export function parsePixInstructions(text: string | null): PixView | null {
 	return { kind: 'pix', qrSrc, emvCode, expiresAt: parseInstant(raw.expiresAt) };
 }
 
+/** `pay.ts`'s marker for a card Appmax refused (the row stays `pending`, nothing was charged). */
+export const CARD_DECLINED_MARKER = JSON.stringify({ declined: true });
+
+function isDeclinedCard(text: string | null): boolean {
+	return parseJson(text)?.declined === true;
+}
+
 export function parseBoletoInstructions(text: string | null): BoletoView | null {
 	const raw = parseJson(text);
 	if (raw === null) return null;
@@ -208,7 +218,9 @@ export function derivePurchaseView(rows: readonly CheckoutViewRow[], now: Date):
 		const overdue = boleto?.dueDate != null && isOverdue(boleto.dueDate, now);
 		return { state: overdue ? 'boleto_overdue' : 'awaiting_boleto', method, instructions: boleto, items };
 	}
-	if (method === 'card') return { state: 'card_in_review', method, instructions: null, items };
+	if (method === 'card') {
+		return { state: isDeclinedCard(pending.paymentInstructions) ? 'card_declined' : 'card_in_review', method, instructions: null, items };
+	}
 	return { state: aggregate, method, instructions: null, items };
 }
 

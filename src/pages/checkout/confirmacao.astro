@@ -19,6 +19,7 @@ import {
 	activeCtaLabel,
 	boletoInstructions,
 	boletoOverdueRetryLabel,
+	cardDeclinedRetryLabel,
 	confirmationHeading,
 	confirmationMessages,
 	formatDeadline,
@@ -55,6 +56,7 @@ const PIX_STATES = 'awaiting_pix';
 const PIX_EXPIRED_STATES = 'pix_expired';
 const BOLETO_STATES = 'awaiting_boleto boleto_overdue';
 const BOLETO_OVERDUE_STATES = 'boleto_overdue';
+const CARD_DECLINED_STATES = 'card_declined';
 const isShownOn = (states: string) => view !== null && states.split(' ').includes(view.state);
 
 const copyButtonClass =
@@ -126,6 +128,15 @@ const codeClass =
 							{pixExpiredRetryLabel}
 						</a>
 					)}
+
+					<a
+						data-show-on={CARD_DECLINED_STATES}
+						hidden={!isShownOn(CARD_DECLINED_STATES)}
+						href={retryHref}
+						class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+					>
+						{cardDeclinedRetryLabel}
+					</a>
 
 					{boleto && (
 						<div data-show-on={BOLETO_STATES} hidden={!isShownOn(BOLETO_STATES)} class="flex w-full flex-col items-center gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6">

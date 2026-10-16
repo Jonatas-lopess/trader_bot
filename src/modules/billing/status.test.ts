@@ -239,6 +239,15 @@ describe('derivePurchaseView (pure, appmax-checkout 06)', () => {
 		});
 	});
 
+	it('a pending card whose payment Appmax refused is card_declined, not in review', () => {
+		const declined = JSON.stringify({ declined: true });
+		expect(derivePurchaseView([row({ paymentMethod: 'card', paymentInstructions: declined })], NOW)).toMatchObject({
+			state: 'card_declined',
+			method: 'card',
+			instructions: null,
+		});
+	});
+
 	it('a pending card is in antifraud review', () => {
 		expect(derivePurchaseView([row({ paymentMethod: 'card', paymentInstructions: null })], NOW)).toMatchObject({
 			state: 'card_in_review',

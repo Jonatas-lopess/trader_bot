@@ -44,6 +44,11 @@ describe('checkout confirmation copy', () => {
 		expect(confirmationMessages.card_in_review).not.toMatch(/confirmado|aprovado!/i);
 	});
 
+	it('a declined card says it was not authorized, never that it is under review', () => {
+		expect(confirmationMessages.card_declined).toMatch(/não foi autorizado/);
+		expect(confirmationMessages.card_declined).not.toMatch(/análise/);
+	});
+
 	it('formats the Pix deadline and the Boleto due date in Brasília time', () => {
 		expect(formatDeadline('2026-10-17T02:59:59.000Z')).toBe('16/10/2026 às 23:59');
 		expect(formatDueDate('2026-10-19')).toBe('19/10/2026');

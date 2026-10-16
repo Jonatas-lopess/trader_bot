@@ -29,3 +29,23 @@ no `customers` row, no login email, no Licença.
    hand: `pnpm run provision-customer -- --purchase-id=<purchase_id> --email=<email>`.
 
 Do not edit `amount_cents` to match: it is the record of what the Cliente agreed to pay.
+
+## An antifraud refusal shows as `refunded` (pending sandbox check)
+
+A card paid on our own checkout (ADR-0007) sits in antifraud review (`autorizado`) before it is
+approved. When Appmax's antifraud refuses it, the order status is `recusado_por_risco`, which
+the webhook maps to `refunded` (`mapOrderStatus` in `src/modules/billing/appmax-client.ts`).
+Whether money ever moved in that case is not known yet: appmax-checkout 08 checks it in the
+sandbox and 07 decides the mapping from that. Until then, for a purchase that is `refunded`:
+
+1. Look at the order in the Appmax dashboard. If its status is `recusado_por_risco`, it is an
+   antifraud refusal, not a refund we granted.
+2. If the purchase was never `active` (`paid_at` is NULL), nothing was provisioned: no
+   Licença, no login e-mail. Nothing to revoke; the Cliente can buy again from the catalog.
+3. If it was `active` before (`paid_at` set), the Licença is already revoked (expiry set to
+   now). Confirm in Appmax that the charge was reversed; if the Cliente was charged and it was
+   not, refund it in Appmax and tell the Cliente.
+
+```sql
+SELECT id, status, paid_at, appmax_order_id FROM purchases WHERE id = '<purchase_id>';
+```

@@ -103,7 +103,7 @@ describe('customer-area end to end: login to cancel', () => {
 
 		// 1. Webhook confirms the subscription, provisioning `customers`
 		// (ticket 01) from the same authoritative re-fetch.
-		const webhookResult = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_happy' }));
+		const webhookResult = await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_e2e_happy' }));
 		expect(webhookResult).toEqual({ status: 200 });
 		const customer = await env.DB.prepare('SELECT c.id FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?')
 			.bind('sub-e2e-happy')
@@ -160,7 +160,7 @@ describe('customer-area end to end: login to cancel', () => {
 			throw new Error(`unexpected fetch: ${url}`);
 		});
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_token' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_e2e_token' }));
 
 		// Replay: redeeming the same token twice — the second attempt fails.
 		await requestMagicLink(env, { email: 'tokens@example.com', ip: '203.0.113.11', origin: 'https://example.com' });
@@ -197,7 +197,7 @@ describe('customer-area end to end: login to cancel', () => {
 			}
 			throw new Error(`unexpected fetch: ${url}`);
 		});
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_e2e_logout' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_e2e_logout' }));
 		await requestMagicLink(env, { email: 'logout@example.com', ip: '203.0.113.12', origin: 'https://example.com' });
 		const token = await latestTokenFor('logout@example.com');
 		const redeemed = await redeemMagicLink(env, token);
@@ -246,7 +246,7 @@ describe('customer-area end to end: login to cancel', () => {
 		});
 
 		for (const buy of buys) {
-			expect(await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: buy.order }))).toEqual({ status: 200 });
+			expect(await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: buy.order }))).toEqual({ status: 200 });
 		}
 
 		const { results: customers } = await env.DB.prepare('SELECT id, email FROM customers WHERE email = ?')

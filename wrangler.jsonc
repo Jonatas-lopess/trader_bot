@@ -33,6 +33,10 @@
 	// Sandbox by default (modules/billing/appmax-client.ts `appmaxHosts`): only an
 	// explicit "production" reaches Appmax's production hosts, so override it at
 	// deploy time with `--var APPMAX_ENV:production`, never in this file.
+	// APPMAX_EXTERNAL_ID is the Appmax app installation id the checkout page hands to Appmax JS
+	// (ADR-0007). Configuration, not a secret, but it differs per environment and must match
+	// APPMAX_ENV (a mismatch answers 404 "Merchant not found"); set it at deploy time with
+	// `--var APPMAX_EXTERNAL_ID:...`. Empty: Pix and Boleto still work, card tokenization fails.
 	// ADMIN_EMAILS is the comma-separated admin allowlist (modules/identity/admin.ts); empty
 	// locks everyone out of /admin. Set the real list at deploy time (`--var ADMIN_EMAILS:...`),
 	// never in this file.
@@ -42,6 +46,7 @@
 	// src/content/encomenda.ts. Set both at deploy time, never in this file.
 	"vars": {
 		"APPMAX_ENV": "sandbox",
+		"APPMAX_EXTERNAL_ID": "",
 		"ADMIN_EMAILS": "",
 		"ORDER_NOTIFY_EMAIL": "",
 		"WHATSAPP_NUMBER": ""
@@ -107,6 +112,18 @@
 			"simple": {
 				"limit": 20,
 				"period": 10
+			}
+		},
+		// POST /checkout/pay (modules/billing/pay.ts), keyed `ip:<address>`. The route is public
+		// and creates Appmax customers and orders, so it is also a card-testing target; every
+		// request spends a hit, checked before anything else (appmax-checkout 05). Whether to add
+		// Turnstile is an owner decision, not taken here.
+		{
+			"name": "PAY_RATE_LIMITER",
+			"namespace_id": "6",
+			"simple": {
+				"limit": 5,
+				"period": 60
 			}
 		},
 		// POST /encomenda (modules/orders/encomenda.ts), keyed `ip:<address>`. Only a

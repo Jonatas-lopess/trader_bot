@@ -11,15 +11,24 @@
 
 **Blocked by:** 05.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: `getPurchaseView` (pure parsing and state derivation, with an injected `now`) plus the existing `status.test.ts`; page checked in the browser at 390 and 1280 for Pix, Pix expired, Boleto, card in analysis, paid.
 
-- [ ] Pix pending shows QR, copyable code and deadline; expired Pix shows the expired state and a new-checkout link
-- [ ] Boleto pending shows the PDF link, copyable digitable line and due date; the e-mail-on-confirmation note stays
-- [ ] Card in review shows the analysis message and flips to paid by polling when the webhook lands
-- [ ] Reloading the page keeps showing the instructions (they come from D1, not from the pay response)
-- [ ] Untrusted instruction values are validated before rendering (URL scheme, image source)
-- [ ] `/billing/status` and the page agree on the new states; existing states and the amount-mismatch `rejected` copy are unchanged
+- [x] Pix pending shows QR, copyable code and deadline; expired Pix shows the expired state and a new-checkout link
+- [x] Boleto pending shows the PDF link, copyable digitable line and due date; the e-mail-on-confirmation note stays
+- [x] Card in review shows the analysis message and flips to paid by polling when the webhook lands
+- [x] Reloading the page keeps showing the instructions (they come from D1, not from the pay response)
+- [x] Untrusted instruction values are validated before rendering (URL scheme, image source)
+- [x] `/billing/status` and the page agree on the new states; existing states and the amount-mismatch `rejected` copy are unchanged
 - [ ] No inline copy in markup; tokens only; works at 390 and 1280
-- [ ] Typecheck and the full test suite pass
+- [x] Typecheck and the full test suite pass
+
+## Comments
+
+- `getPurchaseView(env, reference, now?)` lives in `modules/billing/status.ts`, on top of a pure `derivePurchaseView(rows, now)`; `getPurchaseStatus` (what `/billing/status` answers) is now a thin wrapper over it, so the page and the endpoint cannot disagree. `findByCheckout` also returns `payment_instructions`.
+- New states: `awaiting_pix`, `pix_expired`, `boleto_overdue` (the ticket asks for an overdue state; it got its own key) and `card_in_review` (a pending row whose method is `card`, so the analysis message differs from the generic pending). A pending card or generic pending wait still switches to the timeout copy after 5 minutes.
+- Validation: QR source only `data:image/png;base64,` or `https:`; PDF only `https:`; the Pix code and digitable line must be short printable text without markup characters. A Pix with neither QR nor code, or unparseable JSON, falls back to `pending`; a Boleto without instructions keeps the old `awaiting_boleto` text (rows from before the own checkout).
+- Times: Appmax's zone-less `expires_at` (`YYYY-MM-DD HH:MM:SS`) and the Boleto `due_date` are read as Brasília time (UTC-3); a Boleto is overdue after its due day ends. Both formats are unverified (08). The deadline is shown as a plain date and time, no countdown.
+- "Gerar novo Pix" and the overdue Boleto's "Fazer um novo pedido" link to a new `/checkout` of the same Robô and Oferta (the catalog for a cart), never resuming the row.
+- Verified by rendering the built Worker locally against seeded rows: Pix (QR, code, deadline), expired Pix (retry link shown, Pix block hidden), Boleto (PDF in a new tab with `rel="noopener noreferrer"`, line, due date), card review, and a row with a `javascript:` QR and a `<script>` code degrading to the generic pending message; `/billing/status` answers the same states. **Not done:** the visual check at 390 and 1280 px in a real browser (no browser available to the agent); that box stays open.

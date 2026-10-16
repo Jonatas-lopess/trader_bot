@@ -94,7 +94,7 @@ describe('handleWebhook', () => {
 		await seed({ id: 'sub-happy', appmax_order_id: 'ord_happy', status: 'pending' });
 		mockAppmax({ status: 'aprovado', paymentMethod: 'cartao' });
 
-		const result = await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_happy' }));
+		const result = await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_happy' }));
 
 		expect(result).toEqual({ status: 200 });
 		expect(await statusOf('sub-happy')).toBe('active');
@@ -103,7 +103,7 @@ describe('handleWebhook', () => {
 	it('logs every delivery raw, independent of the idempotency check', async () => {
 		await seed({ id: 'sub-log', appmax_order_id: 'ord_log', status: 'pending' });
 		mockAppmax({ status: 'aprovado' });
-		const payload = JSON.stringify({ event: 'order.paid', order_id: 'ord_log' });
+		const payload = JSON.stringify({ event: 'order_approved', order_id: 'ord_log' });
 
 		await handleWebhook(env, payload);
 		await handleWebhook(env, payload); // duplicate
@@ -111,7 +111,7 @@ describe('handleWebhook', () => {
 		const { results } = await env.DB.prepare(
 			'SELECT * FROM webhook_deliveries WHERE idempotency_key = ?'
 		)
-			.bind('order.paid:ord_log')
+			.bind('order_approved:ord_log')
 			.all();
 		expect(results).toHaveLength(2);
 	});
@@ -119,7 +119,7 @@ describe('handleWebhook', () => {
 	it('replays the same event idempotently: second delivery is a no-op and makes no Appmax status call', async () => {
 		await seed({ id: 'sub-dup', appmax_order_id: 'ord_dup', status: 'pending' });
 		const fetchSpy = mockAppmax({ status: 'aprovado' });
-		const payload = JSON.stringify({ event: 'order.paid', order_id: 'ord_dup' });
+		const payload = JSON.stringify({ event: 'order_approved', order_id: 'ord_dup' });
 
 		await handleWebhook(env, payload);
 		const callsAfterFirst = fetchSpy.mock.calls.length;
@@ -136,7 +136,7 @@ describe('handleWebhook', () => {
 
 		const result = await handleWebhook(
 			env,
-			JSON.stringify({ event: 'order.paid.delayed', order_id: 'ord_stale' })
+			JSON.stringify({ event: 'order_paid', order_id: 'ord_stale' })
 		);
 
 		expect(result).toEqual({ status: 200 });
@@ -151,7 +151,7 @@ describe('handleWebhook', () => {
 
 		const result = await handleWebhook(
 			env,
-			JSON.stringify({ event: 'order.paid', order_id: 'ord_unknown_ref' })
+			JSON.stringify({ event: 'order_approved', order_id: 'ord_unknown_ref' })
 		);
 
 		expect(result).toEqual({ status: 200 });
@@ -175,7 +175,7 @@ describe('handleWebhook', () => {
 
 		const result = await handleWebhook(
 			env,
-			JSON.stringify({ event: 'order.paid', order_id: 'ord_stripe_collision' })
+			JSON.stringify({ event: 'order_approved', order_id: 'ord_stripe_collision' })
 		);
 
 		expect(result).toEqual({ status: 200 });
@@ -191,7 +191,7 @@ describe('handleWebhook', () => {
 		await seed({ id: 'sub-provision', appmax_order_id: 'ord_provision', status: 'pending' });
 		mockAppmax({ status: 'aprovado', email: 'cliente@example.com' });
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_provision' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_provision' }));
 
 		const customer = await customerFor('sub-provision');
 		expect(customer?.email).toBe('cliente@example.com');
@@ -201,7 +201,7 @@ describe('handleWebhook', () => {
 		await seed({ id: 'sub-auto-link', appmax_order_id: 'ord_auto_link', status: 'pending' });
 		const fetchSpy = mockAppmax({ status: 'aprovado', email: 'auto-link@example.com' });
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_auto_link' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_auto_link' }));
 
 		const customer = await customerFor('sub-auto-link');
 		expect(customer).not.toBeNull();
@@ -216,8 +216,8 @@ describe('handleWebhook', () => {
 		// Two distinct events (e.g. a renewal) can each independently
 		// re-apply `active` — checkout-webhooks ticket 07's "reapplied event"
 		// case — each with its own idempotency key, so both reach the hook.
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_reapply' }));
-		await handleWebhook(env, JSON.stringify({ event: 'subscription.renewed', order_id: 'ord_reapply' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_reapply' }));
+		await handleWebhook(env, JSON.stringify({ event: 'subscription_renewed', order_id: 'ord_reapply' }));
 
 		const { results } = await env.DB.prepare('SELECT c.* FROM customers c JOIN purchases p ON p.customer_id = c.id WHERE p.id = ?')
 			.bind('sub-reapply')
@@ -235,7 +235,7 @@ describe('handleWebhook', () => {
 		mockAppmax({ status: 'aprovado' });
 		const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-		await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_no_email' }));
+		await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_no_email' }));
 
 		expect(await customerFor('sub-no-email')).toBeNull();
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('ord_no_email'));
@@ -249,7 +249,7 @@ describe('handleWebhook', () => {
 			await seed({ id: 'amt-ok', appmax_order_id: 'ord_amt_ok', status: 'pending', amount_cents: 49_900 });
 			mockAppmax({ status: 'aprovado', email: 'a@example.com', subTotal: 49_900 });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_amt_ok' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_amt_ok' }));
 
 			expect(await statusOf('amt-ok')).toBe('active');
 			expect(Sentry.captureMessage).not.toHaveBeenCalled();
@@ -259,7 +259,7 @@ describe('handleWebhook', () => {
 			await seed({ id: 'amt-bad', appmax_order_id: 'ord_amt_bad', status: 'pending', amount_cents: 49_900 });
 			mockAppmax({ status: 'aprovado', email: 'bad@example.com', subTotal: 100 });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_amt_bad' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_amt_bad' }));
 
 			expect(await statusOf('amt-bad')).toBe('rejected');
 			expect(Sentry.captureMessage).toHaveBeenCalledWith(
@@ -276,7 +276,7 @@ describe('handleWebhook', () => {
 			await seed({ id: 'amt-stored', appmax_order_id: 'ord_amt_stored', status: 'pending', amount_cents: 12_345 });
 			mockAppmax({ status: 'aprovado', email: 's@example.com', subTotal: 12_345 });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_amt_stored' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_amt_stored' }));
 
 			expect(await statusOf('amt-stored')).toBe('active');
 		});
@@ -284,12 +284,12 @@ describe('handleWebhook', () => {
 		it('a late event still pending cannot flip rejected back to pending, but a matching-amount active can reach active', async () => {
 			await seed({ id: 'amt-rank', appmax_order_id: 'ord_amt_rank', status: 'rejected', amount_cents: 500 });
 			mockAppmax({ status: 'pendente' });
-			await handleWebhook(env, JSON.stringify({ event: 'order.pending', order_id: 'ord_amt_rank' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_pix_created', order_id: 'ord_amt_rank' }));
 			expect(await statusOf('amt-rank')).toBe('rejected');
 
 			vi.restoreAllMocks();
 			mockAppmax({ status: 'aprovado', email: 'r@example.com', subTotal: 500 });
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid.again', order_id: 'ord_amt_rank' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_paid_by_pix', order_id: 'ord_amt_rank' }));
 			expect(await statusOf('amt-rank')).toBe('active');
 		});
 
@@ -297,7 +297,7 @@ describe('handleWebhook', () => {
 			await seed({ id: 'amt-null', appmax_order_id: 'ord_amt_null', status: 'pending', amount_cents: 500 });
 			mockAppmax({ status: 'aprovado', email: 'n@example.com' });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_amt_null' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_amt_null' }));
 
 			expect(await statusOf('amt-null')).toBe('active');
 			expect(Sentry.captureMessage).toHaveBeenCalledWith(
@@ -319,7 +319,7 @@ describe('handleWebhook', () => {
 			await seed({ id: 'lic-onetime', appmax_order_id: 'ord_lic_onetime', status: 'pending', offer: 'one_time' });
 			mockAppmax({ status: 'aprovado' });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_lic_onetime' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_lic_onetime' }));
 
 			expect(await expiryOf('lic-onetime')).toBe('9999-12-31T23:59:59.000Z');
 		});
@@ -327,19 +327,19 @@ describe('handleWebhook', () => {
 		it('sets expiry to now on refund, and a later stale active event cannot undo it', async () => {
 			await seed({ id: 'lic-refund', appmax_order_id: 'ord_lic_refund', status: 'pending', offer: 'one_time' });
 			mockAppmax({ status: 'aprovado' });
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_lic_refund' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_lic_refund' }));
 			vi.restoreAllMocks();
 
 			const before = Date.now();
 			mockAppmax({ status: 'estornado' });
-			await handleWebhook(env, JSON.stringify({ event: 'order.refunded', order_id: 'ord_lic_refund' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_refund', order_id: 'ord_lic_refund' }));
 			const refundedExpiry = await expiryOf('lic-refund');
 			expect(new Date(refundedExpiry!).getTime()).toBeGreaterThanOrEqual(before);
 			expect(new Date(refundedExpiry!).getTime()).toBeLessThanOrEqual(Date.now());
 			vi.restoreAllMocks();
 
 			mockAppmax({ status: 'aprovado' });
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid.delayed', order_id: 'ord_lic_refund' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_paid', order_id: 'ord_lic_refund' }));
 
 			expect(await statusOf('lic-refund')).toBe('refunded');
 			expect(await expiryOf('lic-refund')).toBe(refundedExpiry);
@@ -349,7 +349,7 @@ describe('handleWebhook', () => {
 			await seed({ id: 'lic-rejected', appmax_order_id: 'ord_lic_rejected', status: 'pending', offer: 'one_time', amount_cents: 1000 });
 			mockAppmax({ status: 'aprovado', subTotal: 999 });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_lic_rejected' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_lic_rejected' }));
 
 			expect(await statusOf('lic-rejected')).toBe('rejected');
 			expect(await expiryOf('lic-rejected')).toBeNull();
@@ -367,7 +367,7 @@ describe('handleWebhook', () => {
 			await seed({ id, appmax_order_id: `ord_${id}`, status: 'active' });
 			mockAppmax({ status: appmaxStatus });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.x', order_id: `ord_${id}` }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: `ord_${id}` }));
 
 			expect(await statusOf(id)).toBe(expected);
 			vi.restoreAllMocks();
@@ -378,8 +378,8 @@ describe('handleWebhook', () => {
 			await seed({ id: 'map-cancelado-active', appmax_order_id: 'ord_map_cancelado_active', status: 'active' });
 			mockAppmax({ status: 'cancelado' });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.x', order_id: 'ord_map_cancelado' }));
-			await handleWebhook(env, JSON.stringify({ event: 'order.x', order_id: 'ord_map_cancelado_active' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_map_cancelado' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_map_cancelado_active' }));
 
 			expect(await statusOf('map-cancelado')).toBe('pending');
 			expect(await statusOf('map-cancelado-active')).toBe('active');
@@ -389,7 +389,7 @@ describe('handleWebhook', () => {
 			await seed({ id: 'map-analise', appmax_order_id: 'ord_map_analise', status: 'active' });
 			mockAppmax({ status: 'pendente_integracao_em_analise' });
 
-			await handleWebhook(env, JSON.stringify({ event: 'order.x', order_id: 'ord_map_analise' }));
+			await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_map_analise' }));
 
 			expect(await statusOf('map-analise')).toBe('active');
 			expect(Sentry.captureMessage).toHaveBeenCalled();
@@ -409,7 +409,7 @@ describe('handleWebhook', () => {
 
 		it('does not swallow a failed refetch: releases the idempotency claim and answers 5xx so Appmax retries', async () => {
 			await seed({ id: 'retry-me', appmax_order_id: 'ord_retry_me', status: 'pending' });
-			const payload = JSON.stringify({ event: 'order.paid', order_id: 'ord_retry_me' });
+			const payload = JSON.stringify({ event: 'order_approved', order_id: 'ord_retry_me' });
 			vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('boom', { status: 500 }));
 
 			const first = await handleWebhook(env, payload);
@@ -421,6 +421,109 @@ describe('handleWebhook', () => {
 
 			expect(second).toEqual({ status: 200 });
 			expect(await statusOf('retry-me')).toBe('active');
+			const claim = await env.DB.prepare('SELECT id FROM processed_webhooks WHERE id = ?').bind('order_approved:ord_retry_me').first();
+			expect(claim).not.toBeNull();
+		});
+	});
+
+	describe('documented Appmax events (appmax-checkout 07, PLANNING.md §13)', () => {
+		// [event, order status on the refetch, payment method, row before, row after]
+		it.each([
+			['order_authorized', 'autorizado', 'cartao', 'pending', 'pending'],
+			['order_approved', 'aprovado', 'cartao', 'pending', 'active'],
+			['order_pix_created', 'pendente', 'pix', 'pending', 'pending'],
+			['order_paid_by_pix', 'aprovado', 'pix', 'pending', 'active'],
+			['order_billet_created', 'pendente', 'boleto', 'pending', 'pending'],
+			['order_paid', 'aprovado', 'boleto', 'pending', 'active'],
+			['order_paid', 'integrado', 'boleto', 'pending', 'active'],
+			['order_refund', 'estornado', 'cartao', 'active', 'refunded'],
+			['order_chargeback_in_treatment', 'chargeback_em_tratativa', 'cartao', 'active', 'chargeback'],
+			['order_refused_by_risk', 'recusado_por_risco', 'cartao', 'pending', 'refunded'],
+			['order_pix_expired', 'cancelado', 'pix', 'pending', 'pending'],
+			['payment_not_authorized', 'cancelado', 'cartao', 'pending', 'pending'],
+			['order_billet_overdue', 'pendente', 'boleto', 'pending', 'pending'],
+		])('%s with the order %s (%s): %s -> %s, decided by the refetch', async (event, appmaxStatus, method, before, after) => {
+			const id = `evt-${event}-${appmaxStatus}`;
+			await seed({ id, appmax_order_id: `ord_${id}`, status: before, offer: 'one_time' });
+			const fetchSpy = mockAppmax({ status: appmaxStatus, paymentMethod: method, email: `${event}@example.com` });
+
+			const result = await handleWebhook(env, JSON.stringify({ event, event_type: 'order', data: { order_id: `ord_${id}` } }));
+
+			expect(result).toEqual({ status: 200 });
+			expect(fetchSpy.mock.calls.some((call) => String(call[0]).includes(`/v1/orders/ord_${id}`))).toBe(true);
+			expect(await statusOf(id)).toBe(after);
+		});
+
+		it.each(['order_pix_expired', 'payment_not_authorized', 'order_billet_overdue'])(
+			'%s never overwrites a higher-ranked status',
+			async (event) => {
+				const id = `evt-high-${event}`;
+				await seed({ id, appmax_order_id: `ord_${id}`, status: 'active', offer: 'one_time' });
+				mockAppmax({ status: 'cancelado' });
+
+				await handleWebhook(env, JSON.stringify({ event, data: { order_id: `ord_${id}` } }));
+
+				expect(await statusOf(id)).toBe('active');
+			}
+		);
+
+		it('reads the CamelCase spelling of an event as the same event', async () => {
+			await seed({ id: 'evt-camel', appmax_order_id: 'ord_evt_camel', status: 'pending' });
+			mockAppmax({ status: 'aprovado' });
+
+			await handleWebhook(env, JSON.stringify({ event: 'OrderPaidByPix', data: { order_id: 'ord_evt_camel' } }));
+
+			expect(await statusOf('evt-camel')).toBe('active');
+			const delivery = await env.DB.prepare('SELECT 1 FROM webhook_deliveries WHERE idempotency_key = ?')
+				.bind('order_paid_by_pix:ord_evt_camel')
+				.first();
+			expect(delivery).not.toBeNull();
+		});
+
+		it('a forged payload status and decimal amount change nothing beyond what the refetch says', async () => {
+			await seed({ id: 'evt-forged', appmax_order_id: 'ord_evt_forged', status: 'pending', amount_cents: 99_700, offer: 'one_time' });
+			mockAppmax({ status: 'pendente', paymentMethod: 'pix' });
+
+			await handleWebhook(
+				env,
+				JSON.stringify({
+					event: 'order_paid_by_pix',
+					data: { order_id: 'ord_evt_forged', status: 'aprovado', total: 1.0, sub_total: 1.0 },
+				})
+			);
+
+			expect(await statusOf('evt-forged')).toBe('pending');
+		});
+
+		it('the amount check uses the refetch (cents), not the payload (decimal reais)', async () => {
+			await seed({ id: 'evt-amount', appmax_order_id: 'ord_evt_amount', status: 'pending', amount_cents: 99_700, offer: 'one_time' });
+			mockAppmax({ status: 'aprovado', email: 'amount@example.com', subTotal: 99_700 });
+
+			// 997.00 reais is the same money as 99_700 cents; 1.00 would be a mismatch if it were read.
+			await handleWebhook(
+				env,
+				JSON.stringify({ event: 'order_approved', data: { order_id: 'ord_evt_amount', total: 1.0, sub_total: 1.0 } })
+			);
+
+			expect(await statusOf('evt-amount')).toBe('active');
+			expect(Sentry.captureMessage).not.toHaveBeenCalledWith(expect.stringContaining('amount mismatch'), expect.anything());
+		});
+
+		it('an unknown event is stored and acknowledged, with no refetch and no state change', async () => {
+			await seed({ id: 'evt-unknown', appmax_order_id: 'ord_evt_unknown', status: 'pending' });
+			const fetchSpy = mockAppmax({ status: 'aprovado' });
+			const infoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+			const result = await handleWebhook(env, JSON.stringify({ event: 'customer_created', data: { order_id: 'ord_evt_unknown' } }));
+
+			expect(result).toEqual({ status: 200 });
+			expect(fetchSpy).not.toHaveBeenCalled();
+			expect(await statusOf('evt-unknown')).toBe('pending');
+			expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('customer_created'));
+			const delivery = await env.DB.prepare('SELECT payload FROM webhook_deliveries WHERE idempotency_key = ?')
+				.bind('customer_created:ord_evt_unknown')
+				.first<{ payload: string }>();
+			expect(delivery?.payload).toContain('customer_created');
 		});
 	});
 });

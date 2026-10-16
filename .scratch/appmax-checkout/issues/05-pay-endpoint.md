@@ -19,18 +19,31 @@ Errors as discriminated unions mapped to HTTP: validation 400 with `fieldErrors`
 
 **Blocked by:** 01, 02, 03.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: `pay.ts` against real D1 with `fetch` to Appmax mocked: assert rows after each failure point (customer fails, order fails, payment fails) and the call order.
 
-- [ ] Compra and Anual by card, Pix and Boleto write one `pending` row with the server price, method and buyer fields, and return the confirmation redirect
-- [ ] `appmax_order_id` is written before the payment call; if the update fails no payment is attempted
-- [ ] A repeated POST with the same `reference` creates no second customer, order or charge
-- [ ] Card declined: 402 with a fresh `reference`, nothing marks the row active, no card data stored
-- [ ] Price tampering, unknown robot/offer, method not allowed for the Oferta, missing token and Mensal are rejected
-- [ ] Pix and Boleto instructions persist in `payment_instructions` (migration 0012, covered by `schema.test.ts`)
-- [ ] IP choice implemented as above, covered for sandbox fallback and production fail-closed
-- [ ] Rate-limit binding added to `wrangler.jsonc` and types regenerated; over-limit returns 429
-- [ ] No personal or card data in logs or Sentry (asserted in a test on the captured calls)
-- [ ] Buyer name and document land in `buyer_name`/`buyer_document` and survive the webhook's `COALESCE`
-- [ ] Typecheck and the full test suite pass
+- [x] Compra and Anual by card, Pix and Boleto write one `pending` row with the server price, method and buyer fields, and return the confirmation redirect
+- [x] `appmax_order_id` is written before the payment call; if the update fails no payment is attempted
+- [x] A repeated POST with the same `reference` creates no second customer, order or charge
+- [x] Card declined: 402 with a fresh `reference`, nothing marks the row active, no card data stored
+- [x] Price tampering, unknown robot/offer, method not allowed for the Oferta, missing token and Mensal are rejected
+- [x] Pix and Boleto instructions persist in `payment_instructions` (migration 0012, covered by `schema.test.ts`)
+- [x] IP choice implemented as above, covered for sandbox fallback and production fail-closed
+- [x] Rate-limit binding added to `wrangler.jsonc` and types regenerated; over-limit returns 429
+- [x] No personal or card data in logs or Sentry (asserted in a test on the captured calls)
+- [x] Buyer name and document land in `buyer_name`/`buyer_document` and survive the webhook's `COALESCE`
+- [x] Typecheck and the full test suite pass
+
+## Comments
+
+- Migration is `0016_payment_instructions.sql`, not `0012`: 0012 to 0015 were taken by storefront-v2 and the Encomenda work.
+- No 409: the one-active-Licença check is gone since ADR-0008 (repeat purchases), same as 02.
+- Body: `{reference, robot, offer, method, buyer{name,email,phone,document}, token?, holderName?}`. `holderName` is the card form's holder field; absent, the buyer's full name is sent (holder = buyer, 08 verifies). A token sent with Pix or Boleto is ignored, never forwarded.
+- Responses: `200 {ok, redirectUrl}`; `400 {code}` (`invalid_request`, `unknown_offer`, `offer_not_supported`, `method_not_allowed`, `token_required`) or `400 {code:'invalid_buyer', fieldErrors}`; `402 {code:'card_declined', reference}`; `429 {code:'rate_limited'}`; `502 {code:'provider_unavailable', reference?}`; `413` for a body over 8 KiB.
+- Every failure after the row is inserted (402 and 502) answers with a fresh `reference`, so the form's retry is a new attempt. A repeated POST of an attempt that already has a row answers `200` with that attempt's confirmation URL and calls nothing at Appmax; for an attempt whose card was declined that page shows the stale-pending retry, since the row stays `pending` and nothing records the decline.
+- A card answered 2xx with order status `cancelado` is treated as a decline (01's carried note).
+- Rate limit: `PAY_RATE_LIMITER`, 5 per 60 s per `ip:<CF-Connecting-IP>`, checked before validation so a script cannot probe cards faster than that. Turnstile is an owner decision, not built.
+- Production with no usable `CF-Connecting-IP` refuses before writing anything (Sentry `pay: no usable client IP`, reason code only).
+- Sentry `extra` carries `purchase_id`, `reason` (e.g. `unavailable`, `rejected_422`) and `order_id`; Appmax's error message is never logged, it can echo buyer data.
+- `billing/e2e.test.ts` now goes `/checkout` form, pay, webhook, status; `licensing/catalog-e2e.test.ts` still seeds the row directly.

@@ -34,6 +34,25 @@ describe('billing D1 schema', () => {
 		});
 	});
 
+	it('round-trips payment instructions as JSON text, null by default (migrations/0016)', async () => {
+		await env.DB.prepare(
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES ('instr-none', 'starter', 'one_time', 0, 'pending')"
+		).run();
+		await env.DB.prepare(
+			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, payment_instructions) VALUES ('instr-pix', 'starter', 'one_time', 0, 'pending', ?)"
+		)
+			.bind(JSON.stringify({ qrCode: 'q', emvCode: 'e', expiresAt: 'x' }))
+			.run();
+
+		expect(await env.DB.prepare("SELECT payment_instructions FROM purchases WHERE id = 'instr-none'").first()).toEqual({
+			payment_instructions: null,
+		});
+		const row = await env.DB.prepare("SELECT payment_instructions FROM purchases WHERE id = 'instr-pix'").first<{
+			payment_instructions: string;
+		}>();
+		expect(JSON.parse(row!.payment_instructions)).toEqual({ qrCode: 'q', emvCode: 'e', expiresAt: 'x' });
+	});
+
 	it('rejects a status outside the purchase lifecycle', async () => {
 		await expect(
 			env.DB.prepare("INSERT INTO purchases (id, robot_id, offer, amount_cents, status) VALUES (?, ?, 'monthly', 0, ?)")
@@ -155,7 +174,15 @@ describe('purchases.checkout_id (migration 0013)', () => {
 
 		expect((await findByCheckout(env, 'find-grp')).map((row) => row.id).sort()).toEqual(['find-grp', 'find-grp-2']);
 		expect(await findByCheckout(env, 'find-legacy')).toEqual([
-			{ id: 'find-legacy', robotId: 'starter', offer: 'one_time', amountCents: 100, status: 'active', paymentMethod: null },
+			{
+				id: 'find-legacy',
+				robotId: 'starter',
+				offer: 'one_time',
+				amountCents: 100,
+				status: 'active',
+				paymentMethod: null,
+				paymentInstructions: null,
+			},
 		]);
 		expect(await findByCheckout(env, 'find-grp-2')).toEqual([]);
 		expect(await findByCheckout(env, 'nope')).toEqual([]);

@@ -3,6 +3,8 @@
  * concurrency — compare-and-swap, not read-then-write"). Every delivery:
  *
  *   1. Raw payload logged unconditionally (independent of everything below).
+ *      An event outside `APPMAX_ORDER_EVENTS` (and not `subscription_*`) stops
+ *      here with a 200: stored, acknowledged, never acted on.
  *   2. Idempotency claimed via one INSERT; a duplicate stops here.
  *   3. Appmax's own API re-fetches the referenced record's authoritative
  *      status — the payload's own status field is never trusted, only used
@@ -14,7 +16,7 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
-import { fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
+import { classifyWebhookEvent, fetchAuthoritativeStatus, parseWebhookPayload, type AppmaxWebhookEvent } from './appmax-client';
 import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
 import { licenseSyncStatement } from '../licensing/license-expiry';
@@ -99,9 +101,9 @@ async function claimIdempotency(env: WebhookEnv, idempotencyKey: string): Promis
  * happening.
  *
  * Also the point a first-activation auto-sends the magic-link login email
- * (customer-area ticket 06/07) — the Cliente never types an email anywhere
- * on our own checkout (`checkout.ts` only ever collects `planId`; Appmax's
- * hosted page is what collects the email this function receives). Gated on
+ * (customer-area ticket 06/07). The e-mail is the one the Cliente typed on our
+ * own checkout form (ADR-0007), read back from Appmax's order refetch, never
+ * from the webhook payload. Gated on
  * `provisionCustomer`'s `created` flag, not merely "status is active": a
  * reapplied/renewal event for an already-attached purchase must not
  * re-issue a login email on every renewal, only on the purchase's first
@@ -157,6 +159,12 @@ export async function handleWebhook(env: WebhookEnv, rawBody: string): Promise<{
 	await logDelivery(env, idempotencyKey, rawBody);
 
 	if (event === null) return { status: 200 };
+
+	if (classifyWebhookEvent(event.event) === 'unknown') {
+		// Stored above for support and replay; acknowledged so Appmax does not retry it.
+		console.info(`handleWebhook: ignored Appmax event ${event.event.slice(0, 64)}`);
+		return { status: 200 };
+	}
 
 	const isFirstDelivery = await claimIdempotency(env, idempotencyKey);
 	if (!isFirstDelivery) return { status: 200 };

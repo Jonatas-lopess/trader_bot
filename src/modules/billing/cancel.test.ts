@@ -174,7 +174,7 @@ describe('cancelSubscription', () => {
 			provider: 'appmax',
 			providerSubscriptionId: 'sub_race',
 		});
-		const webhook = handleWebhook(env, JSON.stringify({ event: 'order.paid', order_id: 'ord_race' }));
+		const webhook = handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_race' }));
 		const [cancelResult, webhookResult] = await Promise.all([cancel, webhook]);
 
 		expect(cancelResult.ok).toBe(true);

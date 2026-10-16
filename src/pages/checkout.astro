@@ -1,0 +1,270 @@
+---
+// /checkout?robot=<slug>&offer=<offer> — src/pages/checkout.astro
+//
+// Thin adapter around `resolveCheckout` (modules/billing/checkout.ts, ADR-0007). A redirect
+// provider (Stripe's test driver) is sent on with a 302; an error answers with its status and
+// a plain message; Appmax renders our own form
+// (.scratch/appmax-checkout/issues/04-checkout-page-form.md).
+//
+// The form posts JSON to POST /checkout/pay (src/shared/checkout-form.ts). Card fields live in
+// their own `data-appmax-checkout` form that Appmax JS tokenizes in the browser: only the token
+// reaches our Worker. Order summary and price come from the server result, never from the URL.
+// No third-party script but Appmax JS on this page (the analytics beacon is off).
+import { env } from 'cloudflare:workers';
+import BaseLayout from '../layouts/base-layout.astro';
+import { appmaxScriptUrl } from '../modules/billing/appmax-client';
+import { readCheckoutQuery, resolveCheckout } from '../modules/billing/checkout';
+import type { BuyerField } from '../modules/billing/buyer-input';
+import type { PaymentMethod } from '../modules/billing/payment-provider';
+import {
+	buyerFields,
+	buyerHeading,
+	buyerIntro,
+	cardFields,
+	cardHeading,
+	checkoutOfferLabels,
+	fieldErrors,
+	formErrorSummary,
+	formatBrl,
+	heading,
+	methodHeading,
+	methods,
+	pageDescription,
+	pageTitle,
+	payErrors,
+	payLabel,
+	payingLabel,
+	securityNote,
+	summary,
+	unavailable,
+	withdrawalNote,
+} from '../content/checkout-form';
+
+export const prerender = false;
+
+const result = await resolveCheckout(env, readCheckoutQuery(Astro.url));
+if (result.kind === 'redirect') return Astro.redirect(result.redirectUrl, 302);
+if (result.kind === 'error') return new Response(result.message, { status: result.status });
+
+// PLANNING.md §6 steers Anual to Pix: it goes first there. Only methods the server returned.
+const displayMethods: PaymentMethod[] =
+	result.kind === 'form'
+		? result.offer === 'annual' && result.methods.includes('pix')
+			? ['pix', ...result.methods.filter((m) => m !== 'pix')]
+			: result.methods
+		: [];
+
+const inputClass =
+	'w-full rounded-md border-w-1 border-border-high-contrast bg-surface-raised px-4 py-2 text-body text-text-primary focus:border-border-accent focus:shadow-focus-ring focus:outline-none aria-[invalid=true]:border-danger';
+const labelClass = 'text-body-sm text-text-secondary';
+
+type InputMode = 'text' | 'email' | 'tel' | 'numeric';
+
+const buyerSpecs: { name: BuyerField; type: 'text' | 'email' | 'tel'; autocomplete: string; inputmode?: InputMode; maxlength: number }[] = [
+	{ name: 'name', type: 'text', autocomplete: 'name', maxlength: 120 },
+	{ name: 'email', type: 'email', autocomplete: 'email', inputmode: 'email', maxlength: 254 },
+	{ name: 'phone', type: 'tel', autocomplete: 'tel-national', inputmode: 'tel', maxlength: 20 },
+	{ name: 'document', type: 'text', autocomplete: 'off', inputmode: 'numeric', maxlength: 20 },
+];
+
+// The names Appmax JS reads through FormData (docs.appmax.com.br/guides/appmax-js).
+const cardSpecs: { name: string; label: string; autocomplete: string; inputmode?: InputMode; maxlength: number; span: string }[] = [
+	{ name: 'card-number', label: cardFields.number, autocomplete: 'cc-number', inputmode: 'numeric', maxlength: 23, span: 'sm:col-span-2' },
+	{ name: 'card-holder-name', label: cardFields.holderName, autocomplete: 'cc-name', maxlength: 60, span: 'sm:col-span-2' },
+	{ name: 'exp-month', label: cardFields.expMonth, autocomplete: 'cc-exp-month', inputmode: 'numeric', maxlength: 2, span: '' },
+	{ name: 'exp-year', label: cardFields.expYear, autocomplete: 'cc-exp-year', inputmode: 'numeric', maxlength: 4, span: '' },
+	{ name: 'cvv', label: cardFields.cvv, autocomplete: 'cc-csc', inputmode: 'numeric', maxlength: 4, span: '' },
+];
+
+// Read by the browser script; never holds a price.
+const clientConfig =
+	result.kind === 'form'
+		? {
+				robot: result.robotId,
+				offer: result.offer,
+				externalId: env.APPMAX_EXTERNAL_ID ?? '',
+				copy: { fieldErrors, formErrorSummary, payErrors, payLabel, payingLabel },
+			}
+		: null;
+---
+
+<BaseLayout title={pageTitle} description={pageDescription} analytics={false}>
+	{
+		result.kind === 'unavailable' ? (
+			<section class="content-row gutter-x flex flex-col items-center gap-6 py-20 text-center">
+				<h1 class="text-heading-1 font-bold text-text-primary">{unavailable.heading}</h1>
+				<p class="text-body-lg text-text-secondary">{unavailable.message}</p>
+				<a href={unavailable.backLink.href} class="text-body font-medium text-brand-primary underline">
+					{unavailable.backLink.label}
+				</a>
+			</section>
+		) : (
+			<section class="content-row gutter-x flex flex-col gap-8 py-12 md:py-16">
+				<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+
+				<div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+					<aside
+						aria-labelledby="checkout-summary-heading"
+						class="flex flex-col gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6 lg:sticky lg:top-8 lg:order-2"
+					>
+						<h2 id="checkout-summary-heading" class="text-heading-3 font-bold text-text-primary">
+							{summary.heading}
+						</h2>
+						<dl class="flex flex-col gap-3 text-body">
+							<div class="flex justify-between gap-4">
+								<dt class="text-text-secondary">{summary.robotLabel}</dt>
+								<dd class="text-right font-medium text-text-primary">{result.robotName}</dd>
+							</div>
+							<div class="flex justify-between gap-4">
+								<dt class="text-text-secondary">{summary.offerLabel}</dt>
+								<dd class="text-right font-medium text-text-primary">{checkoutOfferLabels[result.offer]}</dd>
+							</div>
+							<div class="flex justify-between gap-4 border-t-1 border-border-subtle pt-3">
+								<dt class="font-medium text-text-primary">{summary.totalLabel}</dt>
+								<dd class="font-mono text-heading-3 font-bold text-text-primary">{formatBrl(result.amountCents)}</dd>
+							</div>
+						</dl>
+						<p class="text-body-sm text-text-secondary">
+							{withdrawalNote.text.value}{' '}
+							<a href={withdrawalNote.href} class="font-medium text-brand-primary underline">
+								{withdrawalNote.linkLabel}
+							</a>
+						</p>
+					</aside>
+
+					<div class="flex flex-col gap-8 lg:order-1">
+						<p
+							id="checkout-error"
+							role="alert"
+							hidden
+							tabindex="-1"
+							class="rounded-md bg-danger-subtle px-4 py-3 text-body-sm text-danger focus:outline-none"
+						/>
+
+						<form id="checkout-form" novalidate class="flex flex-col gap-8">
+							<input type="hidden" name="reference" value={result.reference} />
+
+							<fieldset class="flex flex-col gap-5">
+								<legend class="mb-2 text-heading-3 font-bold text-text-primary">{buyerHeading}</legend>
+								<p class="text-body-sm text-text-secondary">{buyerIntro}</p>
+								{buyerSpecs.map((spec) => {
+									const copy = buyerFields[spec.name];
+									const describedBy = [copy.hint ? `checkout-${spec.name}-hint` : null, `checkout-${spec.name}-error`]
+										.filter(Boolean)
+										.join(' ');
+									return (
+										<div class="flex flex-col gap-2">
+											<label for={`checkout-${spec.name}`} class={labelClass}>
+												{copy.label}
+											</label>
+											<input
+												id={`checkout-${spec.name}`}
+												type={spec.type}
+												name={spec.name}
+												autocomplete={spec.autocomplete}
+												inputmode={spec.inputmode}
+												maxlength={spec.maxlength}
+												aria-required="true"
+												aria-describedby={describedBy}
+												class={inputClass}
+											/>
+											{copy.hint && (
+												<p id={`checkout-${spec.name}-hint`} class="text-body-sm text-text-tertiary">
+													{copy.hint}
+												</p>
+											)}
+											<p id={`checkout-${spec.name}-error`} hidden class="text-body-sm text-danger" />
+										</div>
+									);
+								})}
+							</fieldset>
+
+							<fieldset class="flex flex-col gap-3">
+								<legend class="mb-2 text-heading-3 font-bold text-text-primary">{methodHeading}</legend>
+								{displayMethods.map((method, index) => (
+									<label class="flex cursor-pointer flex-col gap-1 rounded-md border-w-1 border-border-subtle bg-surface-raised px-4 py-3 has-[:checked]:border-border-accent">
+										<span class="flex items-center gap-3">
+											<input
+												type="radio"
+												name="method"
+												value={method}
+												checked={index === 0}
+												aria-describedby={`checkout-method-${method}-note`}
+												class="size-5 shrink-0 accent-brand-primary"
+											/>
+											<span class="text-body font-medium text-text-primary">{methods[method].label}</span>
+										</span>
+										<span id={`checkout-method-${method}-note`} class="pl-8 text-body-sm text-text-secondary">
+											{methods[method].note}
+										</span>
+									</label>
+								))}
+							</fieldset>
+						</form>
+
+						{/* Kept mounted and hidden with CSS while another method is chosen: Appmax JS binds to it once, at init. */}
+						<form
+							id="card-form"
+							method="POST"
+							data-appmax-checkout
+							novalidate
+							hidden={displayMethods[0] !== 'card'}
+							aria-labelledby="checkout-card-heading"
+							class="flex flex-col gap-5"
+						>
+							<h2 id="checkout-card-heading" class="text-heading-3 font-bold text-text-primary">
+								{cardHeading}
+							</h2>
+							<div class="grid gap-5 sm:grid-cols-3">
+								{cardSpecs.map((spec) => (
+									<div class={`flex flex-col gap-2 ${spec.span}`}>
+										<label for={`checkout-${spec.name}`} class={labelClass}>
+											{spec.label}
+										</label>
+										<input
+											id={`checkout-${spec.name}`}
+											type="text"
+											name={spec.name}
+											autocomplete={spec.autocomplete}
+											inputmode={spec.inputmode}
+											maxlength={spec.maxlength}
+											class={inputClass}
+										/>
+									</div>
+								))}
+							</div>
+							<p class="text-body-sm text-text-tertiary">{securityNote.value}</p>
+						</form>
+
+						{/* Appmax JS's IP trigger for a JS-driven flow: an empty hidden customer form. */}
+						<form data-appmax-customer hidden />
+
+						<button
+							id="checkout-submit"
+							type="submit"
+							form="checkout-form"
+							class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover disabled:opacity-60"
+						>
+							{payLabel}
+						</button>
+					</div>
+				</div>
+			</section>
+		)
+	}
+</BaseLayout>
+
+{
+	clientConfig && (
+		<>
+			<script id="checkout-config" type="application/json" set:html={JSON.stringify(clientConfig)} />
+			<script is:inline src={appmaxScriptUrl(env.APPMAX_ENV)} />
+		</>
+	)
+}
+
+<script>
+	import { initCheckoutForm } from '../shared/checkout-form';
+
+	initCheckoutForm();
+</script>

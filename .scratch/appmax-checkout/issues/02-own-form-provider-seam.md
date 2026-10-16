@@ -13,14 +13,21 @@ Design (adjust if the code asks for it, but keep these properties):
 
 **Blocked by:** 01.
 
-**Status:** ready-for-agent
+**Status:** done
 
 TDD seam: `resolveCheckout` against real D1 with the Stripe path mocked at `fetch` as today; a fake own-form provider is not needed, `PAYMENT_PROVIDER` unset selects Appmax.
 
-- [ ] `PAYMENT_PROVIDER=stripe`: `/checkout` still creates the session, inserts the pending row and redirects, exactly as before
-- [ ] Appmax: `/checkout` for Compra and Anual returns the form data (methods from `paymentMethodsFor`, price from the catalog, fresh `reference`) and inserts nothing
-- [ ] Appmax Mensal returns `unavailable`; unknown robot or offer is still 400, an already active Licença for the session's Cliente still 409
-- [ ] A tampered price-like query param is ignored (ADR-0006), covered by a test
-- [ ] `createHostedCheckoutSession` and its mocks are gone; `/payment-links` appears nowhere in `src/`
-- [ ] Comments that call the checkout hosted are corrected
-- [ ] Typecheck and the full test suite pass
+- [x] `PAYMENT_PROVIDER=stripe`: `/checkout` still creates the session, inserts the pending row and redirects, exactly as before
+- [x] Appmax: `/checkout` for Compra and Anual returns the form data (methods from `paymentMethodsFor`, price from the catalog, fresh `reference`) and inserts nothing
+- [x] Appmax Mensal returns `unavailable`; unknown robot or offer is still 400, an already active Licença for the session's Cliente still 409
+- [x] A tampered price-like query param is ignored (ADR-0006), covered by a test
+- [x] `createHostedCheckoutSession` and its mocks are gone; `/payment-links` appears nowhere in `src/`
+- [x] Comments that call the checkout hosted are corrected
+- [x] Typecheck and the full test suite pass
+
+## Comments
+
+- The one-active-Licença 409 no longer exists: ADR-0008 allows buying the same Robô again, so `resolveCheckout` keeps today's behavior (no 409) and a test covers the repeat purchase getting the form.
+- Mensal: the D1 catalog cannot sell it (ADR-0008 standby), so on Stripe it stays a 400 as before. On Appmax a published Robô with `offer=monthly` answers `unavailable` (checked before the catalog lookup); an unknown Robô is still 400.
+- The `/checkout` route is now an `.astro` page, which a unit test cannot call; the "price-like param ignored" check moved to `readCheckoutQuery`, the one place that reads the URL.
+- `CheckoutForm` also carries `robotName` for the order summary (04).

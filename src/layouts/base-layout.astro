@@ -26,9 +26,12 @@ export type Props = {
 	// `account` swaps the marketing header and footer for the customer-area shell (/conta);
 	// `admin` for the admin shell (/admin, storefront-v2 04), which is also kept out of search.
 	shell?: 'site' | 'account' | 'admin';
+	// `false` drops the analytics beacon: /checkout loads no third-party script but Appmax JS,
+	// which tokenizes the card fields (ADR-0007 "Keep the page free of other third-party scripts").
+	analytics?: boolean;
 };
 
-const { title, description, shell = 'site' } = Astro.props;
+const { title, description, shell = 'site', analytics = true } = Astro.props;
 const appShell = shell !== 'site';
 
 const siteName = 'Robô Trader';
@@ -64,7 +67,7 @@ const fullTitle = `${title} · ${siteName}`;
 		}
 
 		{
-			cfBeaconToken && (
+			analytics && cfBeaconToken && (
 				<script
 					defer
 					src="https://static.cloudflareinsights.com/beacon.min.js"

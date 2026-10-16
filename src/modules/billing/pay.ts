@@ -22,8 +22,14 @@
  * the token or any buyer field; Sentry gets the purchase id and reason codes only.
  *
  * A failed attempt's row stays `pending` and inert (the confirmation page treats a stale
- * `pending` as retry-from-catalog). Every failure after the INSERT answers with a fresh
- * `reference`, so the form's retry is a new attempt rather than a replay of the dead one.
+ * `pending` as retry-from-catalog). Which failures answer with a fresh `reference` is the
+ * double-charge guard:
+ * - before the payment call (customer, order, order id) nothing can have been charged, so the
+ *   502 carries a fresh `reference` and the form's retry is a new attempt;
+ * - a refusal (402: declined card, order `cancelado`) is final at Appmax, so a fresh `reference`;
+ * - any other failure of the payment call itself (5xx, timeout, unreadable answer) may have
+ *   charged: the 502 carries no `reference`, the form keeps its own, and the retry is a repeated
+ *   POST that lands on this attempt's confirmation page and calls nothing at Appmax.
  */
 
 import * as Sentry from '@sentry/cloudflare';
@@ -140,8 +146,14 @@ function reasonOf(failure: AppmaxFailure | { ok: false; reason: 'not_authorized'
 
 const confirmationUrl = (reference: string) => `/checkout/confirmacao?ref=${reference}`;
 
+/** Before the payment call: nothing was charged, the retry may be a new attempt. */
 function unavailable(): PayResult {
 	return { ok: false, status: 502, code: 'provider_unavailable', reference: crypto.randomUUID() };
+}
+
+/** After the payment call was sent: Appmax may have charged, so the retry must replay this attempt. */
+function unavailableAfterPayment(): PayResult {
+	return { ok: false, status: 502, code: 'provider_unavailable' };
 }
 
 export async function pay(env: PayEnv, params: { body: unknown; ip: string | null }): Promise<PayResult> {
@@ -218,7 +230,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 			}
 			if (!paid.ok) {
 				report('Appmax card payment failed', { purchase_id: purchaseId, reason: reasonOf(paid) });
-				return unavailable();
+				return unavailableAfterPayment();
 			}
 			break;
 		}
@@ -226,7 +238,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 			const paid = await payPix(env, { orderId: order.orderId, document: buyer.document });
 			if (!paid.ok) {
 				report('Appmax Pix payment failed', { purchase_id: purchaseId, reason: reasonOf(paid) });
-				return unavailable();
+				return unavailableAfterPayment();
 			}
 			await storeInstructions(env, purchaseId, paid.pix);
 			break;
@@ -235,7 +247,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 			const paid = await payBoleto(env, { orderId: order.orderId, document: buyer.document });
 			if (!paid.ok) {
 				report('Appmax Boleto payment failed', { purchase_id: purchaseId, reason: reasonOf(paid) });
-				return unavailable();
+				return unavailableAfterPayment();
 			}
 			await storeInstructions(env, purchaseId, paid.boleto);
 			break;

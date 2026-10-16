@@ -13,8 +13,10 @@
  * - A checkout that came from the cart empties the cart store only after the pay endpoint
  *   accepted the payment, right before navigating to the confirmation page (storefront-v2 11);
  *   a failure keeps the cart.
- * - A declined card or an unavailable provider answers with a fresh `reference` (a refused
- *   Appmax order cannot be paid again); the hidden field takes it before the retry.
+ * - The hidden `reference` changes only when the pay endpoint sends a new one: a declined card
+ *   (a refused Appmax order cannot be paid again) or a 502 before any payment was sent. A 502
+ *   after the payment call carries none, so the page keeps the reference and the retry replays
+ *   that attempt (its confirmation page) instead of risking a second charge.
  */
 
 import { normalizeBuyerInput, type BuyerField } from '../modules/billing/buyer-input';
@@ -207,6 +209,7 @@ export function initCheckoutForm(): void {
 				window.location.assign(body.redirectUrl);
 				return;
 			}
+			// Never minted here: only the server knows whether the failed attempt may have charged.
 			if (typeof body.reference === 'string') reference.value = body.reference;
 			setBusy(false);
 			if (body.code === 'invalid_buyer' && body.fieldErrors) showFieldErrors(body.fieldErrors);

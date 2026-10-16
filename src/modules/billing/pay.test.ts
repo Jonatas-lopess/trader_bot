@@ -272,6 +272,8 @@ describe('pay (POST /checkout/pay)', () => {
 			expect(row?.status).toBe('pending');
 			expect(JSON.stringify(row)).not.toContain(CARD_TOKEN);
 		});
+
+	});
 	});
 
 	describe('Appmax failures', () => {
@@ -307,6 +309,37 @@ describe('pay (POST /checkout/pay)', () => {
 
 			expect(result).toMatchObject({ ok: false, status: 502 });
 			expect(await rowOf(request.reference)).toMatchObject({ status: 'pending', appmax_order_id: '9001', payment_instructions: null });
+		});
+
+		it.each([
+			['card', 'a 5xx', { 'credit-card': () => json({ message: 'down' }, 503) }],
+			['card', 'a timeout', { 'credit-card': () => Promise.reject(new TypeError('network')) }],
+			['pix', 'a 5xx', { pix: () => json({}, 500) }],
+			['boleto', 'a 5xx', { boleto: () => json({}, 502) }],
+		] as const)(
+			'%s payment answered by %s: 502 without a fresh reference, so the retry replays this attempt and charges nothing again',
+			async (method, _label, failure) => {
+				const calls = mockAppmax(failure as Routes);
+				const request = body({ method, ...(method === 'card' ? { token: CARD_TOKEN } : {}) });
+
+				const failed = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+				const retried = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+				expect(failed).toEqual({ ok: false, status: 502, code: 'provider_unavailable' });
+				expect(retried).toEqual({ ok: true, redirectUrl: `/checkout/confirmacao?ref=${request.reference}` });
+				expect(pathsOf(calls).filter((path) => path.startsWith('/v1/payments/'))).toHaveLength(1);
+			}
+		);
+
+		it('order creation fails: 502 with a fresh reference, since no payment was sent', async () => {
+			mockAppmax({ orders: () => json({ message: 'down' }, 503) });
+			const request = body();
+
+			const result = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			if (result.ok || result.status !== 502) throw new Error('expected a 502');
+			expect(result.reference).toMatch(/^[0-9a-f-]{36}$/);
+			expect(result.reference).not.toBe(request.reference);
 		});
 
 		it('an auth failure is a 502', async () => {

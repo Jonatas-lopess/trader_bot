@@ -18,8 +18,8 @@ TDD seam: `pay` with mocked Appmax `fetch`: row counts, one order, ids on all ro
 - [x] A 3-Licença cart creates 3 `pending` rows, one Appmax order with the right products and total
 - [x] Retry of the same POST creates nothing new
 - [x] Single-item URL unchanged
-- [ ] Cart emptied only after a successful pay (in code, not exercised in a browser; see Comments)
-- [ ] Typecheck and the full test suite pass (typecheck and the touched test files pass; the full suite runs once at the end of the batch, recorded in ticket 15)
+- [x] Cart emptied only after a successful pay (verified headless in ticket 15's browser run: a 502 keeps the cart, a 200 empties it)
+- [x] Typecheck and the full test suite pass (after merging `main`; see ticket 15 for how the run went)
 
 ## Comments
 
@@ -30,6 +30,6 @@ TDD seam: `pay` with mocked Appmax `fetch`: row counts, one order, ids on all ro
 - `appmax_order_id` is written on every row (`WHERE checkout_id = ?`) before the payment call; fewer rows updated than inserted means no payment (502). **Pix/Boleto instructions are stored on every row of the checkout**, so whichever row the status read meets first answers for the group.
 - `createOrder` now takes `products[]` (from `expandLines`, one entry per line with its quantity); `ExpandedCheckout` also returns the priced `lines`.
 - The cart page's "Finalizar compra" is now a link (set by `cart-page.ts` on each render and again on click, so a quantity change still being re-priced is not lost), disabled with `aria-disabled` and described by the unavailable note while any line is unavailable. `checkoutPendingNote` is gone.
-- The checkout script sends `lines` and, only for a checkout that came from the cart, clears the cart store after a `200 {ok, redirectUrl}` and before navigating. A 402/429/502 or network error keeps the cart. Not exercised in a browser in this run, so that box stays open.
+- The checkout script sends `lines` and, only for a checkout that came from the cart, clears the cart store after a `200 {ok, redirectUrl}` and before navigating. A 402/429/502 or network error keeps the cart. Verified headless in ticket 15's browser run (pay answered by a route intercept).
 - Order summary on `/checkout` lists each line (name, `Oferta · N licenças`, line price) and the total; Anual in the order puts Pix first.
 

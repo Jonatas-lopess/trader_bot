@@ -17,6 +17,7 @@ Verify, recording each result in `docs/ops/appmax-sandbox-checks.md` and PLANNIN
 - `GET /v1/orders/{id}`: `amounts.sub_total` equals `unit_value` in cents (otherwise every legitimate payment lands `rejected`), `customer.document_number` non-null per method, payment method field.
 - Webhook payloads: real `data` field names for the order id (read from `webhook_deliveries`), and whether `external_key` carries anything usable; update `parseWebhookPayload`.
 - `recusado_por_risco` meaning (07's open decision).
+- A cart order (storefront-v2 11 to 13): `POST /v1/orders` with two `products[]` entries, one with `quantity` 2; `amounts.sub_total` equals the sum of `quantity * unit_value` (otherwise every cart lands `rejected`); the webhook activates all rows; what a **partial** refund of one product does to the order status (`docs/ops/withdrawal-refund.md`, "One Licença of a cart").
 - Appmax JS: `init` behavior with Pix/Boleto selected, in our `preventDefault` submit; script host for production.
 - Whether the sandbox lets us read a source IP for webhooks (feeds the `APPMAX_WEBHOOK_IPS` owner decision).
 

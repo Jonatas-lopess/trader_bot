@@ -11,10 +11,10 @@
 
 **Status:** done
 
-- [x] Cart purchase shows all Robôs and the right aggregate state for card, Pix and Boleto (view-model tested; the rendered page not checked in a browser, see Comments)
-- [ ] Each Licença gets its own account entry, compile and download link (per-Licença e-mail tested here; the full chain is ticket 15's end-to-end test)
+- [x] Cart purchase shows all Robôs and the right aggregate state for card, Pix and Boleto (view-model tested; page checked headless at 390 and 1280 in ticket 15 for Pix, Boleto, card review, active and rejected)
+- [x] Each Licença gets its own account entry, compile and download link (per-Licença e-mail tested here; the full chain in ticket 15's `cart-e2e.test.ts`)
 - [x] Single-item confirmation unchanged
-- [ ] Typecheck and the full test suite pass (typecheck and the touched test files pass; the full suite runs once at the end of the batch, recorded in ticket 15)
+- [x] Typecheck and the full test suite pass (after merging `main`; see ticket 15 for how the run went)
 
 ## Comments
 
@@ -25,5 +25,5 @@
 - Delivery: `dispatch.ts`/`activate.ts` were already per Licença (`license_id = purchase_id`) and nothing is sent before a Licença is `active`. The download e-mail now names the Robô (catalog name, slug fallback) in the subject and first line, plus the Corretora account, so a Cliente who receives several links in a row can tell them apart (`downloadLinkEmailFor` in `content/emails.ts`). One e-mail per Licença, not batched.
 - `/conta` already lists one card per Licença with its own account form (01); the three-Licença case is asserted in ticket 15's end-to-end test.
 - The "Entrar na área do cliente" step is unchanged (still the inert label from checkout-webhooks 05; linking it to `/login` was not asked here).
-- Not done: the visual check of `/checkout/confirmacao` for a cart at 390 and 1280 px.
+- The visual check of `/checkout/confirmacao` for a cart at 390 and 1280 px was done headless in ticket 15's run; a real-device check is still the owner's.
 

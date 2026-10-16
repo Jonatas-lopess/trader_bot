@@ -18,7 +18,7 @@ TDD seam: webhook with D1 real and a mocked authoritative refetch: N-row success
 - [x] One Cliente, one login link, N Licenças after activation
 - [x] Redelivery and out-of-order events leave the same final state
 - [x] Single-row orders behave exactly as before
-- [ ] Typecheck and the full test suite pass (typecheck and the touched test files pass; the full suite runs once at the end of the batch, recorded in ticket 15)
+- [x] Typecheck and the full test suite pass (after merging `main`; see ticket 15 for how the run went)
 
 ## Comments
 

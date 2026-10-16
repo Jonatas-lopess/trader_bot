@@ -9,8 +9,11 @@ The business sells the right to run the robot against a customer's own brokerage
 
 ## What it does (0.1 scope)
 
-- Landing and `/catalog` pages (pt-BR only)
+- Landing and `/catalog` pages (pt-BR only): compact card grid, "Saiba mais" modal, catalog in D1 (ADR-0008)
+- Cart (`/carrinho`, browser-side, never holds a price) paid in one checkout: one Appmax order, one Licença per unit (ADR-0008)
 - Own checkout form with card, Boleto and Pix on Appmax's API (card tokenized in the browser by Appmax JS, ADR-0007)
+- Admin area (`/admin`, magic link + `ADMIN_EMAILS`): create, edit, publish and archive Robôs; resend failed e-mails
+- Encomenda page (`/encomenda`): custom-work request stored, e-mailed to the operator and offered on WhatsApp
 - Magic-link authentication (no passwords)
 - Customer area: license status, key/expiry, Corretora account, cancel Mensal subscription
 - Robot delivery via a signed, expiring download link (email), per license
@@ -39,6 +42,12 @@ pnpm exec wrangler d1 execute trader-bot-db --local --file=scripts/seed-catalog.
 
 `scripts/seed-catalog.sql` is dev-only and re-runnable. It is never a migration and has no
 production path.
+
+To try the cart and checkout locally, run `pnpm build` then `pnpm preview`, add Robôs to the cart
+on `/catalog` and open `/carrinho`. "Finalizar compra" goes to `/checkout?line=<robô>:<oferta>:<qtd>&...`.
+Paying needs Appmax sandbox credentials (`.dev.vars`); the Stripe test driver
+(`PAYMENT_PROVIDER=stripe`, ADR-0005) takes one item per checkout and answers a larger cart with
+"Carrinho indisponível".
 
 ## Docs
 
@@ -73,6 +82,12 @@ Built and done, per `TODO.md`:
   Remaining: re-check against the Figma nodes once the quota resets (ticket 06).
 - **catalog-pivot** — robot catalog, checkout by robot + offer with server-side price,
   webhook amount check, per-Licença delivery. See `TODO.md` for what remains.
+- **appmax-checkout** — own checkout form on Appmax (card, Pix, Boleto), pay endpoint,
+  confirmation states, webhook on the real events. Sandbox verification (08) waits on the
+  Appmax account.
+- **storefront-v2** — catalog in D1 with the admin area, card grid and "Saiba mais" modal,
+  repeat purchases, cart paid in one order (N Licenças, webhook over the order group),
+  Encomenda page, e-mail dead letter.
 
 Not yet built: **license-server** (automated license issuance, `needs-triage`, blocked on the payload
 decision — see ADR-0004). Deploy to production is blocked on PLANNING.md §12

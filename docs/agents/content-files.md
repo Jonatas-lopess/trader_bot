@@ -41,6 +41,12 @@ labels, the regulatory note) and builds cards from the rows the page loaded
 (`buildCatalogCards`), so it never imports Robôs. Pages that read D1 are not prerendered
 (`/catalog`); the landing's catalog band is a plain link for that reason.
 
+The cart and its checkout follow the same rule: `cart.ts` holds the `/carrinho` copy,
+`checkout-form.ts` the checkout copy, and the wording of an order line
+(`summary.lineDetail`, "Licença Perpétua · 2 licenças") is defined once there and reused by the
+confirmation page (`orderItems` in `checkout-confirmation.ts`). Robô names and prices on those
+pages come from D1, never from a content file or the browser.
+
 ## The launch-blocking marker
 
 Some copy in the Figma frames ships to the layout but is not approved to go live:

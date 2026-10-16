@@ -5,7 +5,7 @@ Passo a passo para percorrer o site inteiro e anotar o que achar estranho.
 Use uma janela do navegador normal, em computador e depois no celular (ou reduza a janela). Várias telas mudam de layout no celular.
 
 **O que está provisório (não precisa reportar):**
-- Nomes dos robôs ("Robô Exemplo A/B/C"), preços, descrições e perguntas do FAQ são texto de exemplo.
+- Nomes dos robôs ("Robô Exemplo A/B/C/D"), preços, descrições e perguntas do FAQ são texto de exemplo. Os robôs são cadastrados na área de administração (`/admin`), que só abre para os e-mails autorizados.
 - O pagamento usa o modo de teste do Stripe. **Nenhuma cobrança é real.**
 - Botões "Contato" e "Falar com o suporte" aparecem desativados de propósito.
 - Termos de Uso e Política de Privacidade ainda não têm o texto jurídico final.
@@ -28,14 +28,24 @@ Use uma janela do navegador normal, em computador e depois no celular (ou reduza
    - [ ] "Login"
    - [ ] "Comprar agora"
 3. **Catálogo** — abra `https://trader-bot.jonataslopes-011.workers.dev/catalog`.
-   - [ ] Navegue pelo carrossel de robôs (setas, ou arraste no celular)
-   - [ ] **Robô Exemplo A**: tem três ofertas (compra única, anual, mensal)
-   - [ ] **Robô Exemplo B**: tem só compra única
-   - [ ] **Robô Exemplo C**: aparece como "Em breve", sem botão de compra
+   - [ ] Os robôs aparecem em cartões numa grade (uma coluna no celular)
+   - [ ] Cada cartão mostra nome, resumo, preço principal, "Saiba mais" e "Adicionar ao carrinho"
+   - [ ] "Saiba mais" abre uma janela com a descrição completa, Estratégia, Mercado, Perfil e os preços; feche com Esc, clicando fora ou no X
+   - [ ] Um robô "Em breve" abre a janela sem preços e sem botão de compra
    - [ ] Aviso regulatório no fim da página
-4. **Termos de Uso** e **Política de Privacidade** — abra os dois pelo rodapé.
+4. **Carrinho** — no catálogo, adicione o mesmo robô duas vezes e outro robô uma vez.
+   - [ ] O ícone do carrinho no topo mostra o número de itens
+   - [ ] Abra o carrinho (ícone no topo ou `/carrinho`): cada item com nome, oferta, quantidade, preço e o total
+   - [ ] Use `+`, `−` e "Remover": o total muda
+   - [ ] Recarregue a página: o carrinho continua. Abra o site numa janela nova: o carrinho começa vazio
+   - [ ] "Finalizar compra" leva à tela de pagamento com **todos** os itens no resumo e o total
+   - [ ] No ambiente de teste com Stripe, um carrinho com mais de um item mostra "Carrinho indisponível" (esperado: o Stripe de teste aceita um item por compra). O pagamento do carrinho inteiro só funciona com o Appmax.
+5. **Encomenda** — abra "Encomenda" no menu.
+   - [ ] Preencha e envie: aparece a confirmação e o botão "Continuar no WhatsApp"
+   - [ ] Envie sem preencher nada: os erros aparecem e o que você digitou continua lá
+6. **Termos de Uso** e **Política de Privacidade** — abra os dois pelo rodapé.
    - [ ] Confira se abrem e se o texto está legível
-5. **Rodapé** — clique em cada link.
+7. **Rodapé** — clique em cada link.
    - [ ] "Contato" aparece desativado (esperado)
    - [ ] Confira o aviso sobre o direito de arrependimento de 7 dias
 
@@ -43,7 +53,7 @@ Use uma janela do navegador normal, em computador e depois no celular (ou reduza
 
 Esta parte cria o cliente e libera a área do cliente.
 
-1. No catálogo, escolha **Robô Exemplo A** e clique para comprar a oferta **Mensal**.
+1. No catálogo, abra "Saiba mais" do **Robô Exemplo A** e clique para comprar a oferta **Anual** (uma licença só).
 2. Você vai para a tela de pagamento do Stripe (modo de teste). Preencha:
    - E-mail: **o e-mail que você vai usar para entrar na parte 4**
    - Cartão: `4242 4242 4242 4242`
@@ -86,7 +96,7 @@ https://trader-bot.jonataslopes-011.workers.dev/login/dev?email=<SEU-EMAIL-DA-CO
 
 1. **Visão geral**
    - [ ] Título "Meus produtos" e selo de Licenças ativas (só aparece se houver alguma ativa)
-   - [ ] Um cartão por compra, mostrando o nome do robô e a oferta (ex.: "Oferta Mensal")
+   - [ ] Um cartão por compra, mostrando o nome do robô e a oferta (ex.: "Oferta Anual")
    - [ ] Painel lateral com o cartão de suporte (botão desativado, esperado) e a nota sobre o servidor
 2. **Cartão "Conta pendente"** (estado logo após a compra)
    - [ ] Formulário pedindo o número da conta na corretora
@@ -94,9 +104,7 @@ https://trader-bot.jonataslopes-011.workers.dev/login/dev?email=<SEU-EMAIL-DA-CO
    - [ ] Digite um número válido, só dígitos e sem zero à esquerda (ex.: `1234567`) e envie: deve abrir uma **janela de confirmação**
    - [ ] Confirme: a página recarrega com o aviso verde "Recebemos o número da conta…"
    - [ ] O cartão passa a **"Em preparo"**
-3. **Cancelar assinatura** (só existe na oferta **Mensal**)
-   - [ ] Clique em "Cancelar assinatura": deve abrir uma janela de confirmação
-   - [ ] Confirme e veja como o cartão fica depois
+3. **Cancelar assinatura** — só existe na oferta Mensal, que está fora de venda por enquanto. Nas compras Compra e Anual o botão não aparece (esperado).
 4. **Sair** — use o botão "Sair" no topo da área do cliente.
    - [ ] Você volta ao login
    - [ ] Abra `https://trader-bot.jonataslopes-011.workers.dev/conta` de novo: deve mandar para o login, porque a sessão acabou
@@ -117,14 +125,16 @@ Estas telas dependem de ações internas. Peça ao Jonatas para colocar a sua co
 ## Checklist final de telas vistas
 
 - [ ] Página inicial
-- [ ] Catálogo (A, B e C)
+- [ ] Catálogo (grade e janela "Saiba mais")
+- [ ] Carrinho (com itens, vazio e com item indisponível)
+- [ ] Encomenda (formulário e confirmação)
 - [ ] Termos de Uso
 - [ ] Política de Privacidade
 - [ ] Pagamento (Stripe, modo de teste)
 - [ ] Confirmação do pagamento
 - [ ] Login (normal, enviado e erro)
 - [ ] Meus produtos (conta pendente e em preparo)
-- [ ] Janelas de confirmação (conta da corretora e cancelamento)
+- [ ] Janela de confirmação da conta da corretora
 
 ## Para devolver ao Jonatas
 

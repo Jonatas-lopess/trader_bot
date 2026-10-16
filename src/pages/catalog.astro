@@ -21,6 +21,7 @@ import {
 	pageTitle,
 	regulatoryNote,
 } from '../content/catalog-page';
+import { listPublishedGalleries } from '../modules/catalog/gallery';
 import { listPublishedWithOffers } from '../modules/catalog/robots';
 import { requireAdmin } from '../modules/identity/admin';
 
@@ -29,7 +30,12 @@ export const prerender = false;
 // An admin also sees drafts, marked: the preview of a Robô before it is published (ADR-0008).
 const admin = await requireAdmin(Astro.request, env);
 if (admin.ok) Astro.response.headers.set('Cache-Control', 'private, no-store');
-const cards = buildCatalogCards(await listPublishedWithOffers(env, { includeDrafts: admin.ok }));
+// The gallery is read with the same draft flag, so a draft's media shows only in an admin's preview.
+const [robots, galleries] = await Promise.all([
+	listPublishedWithOffers(env, { includeDrafts: admin.ok }),
+	listPublishedGalleries(env, { includeDrafts: admin.ok }),
+]);
+const cards = buildCatalogCards(robots, galleries);
 ---
 
 <BaseLayout title={pageTitle} description={pageDescription}>

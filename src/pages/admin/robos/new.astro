@@ -13,6 +13,7 @@ import { gateAdmin } from '../../../modules/identity/admin';
 import {
 	backToListLabel,
 	createSubmitLabel,
+	gallery,
 	newRobotHeading,
 	newRobotIntro,
 	newRobotTitle,
@@ -45,5 +46,8 @@ if (Astro.request.method === 'POST') {
 		</div>
 
 		<AdminRobotForm values={values} errors={errors} mode="create" submitLabel={createSubmitLabel} />
+
+		{/* No gallery here: it needs an existing Robô (robot-gallery 01). */}
+		<p class="max-w-3xl border-t border-border-subtle pt-8 text-body-sm text-text-secondary">{gallery.newRobotNote}</p>
 	</section>
 </BaseLayout>

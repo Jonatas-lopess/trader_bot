@@ -1,12 +1,18 @@
 ---
-// /admin/robos/<slug> — edit a Robô: fields, Ofertas and status.
+// /admin/robos/<slug> — edit a Robô: fields, Ofertas and status, then its gallery.
 //
 // .scratch/storefront-v2/issues/05-admin-catalog-crud.md. GET shows the stored values (the
 // slug read-only once a purchase references it); POST saves through `updateRobot` and
 // redirects with a flash (303), or re-renders with the typed values and field errors (422).
 // An unknown slug is a plain 404, like every non-admin result.
+//
+// Below the form sits the gallery (.scratch/robot-gallery/spec.md, admin-gallery.astro): its own
+// forms post to `/admin/robos/<slug>/galeria/*` and come back here at `#galeria` with `?ok=` or
+// `?error=`, looked up in src/content/admin.ts (nothing typed is reflected).
 import { env } from 'cloudflare:workers';
+import AdminGallery from '../../../components/admin-gallery.astro';
 import AdminRobotForm from '../../../components/admin-robot-form.astro';
+import ConfirmDialog from '../../../components/confirm-dialog.astro';
 import BaseLayout from '../../../layouts/base-layout.astro';
 import {
 	getRobotForAdmin,
@@ -16,11 +22,14 @@ import {
 	updateRobot,
 	type FieldErrors,
 } from '../../../modules/catalog/admin';
+import { listGallery } from '../../../modules/catalog/gallery';
 import { gateAdmin } from '../../../modules/identity/admin';
 import {
 	backToListLabel,
 	editRobotHeading,
 	flashText,
+	galleryErrorText,
+	galleryFlashText,
 	robotsPageDescription,
 	saveSubmitLabel,
 	viewPublicLabel,
@@ -43,12 +52,18 @@ if (Astro.request.method === 'POST') {
 	values = readRobotForm(await Astro.request.formData());
 	const result = await updateRobot(env, slug, values);
 	if (result === null) return new Response(null, { status: 404 });
-	if (result.ok) return Astro.redirect(`/admin/robos/${result.slug}?ok=saved`, 303);
+	// The empty fragment stops a `#galeria` left by a gallery action from carrying over, so the
+	// saved flash at the top is what the admin sees.
+	if (result.ok) return Astro.redirect(`/admin/robos/${result.slug}?ok=saved#`, 303);
 	errors = result.errors;
 	Astro.response.status = 422;
 }
 
-const flash = flashText(Astro.url.searchParams.get('ok'));
+const okParam = Astro.url.searchParams.get('ok');
+const flash = flashText(okParam);
+const galleryFlash = galleryFlashText(okParam);
+const galleryError = galleryErrorText(Astro.url.searchParams.get('error'));
+const galleryItems = await listGallery(env, slug);
 const heading = editRobotHeading(robot.name);
 ---
 
@@ -63,5 +78,9 @@ const heading = editRobotHeading(robot.name);
 		{flash && <p class="max-w-3xl rounded-md border-w-1 border-success bg-success-subtle p-4 text-body text-text-primary" role="status">{flash}</p>}
 
 		<AdminRobotForm values={values} errors={errors} mode="edit" slugLocked={slugLocked} submitLabel={saveSubmitLabel} />
+
+		<AdminGallery slug={slug} items={galleryItems} flash={galleryFlash} error={galleryError} />
 	</section>
+
+	<ConfirmDialog />
 </BaseLayout>

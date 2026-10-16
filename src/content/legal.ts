@@ -67,12 +67,13 @@ export const termosDeUso: LegalPage = {
 /** Link target for every "7 dias para desistir da compra" statement. */
 export const withdrawalHref = `${termosDeUso.path}#${withdrawalAnchor}`;
 
-// Includes the Encomenda data (storefront-v2 14): name, e-mail and/or phone, the strategy text,
-// market and Corretora, stored in `custom_orders` and e-mailed to the operator, collected on
-// the basis of the contact consent ticked on /encomenda.
+// Includes the Encomenda data (storefront-v2 14, widened by 17): name, e-mail and/or phone, the
+// free-text description of what is wanted (a new Robô, an adjustment or other work), market and
+// Corretora, stored in `custom_orders` and e-mailed to the operator, collected on the basis of the
+// contact consent ticked on /encomenda.
 const dadosColetadosBody = launchBlocking(
-	'TODO — dados coletados pendentes de redação jurídica, incluindo os dados da Encomenda (nome, e-mail ou telefone, descrição da estratégia, mercado e Corretora), seu prazo de retenção e a forma de exclusão.',
-	'Placeholder — privacy text must come from the owner or a lawyer (PLANNING.md §9); must cover the Encomenda data stored in custom_orders (storefront-v2 14, ADR-0008)',
+	'TODO — dados coletados pendentes de redação jurídica, incluindo os dados da Encomenda (nome, e-mail ou telefone, descrição do que a pessoa precisa, mercado e Corretora), seu prazo de retenção e a forma de exclusão.',
+	'Placeholder — privacy text must come from the owner or a lawyer (PLANNING.md §9); must cover the Encomenda data stored in custom_orders (storefront-v2 14 and 17, ADR-0008)',
 );
 
 export const politicaDePrivacidade: LegalPage = {

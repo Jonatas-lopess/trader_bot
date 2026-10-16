@@ -1,7 +1,8 @@
 ---
 // /encomenda — src/pages/encomenda.astro
 //
-// .scratch/storefront-v2/issues/14-encomenda-page.md. A prerendered form; the script below posts
+// .scratch/storefront-v2/issues/14-encomenda-page.md, widened by 17 (any custom work, not only a
+// new Robô). A prerendered form; the script below posts
 // it as JSON to POST /encomenda/enviar (src/pages/encomenda/enviar.ts → modules/orders/encomenda.ts) and
 // swaps in the success panel with the "Continuar no WhatsApp" link. No price, no payment, no
 // account (CONTEXT.md — Encomenda). All copy comes from src/content/encomenda.ts.
@@ -58,9 +59,9 @@ const clientCopy = {
 };
 ---
 
-<BaseLayout title={pageTitle} description={pageDescription}>
+<BaseLayout title={pageTitle.value} description={pageDescription.value}>
 	<section class="content-row gutter-x mx-auto flex max-w-2xl flex-col gap-6 py-12 md:py-20">
-		<h1 class="text-heading-1 font-bold text-text-primary">{heading}</h1>
+		<h1 class="text-heading-1 font-bold text-text-primary">{heading.value}</h1>
 		<p class="text-body-lg text-text-secondary">{intro.value}</p>
 
 		<div

@@ -2,6 +2,7 @@
 
 Status: Accepted (2026-10-12), owner decisions after showing the site to the business partner.
 Revised the same day: Mensal on standby, "Saiba mais" is a modal, e-mails get a dead letter.
+Amended 2026-10-16: the Encomenda covers any custom work, not only a new Robô (below).
 Amends [ADR-0006](0006-catalog-pivot.md) in three places (below). Does **not** supersede
 [ADR-0003](0003-appmax-como-gateway.md), [ADR-0005](0005-stripe-test-driver.md) or
 [ADR-0007](0007-own-checkout-on-appmax.md); the cart rides on the own checkout of ADR-0007.
@@ -70,12 +71,20 @@ Cliente may hold several of the same Robô.** The customer area tells them apart
 account and purchase date. Amends the "Rental-to-Compra conversion" reasoning too: it no
 longer needs a uniqueness rule to be deferred behind.
 
-**Encomenda is a custom-Robô request, not a purchase.** A public form (name, contact,
-strategy description, market, Corretora) with no price and no payment. A submission is
+**Encomenda is a custom-work request, not a purchase** (first a custom-Robô request; widened by
+the amendment below). A public form (name, contact, strategy description, market, Corretora)
+with no price and no payment. A submission is
 stored in D1 first, then sent to the operator by e-mail (Resend) and offered as a prefilled
 WhatsApp message (`wa.me` link, opened by the Cliente: a Worker cannot send WhatsApp without
 the paid Business API, which is out of scope). Storing first means a failed e-mail does not
 lose the lead.
+
+*Amendment (2026-10-16, storefront-v2 17).* The Encomenda is a request for any custom work: a
+new Robô not in the Catálogo, an adjustment to a Robô, or something else. Wording only: the
+form keeps its fields (the free text, stored in `custom_orders.strategy`, now describes what is
+wanted), and the term, routes, module and table keep their names. It is still not a purchase,
+and an adjustment is not tied to a Licença: the form does not check that the sender owns the
+Robô they name.
 
 **Failed e-mails go to a dead letter.** A small `email_dead_letters` table records an e-mail
 whose send failed (recipient, subject, body, attempts, last error, timestamps), written by a

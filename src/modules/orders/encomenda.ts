@@ -1,7 +1,10 @@
 /**
- * Encomenda: a custom-Robô request — .scratch/storefront-v2/issues/14-encomenda-page.md,
- * CONTEXT.md, ADR-0008. A public form with no price and no payment; it never creates a Compra,
- * Licença or Cliente.
+ * Encomenda: a request for custom work (a new Robô, an adjustment to a Robô, or something else) —
+ * .scratch/storefront-v2/issues/14-encomenda-page.md, widened by 17; CONTEXT.md, ADR-0008. A
+ * public form with no price and no payment; it never creates a Compra, Licença or Cliente. An
+ * adjustment request is not checked against the sender's Licenças: the form does not know who
+ * owns which Robô. The field `strategy` is the main free text ("what you want"); its name, like
+ * the `custom_orders` column, predates the widening and is kept.
  *
  * `submitEncomenda` is the whole use case behind `POST /encomenda`: honeypot, validation,
  * per-IP rate limit, then INSERT into `custom_orders` and an e-mail to the operator through
@@ -176,15 +179,15 @@ export function genericWhatsappHref(env: Pick<EncomendaEnv, 'WHATSAPP_NUMBER'>):
 }
 
 function whatsappText(input: EncomendaInput | null): string {
-	if (input === null) return whatsappSummary.intro;
-	const lines = [whatsappSummary.intro, `${whatsappSummary.name}: ${input.name}`];
+	if (input === null) return whatsappSummary.intro.value;
+	const lines = [whatsappSummary.intro.value, `${whatsappSummary.name}: ${input.name}`];
 	if (input.market !== '') lines.push(`${whatsappSummary.market}: ${input.market}`);
 	if (input.corretora !== '') lines.push(`${whatsappSummary.corretora}: ${input.corretora}`);
 	lines.push(`${whatsappSummary.strategy}: ${input.strategy}`);
 	return lines.join('\n');
 }
 
-/** Plain text. The free-text strategy is indented so none of its lines can read as a header-style line of its own. */
+/** Plain text. The main free text is indented so none of its lines can read as a header-style line of its own. */
 function operatorBody(id: string, input: EncomendaInput): string {
 	const { labels } = operatorEmail;
 	return [

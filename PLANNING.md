@@ -27,7 +27,7 @@ authenticated customer area, in one codebase.
 
 - Landing page and `/catalog` page (replaces `/planos`), from the Figma wireframes; compact card grid, "Saiba mais" modal, cart (ADR-0008)
 - Admin area (`/admin`) for catalog CRUD, behind magic link + `ADMIN_EMAILS` (ADR-0008)
-- Encomenda page: custom-Robô request by e-mail and WhatsApp (ADR-0008)
+- Encomenda page: request for custom work (a new Robô, an adjustment to a Robô, or other work) by e-mail and WhatsApp (ADR-0008)
 - Checkout by `robot_id` + Oferta (Compra, Anual; Mensal on standby, ADR-0008), payment confirmation, purchase lifecycle
 - Magic-link authentication
 - Customer area: Licença status, expiry, Corretora account entry, cancel Assinatura
@@ -133,7 +133,7 @@ src/
 │   ├── billing/    purchases, payment provider, webhooks, dunning, cancellation
 │   ├── identity/   customers, magic-link tokens, sessions, admin gate
 │   ├── licensing/  licenses, expiry, Corretora account binding, binary storage, download tokens, dispatch
-│   └── orders/     Encomendas (custom-Robô requests): validation, rate limit, notification, WhatsApp link
+│   └── orders/     Encomendas (custom-work requests): validation, rate limit, notification, WhatsApp link
 └── shared/         ids, dates, environment bindings, D1 client, browser scripts, cart limits (pure, also imported by the server)
 ```
 
@@ -491,7 +491,8 @@ request a magic link at `/login` without a purchase (a bare `customers` row is c
 other visitor to `/admin` gets a 404.
 
 `ORDER_NOTIFY_EMAIL` and `WHATSAPP_NUMBER` (storefront-v2 14) configure `/encomenda`
-(`modules/orders/encomenda.ts`). `ORDER_NOTIFY_EMAIL` is where each Encomenda is e-mailed (reply-to
+(`modules/orders/encomenda.ts`). `ORDER_NOTIFY_EMAIL` is where each Encomenda (any custom-work
+request, storefront-v2 17) is e-mailed (reply-to
 the requester, through the e-mail dead letter); unset or invalid still stores the lead in
 `custom_orders` and logs a warning. `WHATSAPP_NUMBER` (digits, country code first) is the target
 of the success state's "Continuar no WhatsApp" link; unset falls back to the `launchBlocking`

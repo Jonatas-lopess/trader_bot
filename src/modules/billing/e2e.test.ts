@@ -33,7 +33,7 @@ async function startCheckout(orderId: string, method: 'card' | 'boleto'): Promis
 		if (url.endsWith('/v1/orders')) return json({ data: { order: { id: orderId, status: 'pendente' } } });
 		if (url.endsWith('/v1/payments/credit-card')) return json({ data: { order: { id: orderId, status: 'autorizado' } } });
 		if (url.endsWith('/v1/payments/boleto')) {
-			return json({ data: { boleto: { pdf_url: 'https://boleto.example/b.pdf', digitable_line: '3419', due_date: '2026-10-19' } } });
+			return json({ data: { boleto: { pdf_url: 'https://boleto.example/b.pdf', digitable_line: '3419', due_date: '2099-12-31' } } });
 		}
 		return outer(input, init);
 	});
@@ -87,7 +87,7 @@ describe('checkout-webhooks end to end', () => {
 		});
 
 		const reference = await startCheckout('ord_e2e_happy', 'card');
-		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'pending' });
+		expect(await getPurchaseStatus(env, reference)).toEqual({ ok: true, state: 'card_in_review' });
 
 		const webhook = await handleWebhook(env, JSON.stringify({ event: 'order_approved', order_id: 'ord_e2e_happy' }));
 		expect(webhook).toEqual({ status: 200 });

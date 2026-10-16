@@ -74,6 +74,8 @@ export type CheckoutPurchase = {
 	amountCents: number;
 	status: PurchaseStatus;
 	paymentMethod: string | null;
+	/** Raw JSON text of `purchases.payment_instructions` (migration 0016); untrusted, parsed by `status.ts`. */
+	paymentInstructions: string | null;
 };
 
 /**
@@ -83,7 +85,7 @@ export type CheckoutPurchase = {
  */
 export async function findByCheckout(env: LookupEnv, checkoutId: string): Promise<CheckoutPurchase[]> {
 	const { results } = await env.DB.prepare(
-		`SELECT id, robot_id, offer, amount_cents, status, payment_method FROM purchases
+		`SELECT id, robot_id, offer, amount_cents, status, payment_method, payment_instructions FROM purchases
 		WHERE checkout_id = ?1 OR (checkout_id IS NULL AND id = ?1)
 		ORDER BY created_at, id`
 	)
@@ -95,6 +97,7 @@ export async function findByCheckout(env: LookupEnv, checkoutId: string): Promis
 			amount_cents: number;
 			status: PurchaseStatus;
 			payment_method: string | null;
+			payment_instructions: string | null;
 		}>();
 	return results.map((row) => ({
 		id: row.id,
@@ -103,6 +106,7 @@ export async function findByCheckout(env: LookupEnv, checkoutId: string): Promis
 		amountCents: row.amount_cents,
 		status: row.status,
 		paymentMethod: row.payment_method,
+		paymentInstructions: row.payment_instructions,
 	}));
 }
 

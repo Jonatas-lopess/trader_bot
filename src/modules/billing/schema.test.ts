@@ -174,7 +174,15 @@ describe('purchases.checkout_id (migration 0013)', () => {
 
 		expect((await findByCheckout(env, 'find-grp')).map((row) => row.id).sort()).toEqual(['find-grp', 'find-grp-2']);
 		expect(await findByCheckout(env, 'find-legacy')).toEqual([
-			{ id: 'find-legacy', robotId: 'starter', offer: 'one_time', amountCents: 100, status: 'active', paymentMethod: null },
+			{
+				id: 'find-legacy',
+				robotId: 'starter',
+				offer: 'one_time',
+				amountCents: 100,
+				status: 'active',
+				paymentMethod: null,
+				paymentInstructions: null,
+			},
 		]);
 		expect(await findByCheckout(env, 'find-grp-2')).toEqual([]);
 		expect(await findByCheckout(env, 'nope')).toEqual([]);

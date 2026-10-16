@@ -195,13 +195,13 @@ Spec: [.scratch/appmax-checkout/spec.md](.scratch/appmax-checkout/spec.md). Own 
 | 03 | [Buyer input: normalization and validation](.scratch/appmax-checkout/issues/03-buyer-input-validation.md) | — | done |
 | 04 | [Checkout page form](.scratch/appmax-checkout/issues/04-checkout-page-form.md) | 02, 03 | done |
 | 05 | [Pay endpoint: price, customer, order, payment](.scratch/appmax-checkout/issues/05-pay-endpoint.md) | 01, 02, 03 | done |
-| 06 | [Confirmation page states for Pix, Boleto and card](.scratch/appmax-checkout/issues/06-confirmation-page-states.md) | 05 | ready-for-agent |
+| 06 | [Confirmation page states for Pix, Boleto and card](.scratch/appmax-checkout/issues/06-confirmation-page-states.md) | 05 | done |
 | 07 | [Webhook mapped to the real events and statuses](.scratch/appmax-checkout/issues/07-webhook-real-events.md) | 01 | done |
 | 08 | [Sandbox verification with real Appmax credentials](.scratch/appmax-checkout/issues/08-sandbox-verification.md) | 04, 05, 06, 07 | ready-for-human |
 | 09 | [Mensal recurrence on the own checkout](.scratch/appmax-checkout/issues/09-mensal-recurrence.md) | 05 | deferred |
 | 10 | [Remove the Stripe test driver](.scratch/appmax-checkout/issues/10-remove-stripe-driver.md) | 08 | deferred |
 
-Frontier: 01 and 03. 08 waits on the Appmax account (PLANNING §12), a go-live gate, not on the build.
+Frontier: 08 (ready-for-human, needs the Appmax sandbox account; PLANNING §12, a go-live gate, not a build blocker). 01 to 07 done; 04 and 06 still need the owner's browser check at 390 and 1280.
 
 ## storefront-v2
 

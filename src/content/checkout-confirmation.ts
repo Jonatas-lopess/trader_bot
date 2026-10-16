@@ -1,4 +1,5 @@
 import { launchBlocking } from '../shared/launch-blocking';
+import { checkoutHref } from './catalog-page';
 import { withdrawalHref } from './legal';
 import { supportEmail, supportMailto } from './support';
 
@@ -39,14 +40,34 @@ export const withdrawalNotice = {
 
 // Keyed by PurchaseState (src/modules/billing/status.ts) — kept as a
 // literal union here rather than importing that type, so this content file
-// doesn't reach into modules/billing for it.
+// doesn't reach into modules/billing for it. The Pix, Boleto-overdue and card-review states
+// come from the own Appmax checkout (appmax-checkout 06, ADR-0007).
 export const confirmationMessages: Record<
-	'pending' | 'rejected' | 'active' | 'past_due' | 'canceled' | 'refunded' | 'chargeback' | 'awaiting_boleto',
+	| 'pending'
+	| 'rejected'
+	| 'active'
+	| 'past_due'
+	| 'canceled'
+	| 'refunded'
+	| 'chargeback'
+	| 'awaiting_boleto'
+	| 'boleto_overdue'
+	| 'awaiting_pix'
+	| 'pix_expired'
+	| 'card_in_review',
 	string
 > = {
 	pending: 'Aguardando confirmação do pagamento…',
 	awaiting_boleto:
 		'Recebemos seu Boleto. A confirmação pode levar até 1 dia útil — avisaremos por e-mail assim que o pagamento for confirmado.',
+	boleto_overdue:
+		'O vencimento deste Boleto passou. Se você já pagou, a confirmação pode levar até 1 dia útil e avisaremos por e-mail. Se ainda não pagou, faça um novo pedido.',
+	awaiting_pix:
+		'Pague com o Pix abaixo. Assim que o pagamento for confirmado, esta página se atualiza sozinha e o acesso chega por e-mail.',
+	pix_expired: 'O prazo deste Pix acabou e ele não pode mais ser pago. Gere um novo Pix para concluir a compra.',
+	// `autorizado` is antifraud review, not payment (PLANNING.md §13): never says it was paid.
+	card_in_review:
+		'Seu pagamento com cartão está em análise. Avisaremos por e-mail assim que ele for aprovado, e esta página se atualiza sozinha.',
 	active: 'Pagamento confirmado!',
 	past_due:
 		'Houve um problema com a cobrança. Entre em contato com o suporte para regularizar sua cobrança.',
@@ -75,3 +96,49 @@ export const pendingTimeoutMessage =
 // A stale `pending` row is inert and never resumed (a cancelled Appmax order or an
 // expired Pix stays `pending`): the retry is a brand-new checkout from the catalog.
 export const pendingTimeoutRetry = { label: 'Tentar novamente', href: '/catalog' } as const;
+
+// Pix and Boleto instructions (appmax-checkout 06), rendered from what the pay endpoint stored.
+export const pixInstructions = {
+	qrAlt: 'QR Code do Pix',
+	codeLabel: 'Pix copia e cola',
+	copyLabel: 'Copiar código',
+	copiedLabel: 'Código copiado',
+	copyFailedLabel: 'Não foi possível copiar. O código está selecionado: copie pelo seu aparelho.',
+	deadlineLabel: 'Pague até',
+} as const;
+
+export const boletoInstructions = {
+	pdfLabel: 'Abrir o Boleto (PDF)',
+	lineLabel: 'Linha digitável',
+	copyLabel: 'Copiar linha digitável',
+	copiedLabel: 'Linha digitável copiada',
+	copyFailedLabel: 'Não foi possível copiar. A linha está selecionada: copie pelo seu aparelho.',
+	dueLabel: 'Vencimento',
+} as const;
+
+// An expired Pix or an overdue Boleto is never resumed: the retry is a new checkout of the same
+// Robô and Oferta (or the catalog for a cart), like `pendingTimeoutRetry`.
+export const pixExpiredRetryLabel = 'Gerar novo Pix';
+export const boletoOverdueRetryLabel = 'Fazer um novo pedido';
+
+/** A new checkout of the same Robô and Oferta; the catalog when there is no single line or it is not sold there. */
+export function newCheckoutHref(line: { robotId: string; offer: string } | null): string {
+	if (line === null || (line.offer !== 'one_time' && line.offer !== 'annual')) return pendingTimeoutRetry.href;
+	return checkoutHref(line.robotId, line.offer);
+}
+
+// Brasília is fixed UTC-3 (no DST), the same clock as `formatPurchaseDate` in conta.ts.
+const inBrasilia = (iso: string) => new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** `2026-10-17T02:59:59.000Z` → "16/10/2026 às 23:59". */
+export function formatDeadline(iso: string): string {
+	const d = inBrasilia(iso);
+	return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} às ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+/** `2026-10-19` → "19/10/2026". */
+export function formatDueDate(day: string): string {
+	const [year, month, date] = day.split('-');
+	return `${date}/${month}/${year}`;
+}

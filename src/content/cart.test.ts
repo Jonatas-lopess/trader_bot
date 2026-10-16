@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	checkoutLabel,
-	checkoutPendingNote,
+	unavailableNote,
 	decreaseLabel,
 	increaseLabel,
 	paymentMethodsNote,
@@ -15,9 +15,9 @@ describe('cart page copy', () => {
 		expect(removeLabelFor('Robô A')).toContain('Robô A');
 	});
 
-	it('explains why "Finalizar compra" is disabled (checkout for N lines is ticket 11)', () => {
+	it('explains why "Finalizar compra" is disabled while a line is unavailable', () => {
 		expect(checkoutLabel).toBe('Finalizar compra');
-		expect(checkoutPendingNote.trim()).not.toBe('');
+		expect(unavailableNote).toMatch(/continuar/);
 	});
 
 	it('names the three payment methods, is launch-blocked, and steers Anual to Pix', () => {

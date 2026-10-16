@@ -30,3 +30,10 @@ export const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export const isCartSlug = (value: unknown): value is string =>
 	typeof value === 'string' && value.length <= MAX_SLUG_LENGTH && SLUG_PATTERN.test(value);
+
+/**
+ * The checkout URL of a cart (storefront-v2 11): one `line=<robot>:<offer>:<quantity>` param per
+ * line, read back by `readCheckoutQuery` (`modules/billing/checkout.ts`). Never a price.
+ */
+export const cartCheckoutHref = (lines: readonly CartLine[]): string =>
+	`/checkout?${lines.map((line) => `line=${encodeURIComponent(`${line.robot}:${line.offer}:${line.quantity}`)}`).join('&')}`;

@@ -46,11 +46,8 @@ export const decreaseLabel = (name: string): string => `Diminuir a quantidade de
 export const increaseLabel = (name: string): string => `Aumentar a quantidade de ${name}`;
 export const removeLabelFor = (name: string): string => `${removeLabel} ${name} do carrinho`;
 
-// Checkout for N lines is ticket 11. Until it lands the button stays disabled with this note, so
-// nobody is sent to a single-item checkout that would drop the rest of the cart.
+// Goes to the checkout of every line (storefront-v2 11); disabled while a line is unavailable.
 export const checkoutLabel = 'Finalizar compra';
-export const checkoutPendingNote =
-	'A finalização do pagamento do carrinho ainda não está disponível. Para comprar agora, use "Comprar" na janela de detalhes de cada Robô.';
 
 // Placeholder, a lawyer and the owner confirm it. Anual is a single charge steered toward Pix
 // (PLANNING.md §6); Compra and Anual both take card, Boleto and Pix.

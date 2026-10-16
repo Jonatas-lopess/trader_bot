@@ -226,16 +226,17 @@ describe('createCustomer', () => {
 });
 
 describe('createOrder', () => {
-	it('posts one digital product in cents and maps data.order.id and status', async () => {
+	it('posts one digital product per line in cents and maps data.order.id and status', async () => {
 		const calls = mockAppmax({
 			[`${SANDBOX_API}/v1/orders`]: () => json({ data: { order: { id: 777, status: 'pendente' } } }),
 		});
 
 		const result = await createOrder(env, {
 			customerId: '4321',
-			sku: 'robo-exemplo-a:one_time',
-			name: 'Robô Exemplo A',
-			amountCents: 49_900,
+			products: [
+				{ sku: 'robo-exemplo-a:one_time', name: 'Robô Exemplo A', quantity: 2, unit_value: 49_900, type: 'digital' },
+				{ sku: 'robo-exemplo-b:annual', name: 'Robô Exemplo B', quantity: 1, unit_value: 19_900, type: 'digital' },
+			],
 		});
 
 		expect(result).toEqual({ ok: true, orderId: '777', status: 'pendente' });
@@ -243,7 +244,10 @@ describe('createOrder', () => {
 		expect(call.init.method).toBe('POST');
 		expect(bodyOf(call)).toEqual({
 			customer_id: '4321',
-			products: [{ sku: 'robo-exemplo-a:one_time', name: 'Robô Exemplo A', quantity: 1, unit_value: 49_900, type: 'digital' }],
+			products: [
+				{ sku: 'robo-exemplo-a:one_time', name: 'Robô Exemplo A', quantity: 2, unit_value: 49_900, type: 'digital' },
+				{ sku: 'robo-exemplo-b:annual', name: 'Robô Exemplo B', quantity: 1, unit_value: 19_900, type: 'digital' },
+			],
 			shipping_value: 0,
 			discount_value: 0,
 		});
@@ -251,7 +255,7 @@ describe('createOrder', () => {
 
 	it('reports a response without an order id as unavailable', async () => {
 		mockAppmax({ [`${SANDBOX_API}/v1/orders`]: () => json({ data: { order: {} } }) });
-		expect(await createOrder(env, { customerId: '1', sku: 's', name: 'n', amountCents: 500 })).toEqual({
+		expect(await createOrder(env, { customerId: '1', products: [{ sku: 's', name: 'n', quantity: 1, unit_value: 500, type: 'digital' }] })).toEqual({
 			ok: false,
 			reason: 'unavailable',
 		});

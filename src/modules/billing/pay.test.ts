@@ -425,6 +425,143 @@ describe('pay (POST /checkout/pay)', () => {
 		for (const secret of secrets) expect(captured).not.toContain(secret);
 	});
 
+	describe('a cart of several Licenças (storefront-v2 11, ADR-0008)', () => {
+		beforeEach(async () => {
+			await seedRobot({ slug: 'robo-exemplo-b', name: 'Robô B', offers: { one_time: 149700, annual: 59700 } });
+			await seedRobot({ slug: 'robo-rascunho', status: 'draft', offers: { one_time: 10000 } });
+		});
+
+		const CART = [
+			{ robot: 'robo-exemplo-a', offer: 'one_time', quantity: 2 },
+			{ robot: 'robo-exemplo-b', offer: 'annual', quantity: 1 },
+		];
+
+		function cartBody(overrides: Record<string, unknown> = {}) {
+			const { robot: _robot, offer: _offer, ...rest } = body({ lines: CART, ...overrides });
+			return rest;
+		}
+
+		async function rowsOf(reference: string) {
+			const { results } = await env.DB.prepare('SELECT * FROM purchases WHERE checkout_id = ? ORDER BY robot_id, id')
+				.bind(reference)
+				.all<Record<string, unknown>>();
+			return results;
+		}
+
+		it('a 3-Licença cart writes 3 pending rows and one Appmax order with one product per line and the catalog total', async () => {
+			const calls = mockAppmax();
+			const request = cartBody({ method: 'pix' });
+
+			const result = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			expect(result).toEqual({ ok: true, redirectUrl: `/checkout/confirmacao?ref=${request.reference}` });
+			const rows = await rowsOf(request.reference);
+			expect(rows.map((row) => [row.robot_id, row.offer, row.amount_cents])).toEqual([
+				['robo-exemplo-a', 'one_time', 99700],
+				['robo-exemplo-a', 'one_time', 99700],
+				['robo-exemplo-b', 'annual', 59700],
+			]);
+			for (const row of rows) {
+				expect(row).toMatchObject({
+					status: 'pending',
+					provider: 'appmax',
+					payment_method: 'pix',
+					buyer_name: 'Maria de Souza Silva',
+					buyer_document: '12345678909',
+					appmax_order_id: '9001',
+					checkout_id: request.reference,
+				});
+				expect(JSON.parse(String(row.payment_instructions))).toMatchObject({ emvCode: '00020126580014br.gov.bcb.pix0136abc' });
+			}
+			// The first row's id is the reference (ticket 10), the others are fresh ids.
+			expect(new Set(rows.map((row) => row.id)).size).toBe(3);
+			expect(rows.map((row) => row.id)).toContain(request.reference);
+
+			expect(pathsOf(calls)).toEqual(['/v1/customers', '/v1/orders', '/v1/payments/pix']);
+			expect(calls[1].body).toMatchObject({
+				products: [
+					{ sku: 'robo-exemplo-a:one_time', name: 'Robô robo-exemplo-a', quantity: 2, unit_value: 99700, type: 'digital' },
+					{ sku: 'robo-exemplo-b:annual', name: 'Robô B', quantity: 1, unit_value: 59700, type: 'digital' },
+				],
+			});
+		});
+
+		it('writes the order id on every row before the payment call', async () => {
+			const request = cartBody({ method: 'card', token: CARD_TOKEN });
+			let orderIdsAtPayment: unknown[] = [];
+			mockAppmax({
+				'credit-card': async () => {
+					orderIdsAtPayment = (await rowsOf(request.reference)).map((row) => row.appmax_order_id);
+					return okRoutes['credit-card']({} as Call);
+				},
+			});
+
+			await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			expect(orderIdsAtPayment).toEqual(['9001', '9001', '9001']);
+		});
+
+		it('a retried POST with the same reference creates no rows, order or charge', async () => {
+			const calls = mockAppmax();
+			const request = cartBody({ method: 'boleto' });
+
+			const first = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+			const second = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			expect(second).toEqual(first);
+			expect(pathsOf(calls)).toEqual(['/v1/customers', '/v1/orders', '/v1/payments/boleto']);
+			expect(await rowsOf(request.reference)).toHaveLength(3);
+		});
+
+		it('a retry carrying more lines under the same reference still creates nothing', async () => {
+			const calls = mockAppmax();
+			const request = cartBody();
+			await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			await pay(payEnv(), { body: { ...request, lines: [...CART, { robot: 'robo-exemplo-b', offer: 'one_time', quantity: 1 }] }, ip: '203.0.113.7' });
+
+			expect(pathsOf(calls)).toHaveLength(3);
+			expect(await rowsOf(request.reference)).toHaveLength(3);
+		});
+
+		it('ignores prices smuggled into the lines', async () => {
+			const calls = mockAppmax();
+			const request = cartBody({
+				lines: CART.map((line) => ({ ...line, unitCents: 1, amountCents: 1, unit_value: 1, price: 1 })),
+				totalCents: 3,
+			});
+
+			await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			expect((calls[1].body as { products: { unit_value: number }[] }).products.map((p) => p.unit_value)).toEqual([99700, 59700]);
+			expect((await rowsOf(request.reference)).map((row) => row.amount_cents)).toEqual([99700, 99700, 59700]);
+		});
+
+		it.each([
+			['a Mensal line', [...CART, { robot: 'robo-exemplo-a', offer: 'monthly', quantity: 1 }], 'offer_not_supported'],
+			['a line with an offer that does not exist', [...CART, { robot: 'robo-exemplo-a', offer: 'lifetime', quantity: 1 }], 'unknown_offer'],
+			['a draft Robô', [...CART, { robot: 'robo-rascunho', offer: 'one_time', quantity: 1 }], 'unknown_offer'],
+			['an unknown Robô', [{ robot: 'no-such-robot', offer: 'one_time', quantity: 1 }], 'unknown_offer'],
+			['a quantity over the cap', [{ robot: 'robo-exemplo-a', offer: 'one_time', quantity: 6 }], 'invalid_request'],
+			['a repeated line that sums over the cap', [
+				{ robot: 'robo-exemplo-a', offer: 'one_time', quantity: 3 },
+				{ robot: 'robo-exemplo-a', offer: 'one_time', quantity: 3 },
+			], 'invalid_request'],
+			['a zero quantity', [{ robot: 'robo-exemplo-a', offer: 'one_time', quantity: 0 }], 'invalid_request'],
+			['an empty cart', [], 'invalid_request'],
+			['lines that are not a list', 'robo-exemplo-a', 'invalid_request'],
+		])('%s rejects the whole cart with 400 before anything is created', async (_label, lines, code) => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch');
+			const request = cartBody({ lines });
+
+			const result = await pay(payEnv(), { body: request, ip: '203.0.113.7' });
+
+			expect(result).toMatchObject({ ok: false, status: 400, code });
+			expect(fetchSpy).not.toHaveBeenCalled();
+			expect(await rowsOf(request.reference)).toHaveLength(0);
+		});
+	});
+
 	it('the buyer name and document from our form survive the webhook COALESCE', async () => {
 		mockAppmax({ orders: () => json({ data: { order: { id: 'ord_coalesce', status: 'pendente' } } }) });
 		const request = body({ method: 'pix' });

@@ -219,7 +219,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 | 08 | [Cart store, header icon and "Adicionar ao carrinho"](.scratch/storefront-v2/issues/08-cart-store-and-add-to-cart.md) | 07 | done |
 | 09 | [Cart page `/carrinho` and `POST /cart/summary`](.scratch/storefront-v2/issues/09-cart-page.md) | 03, 08 | done |
 | 10 | [Schema and pricing for multi-line purchases](.scratch/storefront-v2/issues/10-multi-item-purchases-schema.md) | 03 | done |
-| 11 | [Checkout and pay for a cart](.scratch/storefront-v2/issues/11-checkout-from-cart.md) | 09, 10, appmax-checkout 04, 05 | ready-for-agent |
+| 11 | [Checkout and pay for a cart](.scratch/storefront-v2/issues/11-checkout-from-cart.md) | 09, 10, appmax-checkout 04, 05 | done |
 | 12 | [Webhook over an order that holds several purchases](.scratch/storefront-v2/issues/12-webhook-for-order-groups.md) | 10, appmax-checkout 07 | ready-for-agent |
 | 13 | [Confirmation page and delivery for several Licenças](.scratch/storefront-v2/issues/13-confirmation-and-delivery-for-n-licenses.md) | 11, 12, appmax-checkout 06 | ready-for-agent |
 | 14 | [Encomenda page: custom-Robô request](.scratch/storefront-v2/issues/14-encomenda-page.md) | 16 | done |
@@ -229,7 +229,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 
 Mensal / Assinatura is on standby (ADR-0008); `appmax-checkout` 09 is deferred with it.
 
-Frontier: 01, 02 and 04 (independent); 16 after 04, then 14. 11 to 13 also wait on `appmax-checkout` 04 to 07, so the cart builds on the own checkout instead of rewriting it twice.
+Frontier: 12, then 13, then 15.
 
 ## robot-gallery
 

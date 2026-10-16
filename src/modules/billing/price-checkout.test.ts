@@ -39,6 +39,10 @@ describe('priceCheckout', () => {
 		]);
 		expect(result).toEqual({
 			ok: true,
+			lines: [
+				{ robotId: 'robo-a', offer: 'one_time', name: 'Robô A', unitCents: 29700, quantity: 3 },
+				{ robotId: 'robo-b', offer: 'one_time', name: 'Robô B', unitCents: 49900, quantity: 1 },
+			],
 			rows: [
 				{ robotId: 'robo-a', offer: 'one_time', amountCents: 29700 },
 				{ robotId: 'robo-a', offer: 'one_time', amountCents: 29700 },

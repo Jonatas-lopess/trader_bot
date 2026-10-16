@@ -57,6 +57,7 @@
  * rejecting (webhook.ts).
  */
 
+import type { AppmaxProduct } from './checkout-lines';
 import {
 	normalizeBuyerDocument,
 	normalizeBuyerName,
@@ -250,10 +251,8 @@ export async function createCustomer(env: AppmaxCredentials, params: CreateCusto
 
 export type CreateOrderParams = {
 	customerId: string;
-	/** `<robot>:<offer>`. */
-	sku: string;
-	name: string;
-	amountCents: number;
+	/** One entry per cart line (`checkout-lines.ts`), `sku` `<robot>:<offer>`, money in cents. */
+	products: readonly AppmaxProduct[];
 };
 
 export type CreateOrderResult = { ok: true; orderId: string; status: string } | AppmaxFailure;
@@ -261,7 +260,7 @@ export type CreateOrderResult = { ok: true; orderId: string; status: string } | 
 export async function createOrder(env: AppmaxCredentials, params: CreateOrderParams): Promise<CreateOrderResult> {
 	const result = await appmaxRequest(env, 'POST', '/v1/orders', {
 		customer_id: params.customerId,
-		products: [{ sku: params.sku, name: params.name, quantity: 1, unit_value: params.amountCents, type: 'digital' }],
+		products: params.products,
 		shipping_value: 0,
 		discount_value: 0,
 	});

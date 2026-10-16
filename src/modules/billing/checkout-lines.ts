@@ -16,7 +16,8 @@ export type CheckoutRow = { robotId: string; offer: OfferName; amountCents: numb
 /** One entry of Appmax's `products[]` (appmax-client.ts `createOrder`); `sku` is `<robot>:<offer>`. */
 export type AppmaxProduct = { sku: string; name: string; quantity: number; unit_value: number; type: 'digital' };
 
-export type ExpandedCheckout = { rows: CheckoutRow[]; totalCents: number; products: AppmaxProduct[] };
+/** `lines` are the priced lines as given (one per `products` entry, same order). */
+export type ExpandedCheckout = { lines: PricedCheckoutLine[]; rows: CheckoutRow[]; totalCents: number; products: AppmaxProduct[] };
 
 /**
  * A line of quantity N is N rows (one Licença each) and one product entry with `quantity` N, so
@@ -30,5 +31,5 @@ export function expandLines(lines: readonly PricedCheckoutLine[]): ExpandedCheck
 		for (let unit = 0; unit < quantity; unit++) rows.push({ robotId, offer, amountCents: unitCents });
 		products.push({ sku: `${robotId}:${offer}`, name, quantity, unit_value: unitCents, type: 'digital' });
 	}
-	return { rows, totalCents: rows.reduce((sum, row) => sum + row.amountCents, 0), products };
+	return { lines: [...lines], rows, totalCents: rows.reduce((sum, row) => sum + row.amountCents, 0), products };
 }

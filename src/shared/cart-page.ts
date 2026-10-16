@@ -6,7 +6,8 @@
  * set through innerHTML. The store holds no price; every price on screen comes from the response
  * and is display only (checkout reads the real price again, ADR-0006). Changing a quantity or
  * removing a line writes the store; the store's subscription re-prices, so the totals always come
- * back through the server.
+ * back through the server. "Finalizar compra" links to the checkout of the store's lines
+ * (`cartCheckoutHref`), and is disabled while any line is unavailable.
  */
 
 import {
@@ -19,7 +20,7 @@ import {
 } from '../content/cart';
 import { formatBrl, offerLabels } from '../content/catalog-page';
 import type { CartSummary, PricedCartLine } from '../modules/catalog/price-cart';
-import { MAX_LINE_QUANTITY } from './cart-limits';
+import { MAX_LINE_QUANTITY, cartCheckoutHref } from './cart-limits';
 import { getCartStore } from './cart-store';
 
 type PageState = 'loading' | 'empty' | 'error' | 'ready';
@@ -40,7 +41,8 @@ export const initCartPage = (): void => {
 	const total = document.querySelector<HTMLElement>('[data-cart-total]');
 	const note = document.querySelector<HTMLElement>('[data-cart-unavailable-note]');
 	const retry = document.querySelector<HTMLButtonElement>('[data-cart-retry]');
-	if (!page || !template || !list || !total || !note) return;
+	const checkout = document.querySelector<HTMLAnchorElement>('[data-cart-checkout]');
+	if (!page || !template || !list || !total || !note || !checkout) return;
 
 	const store = getCartStore();
 
@@ -99,6 +101,16 @@ export const initCartPage = (): void => {
 		const hasUnavailable = summary.lines.some((l) => !l.available);
 		note.hidden = !hasUnavailable;
 		note.textContent = hasUnavailable ? unavailableNote : '';
+		// The link carries what the store holds right now; the server prices it again at checkout.
+		if (hasUnavailable) {
+			checkout.removeAttribute('href');
+			checkout.setAttribute('aria-disabled', 'true');
+			checkout.setAttribute('aria-describedby', 'cart-unavailable-note');
+		} else {
+			checkout.href = cartCheckoutHref(store.getState().lines);
+			checkout.removeAttribute('aria-disabled');
+			checkout.removeAttribute('aria-describedby');
+		}
 		show('ready');
 
 		if (focused) {
@@ -155,6 +167,11 @@ export const initCartPage = (): void => {
 		if (button.dataset.action === 'decrease') setQuantity(line.robot, line.offer, line.quantity - 1);
 		else if (button.dataset.action === 'increase') setQuantity(line.robot, line.offer, line.quantity + 1);
 		else if (button.dataset.action === 'remove') remove(line.robot, line.offer);
+	});
+
+	// A quantity click still waiting on its re-price: the link takes what the store holds now.
+	checkout.addEventListener('click', () => {
+		if (checkout.hasAttribute('href')) checkout.href = cartCheckoutHref(store.getState().lines);
 	});
 
 	retry?.addEventListener('click', () => {

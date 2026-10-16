@@ -3,16 +3,22 @@
  *
  * - Validates the buyer fields with the same `normalizeBuyerInput` the pay endpoint runs, so
  *   client and server agree; errors are the module's codes, worded by `#checkout-config`'s copy.
+ * - The order's lines (`{robot, offer, quantity}`, never a price) come from `#checkout-config`;
+ *   the server prices them again on pay (ADR-0006).
  * - Pix and Boleto post straight to `POST /checkout/pay`. A card first submits the separate
  *   `data-appmax-checkout` form, which Appmax JS tokenizes in the browser; only the token (and
  *   the holder name) is sent on, never the card number or CVV.
  * - One request at a time: the button stays disabled while a payment is in flight, and stays so
  *   on success while the browser navigates to the confirmation page.
+ * - A checkout that came from the cart empties the cart store only after the pay endpoint
+ *   accepted the payment, right before navigating to the confirmation page (storefront-v2 11);
+ *   a failure keeps the cart.
  * - A declined card or an unavailable provider answers with a fresh `reference` (a refused
  *   Appmax order cannot be paid again); the hidden field takes it before the retry.
  */
 
 import { normalizeBuyerInput, type BuyerField } from '../modules/billing/buyer-input';
+import { getCartStore } from './cart-store';
 
 type Copy = {
 	fieldErrors: Record<string, string>;
@@ -21,7 +27,12 @@ type Copy = {
 	payLabel: string;
 	payingLabel: string;
 };
-type Config = { robot: string; offer: string; externalId: string; copy: Copy };
+type Config = {
+	lines: { robot: string; offer: string; quantity: number }[];
+	fromCart: boolean;
+	externalId: string;
+	copy: Copy;
+};
 
 type AppmaxError = { code?: string; message?: string; stage?: string };
 type AppmaxScripts = {
@@ -177,8 +188,7 @@ export function initCheckoutForm(): void {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					reference: reference.value,
-					robot: config.robot,
-					offer: config.offer,
+					lines: config.lines,
 					method,
 					buyer,
 					...(card === null ? {} : { token: card.token, holderName: card.holderName || undefined }),
@@ -193,6 +203,7 @@ export function initCheckoutForm(): void {
 			};
 
 			if (response.ok && body.ok && typeof body.redirectUrl === 'string' && body.redirectUrl.startsWith('/checkout/confirmacao?')) {
+				if (config.fromCart) getCartStore().getState().clear();
 				window.location.assign(body.redirectUrl);
 				return;
 			}

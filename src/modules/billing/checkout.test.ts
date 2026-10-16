@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { seedCustomer as attachCustomer } from '../../../test/customer-seed';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearCatalog, seedRobot } from '../catalog/test-helpers';
+import { cartCheckoutHref } from '../../shared/cart-limits';
 import { readCheckoutQuery, resolveCheckout } from './checkout';
 
 const origin = 'https://example.com';
@@ -75,11 +76,10 @@ describe('resolveCheckout', () => {
 
 			expect(result).toMatchObject({
 				kind: 'form',
-				robotId: 'robo-exemplo-a',
-				robotName: 'Robô robo-exemplo-a',
-				offer,
+				lines: [{ robotId: 'robo-exemplo-a', robotName: 'Robô robo-exemplo-a', offer, quantity: 1, unitCents: amountCents }],
 				amountCents,
 				methods: ['card', 'boleto', 'pix'],
+				fromCart: false,
 			});
 			if (result.kind !== 'form') throw new Error('expected the form');
 			expect(result.reference).toMatch(UUID);
@@ -115,6 +115,56 @@ describe('resolveCheckout', () => {
 			const result = await resolveCheckout(env, { robotId: 'robo-exemplo-a', offer: 'monthly', origin });
 			expect(result).toEqual({ kind: 'unavailable', reason: 'offer_not_supported' });
 			expect(await purchaseCount('robo-exemplo-a')).toBe(0);
+		});
+
+		describe('a cart (storefront-v2 11)', () => {
+			const cart = (...lines: [string, string, number][]) =>
+				lines.map(([robotId, offer, quantity]) => ({ robotId, offer, quantity }) as { robotId: unknown; offer: unknown; quantity: unknown });
+
+			it('prices every line from D1 and totals them; writes no row', async () => {
+				const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+				const result = await resolveCheckout(env, {
+					robotId: null,
+					offer: null,
+					lines: cart(['robo-exemplo-a', 'one_time', 2], ['robo-exemplo-a', 'annual', 1], ['robo-exemplo-b', 'one_time', 1]),
+					origin,
+				});
+
+				expect(result).toMatchObject({
+					kind: 'form',
+					lines: [
+						{ robotId: 'robo-exemplo-a', robotName: 'Robô robo-exemplo-a', offer: 'one_time', quantity: 2, unitCents: 99700 },
+						{ robotId: 'robo-exemplo-a', robotName: 'Robô robo-exemplo-a', offer: 'annual', quantity: 1, unitCents: 49700 },
+						{ robotId: 'robo-exemplo-b', robotName: 'Robô robo-exemplo-b', offer: 'one_time', quantity: 1, unitCents: 149700 },
+					],
+					amountCents: 2 * 99700 + 49700 + 149700,
+					methods: ['card', 'boleto', 'pix'],
+					fromCart: true,
+				});
+				expect(fetchSpy).not.toHaveBeenCalled();
+				expect(await purchaseCount('robo-exemplo-a')).toBe(0);
+			});
+
+			it.each([
+				['a draft Robô', cart(['robo-exemplo-a', 'one_time', 1], ['robo-draft', 'one_time', 1])],
+				['an offer the Robô does not sell', cart(['robo-exemplo-b', 'annual', 1])],
+				['a quantity over the cap', cart(['robo-exemplo-a', 'one_time', 6])],
+				['no lines', cart()],
+			])('%s rejects the whole cart with 400', async (_label, lines) => {
+				const result = await resolveCheckout(env, { robotId: null, offer: null, lines, origin });
+				expect(result).toMatchObject({ kind: 'error', status: 400 });
+			});
+
+			it('a Mensal line is unavailable', async () => {
+				const result = await resolveCheckout(env, {
+					robotId: null,
+					offer: null,
+					lines: cart(['robo-exemplo-a', 'one_time', 1], ['robo-exemplo-a', 'monthly', 1]),
+					origin,
+				});
+				expect(result).toEqual({ kind: 'unavailable', reason: 'offer_not_supported' });
+			});
 		});
 
 		it('repeat purchase of a Robô the Cliente already has active still gets the form (ADR-0008)', async () => {
@@ -181,6 +231,16 @@ describe('resolveCheckout', () => {
 			expect(result).toMatchObject({ kind: 'error', status: 400 });
 		});
 
+		it('a cart of more than one Licença is unavailable: the test driver takes one item', async () => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch');
+			const lines = [{ robotId: 'robo-exemplo-a', offer: 'one_time', quantity: 2 }];
+
+			const result = await resolveCheckout(stripeEnv, { robotId: null, offer: null, lines, origin });
+
+			expect(result).toEqual({ kind: 'unavailable', reason: 'cart_not_supported' });
+			expect(fetchSpy).not.toHaveBeenCalled();
+		});
+
 		it('returns 502 and writes no row when Stripe is unavailable', async () => {
 			vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('down', { status: 503 }));
 
@@ -208,10 +268,42 @@ describe('resolveCheckout', () => {
 describe('readCheckoutQuery', () => {
 	it('reads only robot and offer from the URL; a price-like param is ignored (ADR-0006)', () => {
 		const url = new URL('https://example.com/checkout?robot=robo-exemplo-a&offer=annual&amount=1&price=1&amountCents=1');
-		expect(readCheckoutQuery(url)).toEqual({ robotId: 'robo-exemplo-a', offer: 'annual', origin: 'https://example.com' });
+		expect(readCheckoutQuery(url)).toEqual({ robotId: 'robo-exemplo-a', offer: 'annual', lines: null, origin: 'https://example.com' });
 	});
 
 	it('passes missing params as null', () => {
-		expect(readCheckoutQuery(new URL('https://example.com/checkout'))).toEqual({ robotId: null, offer: null, origin: 'https://example.com' });
+		expect(readCheckoutQuery(new URL('https://example.com/checkout'))).toEqual({
+			robotId: null,
+			offer: null,
+			lines: null,
+			origin: 'https://example.com',
+		});
+	});
+
+	it('reads a cart from repeated `line=<robot>:<offer>:<quantity>` params, never a price', () => {
+		const url = new URL('https://example.com/checkout?line=robo-a:one_time:2&line=robo-b:annual:1&price=1');
+		expect(readCheckoutQuery(url).lines).toEqual([
+			{ robotId: 'robo-a', offer: 'one_time', quantity: 2 },
+			{ robotId: 'robo-b', offer: 'annual', quantity: 1 },
+		]);
+	});
+
+	it("reads back the cart page's checkout link (cartCheckoutHref)", () => {
+		const href = cartCheckoutHref([
+			{ robot: 'robo-a', offer: 'one_time', quantity: 2 },
+			{ robot: 'robo-b', offer: 'annual', quantity: 1 },
+		]);
+		expect(readCheckoutQuery(new URL(href, 'https://example.com')).lines).toEqual([
+			{ robotId: 'robo-a', offer: 'one_time', quantity: 2 },
+			{ robotId: 'robo-b', offer: 'annual', quantity: 1 },
+		]);
+	});
+
+	it('keeps a malformed cart line for the pricing step to reject', () => {
+		const url = new URL('https://example.com/checkout?line=robo-a:one_time:x&line=robo-b');
+		expect(readCheckoutQuery(url).lines).toEqual([
+			{ robotId: 'robo-a', offer: 'one_time', quantity: Number.NaN },
+			{ robotId: 'robo-b', offer: null, quantity: Number.NaN },
+		]);
 	});
 });

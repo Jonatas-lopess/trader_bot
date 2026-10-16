@@ -76,7 +76,7 @@ async function startCheckout(orderId: string, offer: 'one_time') {
 	await env.DB.prepare(
 		"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, appmax_order_id) VALUES (?, ?, ?, ?, 'pending', 'appmax', ?)"
 	)
-		.bind(checkout.reference, checkout.robotId, checkout.offer, checkout.amountCents, orderId)
+		.bind(checkout.reference, checkout.lines[0].robotId, checkout.lines[0].offer, checkout.amountCents, orderId)
 		.run();
 	const row = await env.DB.prepare('SELECT id, amount_cents FROM purchases WHERE appmax_order_id = ?')
 		.bind(orderId)

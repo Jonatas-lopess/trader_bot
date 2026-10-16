@@ -1,5 +1,6 @@
 ---
-// /checkout?robot=<slug>&offer=<offer> — src/pages/checkout.astro
+// /checkout?robot=<slug>&offer=<offer> and the cart's /checkout?line=<slug>:<offer>:<qty>&line=...
+// — src/pages/checkout.astro (storefront-v2 11)
 //
 // Thin adapter around `resolveCheckout` (modules/billing/checkout.ts, ADR-0007). A redirect
 // provider (Stripe's test driver) is sent on with a 302; an error answers with its status and
@@ -21,6 +22,7 @@ import {
 	buyerHeading,
 	buyerIntro,
 	cardFields,
+	cartUnavailable,
 	cardHeading,
 	checkoutOfferLabels,
 	fieldErrors,
@@ -46,13 +48,16 @@ const result = await resolveCheckout(env, readCheckoutQuery(Astro.url));
 if (result.kind === 'redirect') return Astro.redirect(result.redirectUrl, 302);
 if (result.kind === 'error') return new Response(result.message, { status: result.status });
 
-// PLANNING.md §6 steers Anual to Pix: it goes first there. Only methods the server returned.
+// PLANNING.md §6 steers Anual to Pix: it goes first when the order holds an Anual. Only methods
+// the server returned.
 const displayMethods: PaymentMethod[] =
 	result.kind === 'form'
-		? result.offer === 'annual' && result.methods.includes('pix')
+		? result.lines.some((line) => line.offer === 'annual') && result.methods.includes('pix')
 			? ['pix', ...result.methods.filter((m) => m !== 'pix')]
 			: result.methods
 		: [];
+
+const unavailableCopy = result.kind === 'unavailable' && result.reason === 'cart_not_supported' ? cartUnavailable : unavailable;
 
 const inputClass =
 	'w-full rounded-md border-w-1 border-border-high-contrast bg-surface-raised px-4 py-2 text-body text-text-primary focus:border-border-accent focus:shadow-focus-ring focus:outline-none aria-[invalid=true]:border-danger';
@@ -80,8 +85,8 @@ const cardSpecs: { name: string; label: string; autocomplete: string; inputmode?
 const clientConfig =
 	result.kind === 'form'
 		? {
-				robot: result.robotId,
-				offer: result.offer,
+				lines: result.lines.map(({ robotId, offer, quantity }) => ({ robot: robotId, offer, quantity })),
+				fromCart: result.fromCart,
 				externalId: env.APPMAX_EXTERNAL_ID ?? '',
 				copy: { fieldErrors, formErrorSummary, payErrors, payLabel, payingLabel },
 			}
@@ -92,10 +97,10 @@ const clientConfig =
 	{
 		result.kind === 'unavailable' ? (
 			<section class="content-row gutter-x flex flex-col items-center gap-6 py-20 text-center">
-				<h1 class="text-heading-1 font-bold text-text-primary">{unavailable.heading}</h1>
-				<p class="text-body-lg text-text-secondary">{unavailable.message}</p>
-				<a href={unavailable.backLink.href} class="text-body font-medium text-brand-primary underline">
-					{unavailable.backLink.label}
+				<h1 class="text-heading-1 font-bold text-text-primary">{unavailableCopy.heading}</h1>
+				<p class="text-body-lg text-text-secondary">{unavailableCopy.message}</p>
+				<a href={unavailableCopy.backLink.href} class="text-body font-medium text-brand-primary underline">
+					{unavailableCopy.backLink.label}
 				</a>
 			</section>
 		) : (
@@ -110,15 +115,22 @@ const clientConfig =
 						<h2 id="checkout-summary-heading" class="text-heading-3 font-bold text-text-primary">
 							{summary.heading}
 						</h2>
+						<ul aria-label={summary.linesLabel} role="list" class="flex flex-col gap-3 text-body">
+							{result.lines.map((line) => (
+								<li class="flex justify-between gap-4">
+									<span class="flex min-w-0 flex-col">
+										<span class="break-words font-medium text-text-primary">{line.robotName}</span>
+										<span class="text-body-sm text-text-secondary">
+											{summary.lineDetail(checkoutOfferLabels[line.offer], line.quantity)}
+										</span>
+									</span>
+									<span class="whitespace-nowrap text-right font-mono text-text-primary">
+										{formatBrl(line.unitCents * line.quantity)}
+									</span>
+								</li>
+							))}
+						</ul>
 						<dl class="flex flex-col gap-3 text-body">
-							<div class="flex justify-between gap-4">
-								<dt class="text-text-secondary">{summary.robotLabel}</dt>
-								<dd class="text-right font-medium text-text-primary">{result.robotName}</dd>
-							</div>
-							<div class="flex justify-between gap-4">
-								<dt class="text-text-secondary">{summary.offerLabel}</dt>
-								<dd class="text-right font-medium text-text-primary">{checkoutOfferLabels[result.offer]}</dd>
-							</div>
 							<div class="flex justify-between gap-4 border-t-1 border-border-subtle pt-3">
 								<dt class="font-medium text-text-primary">{summary.totalLabel}</dt>
 								<dd class="font-mono text-heading-3 font-bold text-text-primary">{formatBrl(result.amountCents)}</dd>

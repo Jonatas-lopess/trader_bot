@@ -42,8 +42,8 @@ async function startCheckout(orderId: string, method: 'card' | 'boleto'): Promis
 		{
 			body: {
 				reference: checkout.reference,
-				robot: checkout.robotId,
-				offer: checkout.offer,
+				robot: checkout.lines[0].robotId,
+				offer: checkout.lines[0].offer,
 				method,
 				buyer: { name: 'Maria Silva', email: 'maria@example.com', phone: '11987654321', document: '12345678909' },
 				...(method === 'card' ? { token: 'tok_e2e' } : {}),

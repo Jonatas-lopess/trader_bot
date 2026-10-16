@@ -24,9 +24,11 @@ export const checkoutOfferLabels: Record<OfferName, string> = offerLabels;
 
 export const summary = {
 	heading: 'Resumo do pedido',
-	robotLabel: 'Robô',
-	offerLabel: 'Oferta',
+	linesLabel: 'Itens do pedido',
 	totalLabel: 'Total',
+	/** Under each Robô's name: the Oferta and how many Licenças (one per Corretora account, ADR-0008). */
+	lineDetail: (offerLabel: string, quantity: number): string =>
+		`${offerLabel} · ${quantity} ${quantity === 1 ? 'licença' : 'licenças'}`,
 } as const;
 
 export const buyerHeading = 'Seus dados';
@@ -117,4 +119,11 @@ export const unavailable = {
 	heading: 'Oferta indisponível',
 	message: 'Esta oferta ainda não pode ser comprada por aqui. Escolha outra oferta no catálogo.',
 	backLink: { label: 'Voltar ao catálogo', href: '/catalog' },
+} as const;
+
+// Only the Stripe test driver (ADR-0005, never deployed) cannot take a cart of several Licenças.
+export const cartUnavailable = {
+	heading: 'Carrinho indisponível',
+	message: 'Este ambiente de teste aceita só um item por compra. Deixe um item no carrinho ou compre um de cada vez.',
+	backLink: { label: 'Voltar ao carrinho', href: '/carrinho' },
 } as const;

@@ -45,7 +45,7 @@ import {
 	type BoletoInstructions,
 	type PixInstructions,
 } from './appmax-client';
-import { normalizeBuyerInput, type BuyerInput, type FieldErrors } from './buyer-input';
+import { normalizeBuyerInput, type FieldErrors } from './buyer-input';
 import type { CheckoutRow } from './checkout-lines';
 import { PAYMENT_METHODS, paymentMethodsForOrder, type PaymentMethod } from './payment-provider';
 import { includesMensal, priceCheckout, type RawCheckoutLine } from './price-checkout';
@@ -172,6 +172,8 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 	const buyerResult = normalizeBuyerInput(request.buyer);
 	if (!buyerResult.ok) return { ok: false, status: 400, code: 'invalid_buyer', fieldErrors: buyerResult.fieldErrors };
 	const buyer = buyerResult.buyer;
+	// The NFS-e name on every row, and the card holder when the card form left it blank.
+	const buyerName = `${buyer.firstName} ${buyer.lastName}`;
 
 	// Every price is read from D1 here; one bad line rejects the whole cart (ADR-0006, ADR-0008).
 	const priced = await priceCheckout(env, request.lines);
@@ -190,7 +192,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		return { ok: false, status: 502, code: 'provider_unavailable' };
 	}
 
-	const inserted = await insertAttempt(env, { reference: request.reference, rows: priced.rows, method: payment.method, buyer });
+	const inserted = await insertAttempt(env, { reference: request.reference, rows: priced.rows, method: payment.method, buyerName, buyerDocument: buyer.document });
 	// A repeated POST of the same attempt: it already ran (or is running), so send the Cliente
 	// to its confirmation page instead of creating anything again.
 	if (!inserted) return { ok: true, redirectUrl: confirmationPath(request.reference) };
@@ -224,7 +226,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 				customerId: customer.customerId,
 				token: payment.token,
 				// Appmax JS reads the holder from the card form; assumed to be the buyer (08 verifies).
-				holderName: payment.holderName ?? `${buyer.firstName} ${buyer.lastName}`,
+				holderName: payment.holderName ?? buyerName,
 				holderDocument: buyer.document,
 				softDescriptor: SOFT_DESCRIPTOR,
 			});
@@ -271,9 +273,8 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
  */
 async function insertAttempt(
 	env: PayEnv,
-	attempt: { reference: string; rows: readonly CheckoutRow[]; method: PaymentMethod; buyer: BuyerInput }
+	attempt: { reference: string; rows: readonly CheckoutRow[]; method: PaymentMethod; buyerName: string; buyerDocument: string }
 ): Promise<boolean> {
-	const buyerName = `${attempt.buyer.firstName} ${attempt.buyer.lastName}`;
 	const statements = attempt.rows.map((row, index) =>
 		env.DB.prepare(
 			`INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, payment_method, buyer_name, buyer_document, checkout_id)
@@ -284,8 +285,8 @@ async function insertAttempt(
 			row.offer,
 			row.amountCents,
 			attempt.method,
-			buyerName,
-			attempt.buyer.document,
+			attempt.buyerName,
+			attempt.buyerDocument,
 			attempt.reference
 		)
 	);

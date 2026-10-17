@@ -11,14 +11,9 @@
 // Copy comes from src/content/admin.ts — see docs/agents/content-files.md.
 import { Play } from '@lucide/astro';
 import { gallery as copy } from '../content/admin';
-import {
-	GALLERY_LIMITS,
-	galleryAnchor,
-	mediaPath,
-	YOUTUBE_THUMBNAIL_SIZE,
-	youtubeThumbnailUrl,
-	type GalleryItem,
-} from '../modules/catalog/gallery';
+import { GALLERY_LIMITS, type GalleryItem } from '../modules/catalog/gallery';
+import { galleryActionPath, galleryAnchor, mediaPath } from '../modules/catalog/gallery-paths';
+import { YOUTUBE_THUMBNAIL_SIZE, youtubeThumbnailUrl } from '../modules/catalog/youtube';
 
 type Props = {
 	slug: string;
@@ -30,7 +25,6 @@ type Props = {
 };
 
 const { slug, items, flash, error } = Astro.props;
-const base = `/admin/robos/${encodeURIComponent(slug)}/galeria`;
 const full = items.length >= GALLERY_LIMITS.maxItems;
 
 const buttonClass =
@@ -89,7 +83,7 @@ const inputClass =
 								</span>
 							</div>
 						)}
-						<form method="POST" action={`${base}/${encodeURIComponent(item.id)}/legenda`} class="flex flex-col gap-2">
+						<form method="POST" action={galleryActionPath(slug, 'legenda', item.id)} class="flex flex-col gap-2">
 							<label class="flex flex-col gap-1">
 								<span class="text-caption text-text-secondary">{copy.captionLabel}</span>
 								<input type="text" name="caption" value={item.caption ?? ''} maxlength={GALLERY_LIMITS.maxCaptionLength} class={smallInputClass} />
@@ -97,13 +91,13 @@ const inputClass =
 							<button type="submit" class={buttonClass}>{copy.captionSubmit}</button>
 						</form>
 						<div class="flex flex-wrap gap-2">
-							<form method="POST" action={`${base}/${encodeURIComponent(item.id)}/mover`}>
+							<form method="POST" action={galleryActionPath(slug, 'mover', item.id)}>
 								<input type="hidden" name="direction" value="up" />
 								<button type="submit" class={buttonClass} disabled={index === 0} aria-label={copy.moveUpLabelFor(index + 1)}>
 									{copy.moveUpLabel}
 								</button>
 							</form>
-							<form method="POST" action={`${base}/${encodeURIComponent(item.id)}/mover`}>
+							<form method="POST" action={galleryActionPath(slug, 'mover', item.id)}>
 								<input type="hidden" name="direction" value="down" />
 								<button type="submit" class={buttonClass} disabled={index === items.length - 1} aria-label={copy.moveDownLabelFor(index + 1)}>
 									{copy.moveDownLabel}
@@ -111,7 +105,7 @@ const inputClass =
 							</form>
 							<form
 								method="POST"
-								action={`${base}/${encodeURIComponent(item.id)}/remover`}
+								action={galleryActionPath(slug, 'remover', item.id)}
 								class="ml-auto"
 								data-confirm-title={copy.removeConfirmTitle}
 								data-confirm-message={copy.removeConfirmMessage}
@@ -131,7 +125,7 @@ const inputClass =
 		full ? (
 			<p class="text-body-sm text-text-secondary">{copy.fullNote}</p>
 		) : (
-			<form method="POST" action={`${base}/imagens`} enctype="multipart/form-data" class="flex flex-col gap-3">
+			<form method="POST" action={galleryActionPath(slug, 'imagens')} enctype="multipart/form-data" class="flex flex-col gap-3">
 				<label class="flex flex-col gap-2">
 					<span class="text-body-sm text-text-secondary">{copy.addImagesLabel}</span>
 					<input type="file" name="images" multiple required accept="image/jpeg,image/png,image/webp,image/avif" class={inputClass} />
@@ -144,7 +138,7 @@ const inputClass =
 
 	{
 		!full && (
-			<form method="POST" action={`${base}/video`} class="flex flex-col gap-3">
+			<form method="POST" action={galleryActionPath(slug, 'video')} class="flex flex-col gap-3">
 				<label class="flex flex-col gap-2">
 					<span class="text-body-sm text-text-secondary">{copy.addVideoLabel}</span>
 					<input type="text" name="url" required inputmode="url" spellcheck="false" autocapitalize="none" autocomplete="off" placeholder={copy.addVideoPlaceholder} class={inputClass} />

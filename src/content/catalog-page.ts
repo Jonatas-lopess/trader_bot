@@ -13,14 +13,9 @@
  *   grep -rn "launchBlocking(" src/content/catalog-page.ts
  */
 
-import {
-	mediaPath,
-	YOUTUBE_THUMBNAIL_SIZE,
-	youtubeEmbedUrl,
-	youtubeThumbnailUrl,
-	youtubeWatchUrl,
-	type GalleryItem,
-} from '../modules/catalog/gallery';
+import type { GalleryItem } from '../modules/catalog/gallery';
+import { mediaPath } from '../modules/catalog/gallery-paths';
+import { YOUTUBE_THUMBNAIL_SIZE, youtubeEmbedUrl, youtubeThumbnailUrl, youtubeWatchUrl } from '../modules/catalog/youtube';
 import type { OfferName, PublishedRobot, RobotStatus } from '../modules/catalog/robots';
 import { launchBlocking } from '../shared/launch-blocking';
 import { withdrawalHref } from './legal';

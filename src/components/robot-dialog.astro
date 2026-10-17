@@ -19,7 +19,7 @@ import { dialogCloseLabel } from '../content/catalog-page';
 <dialog
 	id="robot-dialog"
 	aria-labelledby="robot-dialog-title"
-	class="m-auto max-h-[85dvh] w-[calc(100%-2.5rem)] max-w-2xl overflow-y-auto overscroll-contain rounded-lg border-w-1 border-border-subtle bg-surface-raised p-0 text-text-primary shadow-card backdrop:bg-surface-base/80"
+	class="m-auto max-h-[85dvh] w-[calc(100%-2.5rem)] max-w-4xl overflow-y-auto overscroll-contain rounded-lg border-w-1 border-border-subtle bg-surface-raised p-0 text-text-primary shadow-card backdrop:bg-surface-base/80"
 >
 	<div
 		class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b border-border-subtle bg-surface-raised px-6 py-4"
@@ -33,7 +33,7 @@ import { dialogCloseLabel } from '../content/catalog-page';
 			{dialogCloseLabel}
 		</button>
 	</div>
-	<div data-robot-dialog-body class="px-6 py-6"></div>
+	<div data-robot-dialog-body class="@container px-6 py-6"></div>
 </dialog>
 
 <script>

@@ -243,5 +243,6 @@ Spec: [.scratch/robot-gallery/spec.md](.scratch/robot-gallery/spec.md). Images (
 | 03 | [Captions, reordering and slug rename](.scratch/robot-gallery/issues/03-captions-reorder-rename.md) | 01 | done |
 | 04 | [Gallery in the "Saiba mais" modal](.scratch/robot-gallery/issues/04-gallery-in-saiba-mais-modal.md) | 01, 02 | done |
 | 05 | [End-to-end verification and setup checklist](.scratch/robot-gallery/issues/05-end-to-end-verification.md) | 01, 02, 03, 04 | done |
+| 06 | [Modal row layout, standard gallery viewport and full-size image view](.scratch/robot-gallery/issues/06-modal-layout-and-image-zoom.md) | 04 | done |
 
 All done in code. Before pushing to `main`: create the `trader-bot-robot-media` R2 bucket by hand (checklist in 05), or the deploy fails.

@@ -57,6 +57,8 @@ export const galleryAltFallback = (robotName: string, kind: 'image' | 'video', p
 export const galleryLabelFor = (robotName: string): string => `Galeria de ${robotName}`;
 export const galleryThumbsLabel = 'Escolher item da galeria';
 export const galleryThumbLabel = (position: number, alt: string): string => `Mostrar item ${position}: ${alt}`;
+export const galleryZoomLabel = (alt: string): string => `Ver imagem completa: ${alt}`;
+export const galleryZoomCloseLabel = 'Fechar imagem';
 export const galleryPlayLabel = (alt: string): string => `Reproduzir vídeo: ${alt}`;
 
 export const comingSoonLabel = 'Em breve';

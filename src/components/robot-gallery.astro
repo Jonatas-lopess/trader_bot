@@ -18,6 +18,8 @@ import {
 	galleryPlayLabel,
 	galleryThumbLabel,
 	galleryThumbsLabel,
+	galleryZoomCloseLabel,
+	galleryZoomLabel,
 	type CardGalleryItem,
 } from '../content/catalog-page';
 
@@ -31,21 +33,36 @@ const { robotName, items } = Astro.props;
 
 {
 	items.length > 0 && (
-		<div data-robot-gallery role="group" aria-label={galleryLabelFor(robotName)} class="flex min-w-0 flex-col gap-3">
+		<div
+			data-robot-gallery
+			data-zoom-close-label={galleryZoomCloseLabel}
+			role="group"
+			aria-label={galleryLabelFor(robotName)}
+			class="flex min-w-0 flex-col gap-3"
+		>
 			<ul role="list" class="flex flex-col gap-4">
 				{items.map((item, index) => (
 					<li data-gallery-item data-index={index}>
 						<figure class="flex flex-col gap-2">
 							{item.kind === 'image' ? (
-								<img
-									src={item.src}
-									width={item.width}
-									height={item.height}
-									alt={item.alt}
-									loading="lazy"
-									decoding="async"
-									class="h-auto max-h-[60dvh] w-full rounded-md bg-surface-sunken object-contain"
-								/>
+								<a
+									href={item.src}
+									target="_blank"
+									rel="noopener"
+									data-gallery-zoom
+									aria-label={galleryZoomLabel(item.alt)}
+									class="block cursor-zoom-in overflow-hidden rounded-md bg-surface-sunken focus-visible:shadow-focus-ring focus-visible:outline-none"
+								>
+									<img
+										src={item.src}
+										width={item.width}
+										height={item.height}
+										alt=""
+										loading="lazy"
+										decoding="async"
+										class="aspect-video h-auto w-full object-contain"
+									/>
+								</a>
 							) : (
 								<a
 									href={item.watchHref}

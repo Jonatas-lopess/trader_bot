@@ -41,14 +41,24 @@ export const withdrawalNotice = {
 	termosLink: { label: 'Direito de arrependimento nos Termos de uso', href: withdrawalHref },
 };
 
+// Boleto approval-time claims ("up to one business day", PLANNING.md §7): not sandbox-verified.
+const boletoTimeReason =
+	'Approval-time claim for Boleto compensation (PLANNING.md §7 "up to one business day"); not sandbox-verified (appmax-checkout 08, ADR-0007).';
+const awaitingBoletoMessage = launchBlocking(
+	'Recebemos seu Boleto. A confirmação pode levar até 1 dia útil — avisaremos por e-mail assim que o pagamento for confirmado.',
+	boletoTimeReason,
+);
+const boletoOverdueMessage = launchBlocking(
+	'O vencimento deste Boleto passou. Se você já pagou, a confirmação pode levar até 1 dia útil e avisaremos por e-mail. Se ainda não pagou, gere um novo Boleto.',
+	boletoTimeReason,
+);
+
 // Keyed by PurchaseState (src/modules/billing/status.ts), so a new state cannot ship without copy.
 // The Pix, Boleto-overdue and card states come from the own Appmax checkout (appmax-checkout 06, ADR-0007).
 export const confirmationMessages: Record<PurchaseState, string> = {
 	pending: 'Aguardando confirmação do pagamento…',
-	awaiting_boleto:
-		'Recebemos seu Boleto. A confirmação pode levar até 1 dia útil — avisaremos por e-mail assim que o pagamento for confirmado.',
-	boleto_overdue:
-		'O vencimento deste Boleto passou. Se você já pagou, a confirmação pode levar até 1 dia útil e avisaremos por e-mail. Se ainda não pagou, gere um novo Boleto.',
+	awaiting_boleto: awaitingBoletoMessage.value,
+	boleto_overdue: boletoOverdueMessage.value,
 	awaiting_pix:
 		'Pague com o Pix abaixo. Assim que o pagamento for confirmado, esta página se atualiza sozinha e o acesso chega por e-mail.',
 	pix_expired: 'O prazo deste Pix acabou e ele não pode mais ser pago. Gere um novo Pix para concluir a compra.',

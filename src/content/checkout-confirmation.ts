@@ -1,3 +1,4 @@
+import type { PurchaseState } from '../modules/billing/status';
 import { toBrasiliaClock } from '../shared/brasilia';
 import { cartCheckoutHref, isCartOffer } from '../shared/cart-limits';
 import { launchBlocking } from '../shared/launch-blocking';
@@ -41,26 +42,9 @@ export const withdrawalNotice = {
 	termosLink: { label: 'Direito de arrependimento nos Termos de uso', href: withdrawalHref },
 };
 
-// Keyed by PurchaseState (src/modules/billing/status.ts) — kept as a
-// literal union here rather than importing that type, so this content file
-// doesn't reach into modules/billing for it. The Pix, Boleto-overdue and card-review states
-// come from the own Appmax checkout (appmax-checkout 06, ADR-0007).
-export const confirmationMessages: Record<
-	| 'pending'
-	| 'rejected'
-	| 'active'
-	| 'past_due'
-	| 'canceled'
-	| 'refunded'
-	| 'chargeback'
-	| 'awaiting_boleto'
-	| 'boleto_overdue'
-	| 'awaiting_pix'
-	| 'pix_expired'
-	| 'card_in_review'
-	| 'card_declined',
-	string
-> = {
+// Keyed by PurchaseState (src/modules/billing/status.ts), so a new state cannot ship without copy.
+// The Pix, Boleto-overdue and card states come from the own Appmax checkout (appmax-checkout 06, ADR-0007).
+export const confirmationMessages: Record<PurchaseState, string> = {
 	pending: 'Aguardando confirmação do pagamento…',
 	awaiting_boleto:
 		'Recebemos seu Boleto. A confirmação pode levar até 1 dia útil — avisaremos por e-mail assim que o pagamento for confirmado.',

@@ -13,7 +13,10 @@
  * and this marker is what tells a refused card from one in antifraud review.
  */
 
+import { checkoutHref } from '../../content/catalog-page';
 import { BRASILIA_UTC_OFFSET } from '../../shared/brasilia';
+import { cartCheckoutHref, isCartOffer, toCartLine, type CartLine } from '../../shared/cart-limits';
+import { CATALOG_PATH } from '../../shared/checkout-urls';
 import { isRecord } from '../../shared/is-record';
 import type { PurchaseOffer } from '../catalog/robots';
 import type { PurchaseStatus } from './payment-provider';
@@ -217,6 +220,22 @@ export function derivePurchaseView(rows: readonly CheckoutViewRow[], now: Date):
 		return { state: isDeclinedCard(pending.paymentInstructions) ? 'card_declined' : 'card_in_review', method, instructions: null, items };
 	}
 	return { state: aggregate, method, instructions: null, items };
+}
+
+/**
+ * A new checkout of what the order held: the single-item checkout for one Licença, the cart
+ * checkout (`/checkout?line=...`, storefront-v2 11) for more; the catalog when there is nothing
+ * to rebuild or an Oferta the checkout does not sell.
+ */
+export function newCheckoutHref(items: readonly PurchaseItem[]): string {
+	const lines: CartLine[] = [];
+	for (const { robotId, offer, quantity } of items) {
+		if (!isCartOffer(offer)) return CATALOG_PATH;
+		lines.push(toCartLine({ robotId, offer, quantity }));
+	}
+	if (lines.length === 0) return CATALOG_PATH;
+	if (lines.length === 1 && lines[0].quantity === 1) return checkoutHref(lines[0].robot, lines[0].offer);
+	return cartCheckoutHref(lines);
 }
 
 /** `reference` is the `checkout_id` (equal to the first row's `id`), so a single purchase answers for itself. */

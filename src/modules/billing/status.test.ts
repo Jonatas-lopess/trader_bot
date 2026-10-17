@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { describe, expect, it } from 'vitest';
 import type { PurchaseStatus } from './payment-provider';
-import { aggregateCheckoutStatus, derivePurchaseView, getPurchaseStatus, getPurchaseView } from './status';
+import { aggregateCheckoutStatus, derivePurchaseView, getPurchaseStatus, getPurchaseView, newCheckoutHref } from './status';
 
 async function seed(row: {
 	id: string;
@@ -329,5 +329,25 @@ describe('getPurchaseView over D1', () => {
 			"INSERT INTO purchases (id, robot_id, offer, amount_cents, status, payment_method, checkout_id) VALUES ('view-card', 'robo-a', 'one_time', 100, 'pending', 'card', 'view-card')"
 		).run();
 		expect(await getPurchaseStatus(env, 'view-card')).toEqual({ ok: true, state: 'card_in_review' });
+	});
+});
+
+describe('newCheckoutHref: a new checkout of what was bought, never resuming the order', () => {
+	it('a single Licença goes back to its own checkout', () => {
+		expect(newCheckoutHref([{ robotId: 'robo-a', offer: 'annual', quantity: 1 }])).toBe('/checkout?robot=robo-a&offer=annual');
+	});
+
+	it('a cart goes to the checkout of every line', () => {
+		expect(
+			newCheckoutHref([
+				{ robotId: 'robo-a', offer: 'one_time', quantity: 2 },
+				{ robotId: 'robo-b', offer: 'annual', quantity: 1 },
+			])
+		).toBe('/checkout?line=robo-a%3Aone_time%3A2&line=robo-b%3Aannual%3A1');
+	});
+
+	it('nothing to retry, or a Mensal, goes to the catalog', () => {
+		expect(newCheckoutHref([])).toBe('/catalog');
+		expect(newCheckoutHref([{ robotId: 'robo-a', offer: 'monthly', quantity: 1 }])).toBe('/catalog');
 	});
 });

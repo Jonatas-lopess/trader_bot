@@ -1,8 +1,7 @@
 import type { PurchaseState } from '../modules/billing/status';
 import { toBrasiliaClock } from '../shared/brasilia';
-import { cartCheckoutHref, isCartOffer, toCartLine, type CartLine } from '../shared/cart-limits';
+import { CATALOG_PATH } from '../shared/checkout-urls';
 import { launchBlocking } from '../shared/launch-blocking';
-import { checkoutHref } from './catalog-page';
 import { summary } from './checkout-form';
 import { withdrawalHref } from './legal';
 import { supportEmail, supportMailto } from './support';
@@ -85,7 +84,7 @@ export const pendingTimeoutMessage =
 
 // A stale `pending` row is inert and never resumed (a cancelled Appmax order or an
 // expired Pix stays `pending`): the retry is a brand-new checkout from the catalog.
-export const pendingTimeoutRetry = { label: 'Tentar novamente', href: '/catalog' } as const;
+export const pendingTimeoutRetry = { label: 'Tentar novamente', href: CATALOG_PATH } as const;
 
 // Pix and Boleto instructions (appmax-checkout 06), rendered from what the pay endpoint stored.
 export const pixInstructions = {
@@ -106,27 +105,11 @@ export const boletoInstructions = {
 	dueLabel: 'Vencimento',
 } as const;
 
-// An expired Pix or an overdue Boleto is never resumed: the retry is a new checkout of what was
-// bought (the same Robô and Oferta, or every line of a cart), like `pendingTimeoutRetry`.
+// An expired Pix, an overdue Boleto or a declined card is never resumed: the retry is a new checkout
+// of what was bought (`newCheckoutHref` in modules/billing/status.ts), like `pendingTimeoutRetry`.
 export const pixExpiredRetryLabel = 'Gerar novo Pix';
 export const cardDeclinedRetryLabel = 'Tentar de novo';
 export const boletoOverdueRetryLabel = 'Gerar novo Boleto';
-
-/**
- * A new checkout of what the order held: the single-item checkout for one Licença, the cart
- * checkout (`/checkout?line=...`, storefront-v2 11) for more; the catalog when there is nothing
- * to rebuild or an Oferta the checkout does not sell.
- */
-export function newCheckoutHref(items: readonly { robotId: string; offer: string; quantity: number }[]): string {
-	const lines: CartLine[] = [];
-	for (const { robotId, offer, quantity } of items) {
-		if (!isCartOffer(offer)) return pendingTimeoutRetry.href;
-		lines.push(toCartLine({ robotId, offer, quantity }));
-	}
-	if (lines.length === 0) return pendingTimeoutRetry.href;
-	if (lines.length === 1 && lines[0].quantity === 1) return checkoutHref(lines[0].robot, lines[0].offer);
-	return cartCheckoutHref(lines);
-}
 
 // What the order holds (storefront-v2 13): one line per Robô and Oferta, worded like the
 // checkout summary (one source, checkout-form.ts).

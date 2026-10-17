@@ -3,6 +3,9 @@
  * (`checkout-form.ts`) checks the same path the server builds.
  */
 
+/** Where a checkout that cannot be rebuilt starts over. */
+export const CATALOG_PATH = '/catalog';
+
 /** The intermediate confirmation page (PLANNING.md §7), `src/pages/checkout/confirmacao.astro`. */
 export const CONFIRMATION_PATH = '/checkout/confirmacao';
 

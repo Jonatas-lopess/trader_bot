@@ -13,6 +13,7 @@
  * and this marker is what tells a refused card from one in antifraud review.
  */
 
+import { isRecord } from '../../shared/is-record';
 import type { PurchaseOffer } from '../catalog/robots';
 import type { PurchaseStatus } from './payment-provider';
 import { findByCheckout, STATUS_RIGIDITY } from './purchase-lookup';
@@ -91,10 +92,6 @@ export function aggregateCheckoutStatus(rows: readonly CheckoutStatusRow[]): Pur
 	const pending = rows.find((row) => row.status === 'pending');
 	if (pending !== undefined) return pending.paymentMethod === 'boleto' ? 'awaiting_boleto' : 'pending';
 	return rows.reduce((top, row) => (STATUS_RIGIDITY[row.status] > STATUS_RIGIDITY[top] ? row.status : top), rows[0].status);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 /** Printable text without markup characters, bounded: what a payment code or digitable line is. */

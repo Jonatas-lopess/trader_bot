@@ -33,6 +33,7 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
+import { isRecord } from '../../shared/is-record';
 import {
 	createCustomer,
 	createOrder,
@@ -85,10 +86,6 @@ type PayRequest = {
 	token: string | null;
 	holderName: string | null;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function nonEmptyString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;

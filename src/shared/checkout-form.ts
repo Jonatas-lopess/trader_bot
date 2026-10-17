@@ -20,6 +20,7 @@
  */
 
 import { normalizeBuyerInput, type BuyerField } from '../modules/billing/buyer-input';
+import type { CartLine } from './cart-limits';
 import { getCartStore } from './cart-store';
 import { CONFIRMATION_PATH } from './checkout-urls';
 
@@ -31,7 +32,7 @@ type Copy = {
 	payingLabel: string;
 };
 type Config = {
-	lines: { robot: string; offer: string; quantity: number }[];
+	lines: CartLine[];
 	fromCart: boolean;
 	externalId: string;
 	copy: Copy;

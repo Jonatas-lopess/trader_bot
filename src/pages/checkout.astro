@@ -17,6 +17,7 @@ import { appmaxScriptUrl } from '../modules/billing/appmax-client';
 import { readCheckoutQuery, resolveCheckout } from '../modules/billing/checkout';
 import type { BuyerField } from '../modules/billing/buyer-input';
 import type { PaymentMethod } from '../modules/billing/payment-provider';
+import { toCartLine } from '../shared/cart-limits';
 import {
 	buyerFields,
 	buyerHeading,
@@ -85,7 +86,7 @@ const cardSpecs: { name: string; label: string; autocomplete: string; inputmode?
 const clientConfig =
 	result.kind === 'form'
 		? {
-				lines: result.lines.map(({ robotId, offer, quantity }) => ({ robot: robotId, offer, quantity })),
+				lines: result.lines.map(toCartLine),
 				fromCart: result.fromCart,
 				externalId: env.APPMAX_EXTERNAL_ID ?? '',
 				copy: { fieldErrors, formErrorSummary, payErrors, payLabel, payingLabel },

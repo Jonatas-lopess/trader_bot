@@ -33,6 +33,7 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
+import { fromCartLine } from '../../shared/cart-limits';
 import { confirmationPath } from '../../shared/checkout-urls';
 import { isRecord } from '../../shared/is-record';
 import {
@@ -116,7 +117,7 @@ function readLines(body: Record<string, unknown>): RawCheckoutLine[] | null {
 	const lines: RawCheckoutLine[] = [];
 	for (const line of body.lines) {
 		if (!isRecord(line)) return null;
-		lines.push({ robotId: line.robot, offer: line.offer, quantity: line.quantity });
+		lines.push(fromCartLine(line));
 	}
 	return lines;
 }

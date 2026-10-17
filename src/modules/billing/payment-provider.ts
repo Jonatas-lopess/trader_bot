@@ -40,6 +40,9 @@ export type PurchaseStatus =
 	| 'chargeback';
 export type PaymentMethod = 'card' | 'boleto' | 'pix';
 
+/** Every method, in the order the checkout form lists them. */
+export const PAYMENT_METHODS: readonly PaymentMethod[] = ['card', 'boleto', 'pix'];
+
 /**
  * Methods each Oferta accepts (ADR-0006, PLANNING.md §6): Compra and Anual are a single
  * charge, so card/Boleto/Pix all work; Mensal is recurring, so card only. Checkout derives
@@ -47,6 +50,11 @@ export type PaymentMethod = 'card' | 'boleto' | 'pix';
  */
 export function paymentMethodsFor(offer: PurchaseOffer): PaymentMethod[] {
 	return offer === 'monthly' ? ['card'] : ['card', 'boleto', 'pix'];
+}
+
+/** Methods every Oferta of an order accepts: one payment covers the whole order (ADR-0008). */
+export function paymentMethodsForOrder(offers: readonly PurchaseOffer[]): PaymentMethod[] {
+	return PAYMENT_METHODS.filter((method) => offers.every((offer) => paymentMethodsFor(offer).includes(method)));
 }
 
 export type CreateCheckoutSessionParams = {

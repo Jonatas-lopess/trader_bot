@@ -45,8 +45,8 @@ import {
 } from './appmax-client';
 import { normalizeBuyerInput, type BuyerInput, type FieldErrors } from './buyer-input';
 import type { CheckoutRow } from './checkout-lines';
-import { paymentMethodsFor, type PaymentMethod } from './payment-provider';
-import { priceCheckout, type RawCheckoutLine } from './price-checkout';
+import { PAYMENT_METHODS, paymentMethodsForOrder, type PaymentMethod } from './payment-provider';
+import { includesMensal, priceCheckout, type RawCheckoutLine } from './price-checkout';
 import { CARD_DECLINED_MARKER } from './status';
 
 type PayEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'PAY_RATE_LIMITER'> & {
@@ -76,7 +76,6 @@ const SOFT_DESCRIPTOR = 'ROBOTRADER';
 const SANDBOX_FALLBACK_IP = '127.0.0.1';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PAYMENT_METHODS: readonly PaymentMethod[] = ['card', 'boleto', 'pix'];
 
 type PayRequest = {
 	reference: string;
@@ -163,8 +162,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 
 	const request = readRequest(params.body);
 	if (request === null) return { ok: false, status: 400, code: 'invalid_request' };
-	// Mensal needs the subscription flow of ticket 09; the catalog does not sell it (ADR-0008).
-	if (request.lines.some((line) => line.offer === 'monthly')) return { ok: false, status: 400, code: 'offer_not_supported' };
+	if (includesMensal(request.lines)) return { ok: false, status: 400, code: 'offer_not_supported' };
 
 	const buyerResult = normalizeBuyerInput(request.buyer);
 	if (!buyerResult.ok) return { ok: false, status: 400, code: 'invalid_buyer', fieldErrors: buyerResult.fieldErrors };
@@ -176,9 +174,8 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		const code = priced.reason === 'unknown_robot' || priced.reason === 'unknown_offer' ? 'unknown_offer' : 'invalid_request';
 		return { ok: false, status: 400, code };
 	}
-	// One payment for the whole order: only a method every line accepts (Compra and Anual take all three).
-	const allowed = priced.rows.every((row) => paymentMethodsFor(row.offer).includes(request.method));
-	if (!allowed) return { ok: false, status: 400, code: 'method_not_allowed' };
+	const allowed = paymentMethodsForOrder(priced.rows.map((row) => row.offer));
+	if (!allowed.includes(request.method)) return { ok: false, status: 400, code: 'method_not_allowed' };
 	if (request.method === 'card' && request.token === null) return { ok: false, status: 400, code: 'token_required' };
 
 	const ip = usableIp(params.ip) ?? (env.APPMAX_ENV === 'production' ? null : SANDBOX_FALLBACK_IP);

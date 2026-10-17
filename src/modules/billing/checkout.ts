@@ -21,6 +21,7 @@
  * second Corretora account gets its own Licença (ADR-0008).
  */
 
+import { confirmationPath } from '../../shared/checkout-urls';
 import { getPublishedBySlug, type OfferName } from '../catalog/robots';
 import { selectProvider } from './factory';
 import { paymentMethodsFor, paymentMethodsForOrder, type PaymentMethod } from './payment-provider';
@@ -114,7 +115,7 @@ export async function resolveCheckout(env: CheckoutEnv, params: CheckoutQuery): 
 	if (priced.rows.length !== 1) return { kind: 'unavailable', reason: 'cart_not_supported' };
 	const [{ robotId, offer, amountCents }] = priced.rows;
 
-	const returnUrl = new URL(`/checkout/confirmacao?ref=${reference}`, params.origin).toString();
+	const returnUrl = new URL(confirmationPath(reference), params.origin).toString();
 	// Back to where the Cliente started, not the success confirmation page
 	// (code review finding: reusing returnUrl as cancel_url made an abandoned
 	// Stripe checkout indistinguishable on-screen from a successful one).

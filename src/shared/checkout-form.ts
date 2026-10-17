@@ -21,6 +21,7 @@
 
 import { normalizeBuyerInput, type BuyerField } from '../modules/billing/buyer-input';
 import { getCartStore } from './cart-store';
+import { CONFIRMATION_PATH } from './checkout-urls';
 
 type Copy = {
 	fieldErrors: Record<string, string>;
@@ -204,7 +205,7 @@ export function initCheckoutForm(): void {
 				fieldErrors?: Record<string, string>;
 			};
 
-			if (response.ok && body.ok && typeof body.redirectUrl === 'string' && body.redirectUrl.startsWith('/checkout/confirmacao?')) {
+			if (response.ok && body.ok && typeof body.redirectUrl === 'string' && body.redirectUrl.startsWith(`${CONFIRMATION_PATH}?`)) {
 				if (config.fromCart) getCartStore().getState().clear();
 				window.location.assign(body.redirectUrl);
 				return;

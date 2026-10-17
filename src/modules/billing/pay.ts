@@ -33,6 +33,7 @@
  */
 
 import * as Sentry from '@sentry/cloudflare';
+import { confirmationPath } from '../../shared/checkout-urls';
 import { isRecord } from '../../shared/is-record';
 import {
 	createCustomer,
@@ -141,8 +142,6 @@ function reasonOf(failure: AppmaxFailure | { ok: false; reason: 'not_authorized'
 	return failure.reason === 'rejected' ? `rejected_${failure.status}` : failure.reason;
 }
 
-const confirmationUrl = (reference: string) => `/checkout/confirmacao?ref=${reference}`;
-
 /** Before the payment call: nothing was charged, the retry may be a new attempt. */
 function unavailable(): PayResult {
 	return { ok: false, status: 502, code: 'provider_unavailable', reference: crypto.randomUUID() };
@@ -184,7 +183,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 	const inserted = await insertAttempt(env, { reference: request.reference, rows: priced.rows, method: request.method, buyer });
 	// A repeated POST of the same attempt: it already ran (or is running), so send the Cliente
 	// to its confirmation page instead of creating anything again.
-	if (!inserted) return { ok: true, redirectUrl: confirmationUrl(request.reference) };
+	if (!inserted) return { ok: true, redirectUrl: confirmationPath(request.reference) };
 
 	const purchaseId = request.reference;
 	const customer = await createCustomer(env, { ...buyer, ip });
@@ -251,7 +250,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		}
 	}
 
-	return { ok: true, redirectUrl: confirmationUrl(purchaseId) };
+	return { ok: true, redirectUrl: confirmationPath(purchaseId) };
 }
 
 /**

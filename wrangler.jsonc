@@ -47,7 +47,7 @@
 	"vars": {
 		"APPMAX_ENV": "sandbox",
 		"APPMAX_EXTERNAL_ID": "",
-		"ADMIN_EMAILS": "",
+		"ADMIN_EMAILS": "jonataslopes.011@gmail.com",
 		"ORDER_NOTIFY_EMAIL": "",
 		"WHATSAPP_NUMBER": ""
 	},

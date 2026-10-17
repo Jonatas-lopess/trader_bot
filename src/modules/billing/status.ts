@@ -13,6 +13,7 @@
  * and this marker is what tells a refused card from one in antifraud review.
  */
 
+import { BRASILIA_UTC_OFFSET } from '../../shared/brasilia';
 import { isRecord } from '../../shared/is-record';
 import type { PurchaseOffer } from '../catalog/robots';
 import type { PurchaseStatus } from './payment-provider';
@@ -118,15 +119,12 @@ function qrSource(value: unknown): string | null {
 	return httpsUrl(value);
 }
 
-/** Brasília is fixed UTC-3 (no DST since 2019), the clock Appmax's local timestamps are assumed to use (unverified, 08). */
-const BRASILIA_OFFSET = '-03:00';
-
 /** An ISO instant with a zone, or Appmax's zone-less `YYYY-MM-DD HH:MM:SS` read as Brasília time. */
 function parseInstant(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const text = value.trim();
 	const local = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)$/.exec(text);
-	const iso = local ? `${local[1]}T${local[2]}${BRASILIA_OFFSET}` : text;
+	const iso = local ? `${local[1]}T${local[2]}${BRASILIA_UTC_OFFSET}` : text;
 	if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)) return null;
 	const date = new Date(iso);
 	return Number.isNaN(date.getTime()) ? null : date.toISOString();
@@ -135,7 +133,7 @@ function parseInstant(value: unknown): string | null {
 function parseDay(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const day = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim())?.[1];
-	return day !== undefined && !Number.isNaN(new Date(`${day}T00:00:00${BRASILIA_OFFSET}`).getTime()) ? day : null;
+	return day !== undefined && !Number.isNaN(new Date(`${day}T00:00:00${BRASILIA_UTC_OFFSET}`).getTime()) ? day : null;
 }
 
 function parseJson(text: string | null): Record<string, unknown> | null {
@@ -175,7 +173,7 @@ export function parseBoletoInstructions(text: string | null): BoletoView | null 
 
 /** Past the end of the due day in Brasília. */
 function isOverdue(dueDate: string, now: Date): boolean {
-	return now.getTime() > new Date(`${dueDate}T23:59:59.999${BRASILIA_OFFSET}`).getTime();
+	return now.getTime() > new Date(`${dueDate}T23:59:59.999${BRASILIA_UTC_OFFSET}`).getTime();
 }
 
 /** The rows (one per Licença) folded back into lines, keeping the order each Robô and Oferta first appears in. */

@@ -1,3 +1,4 @@
+import { toBrasiliaClock } from '../shared/brasilia';
 import { cartCheckoutHref, isCartOffer } from '../shared/cart-limits';
 import { launchBlocking } from '../shared/launch-blocking';
 import { checkoutHref } from './catalog-page';
@@ -146,13 +147,11 @@ export const orderItems = {
 	detail: summary.lineDetail,
 } as const;
 
-// Brasília is fixed UTC-3 (no DST), the same clock as `formatPurchaseDate` in conta.ts.
-const inBrasilia = (iso: string) => new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
 const pad = (n: number) => String(n).padStart(2, '0');
 
 /** `2026-10-17T02:59:59.000Z` → "16/10/2026 às 23:59". */
 export function formatDeadline(iso: string): string {
-	const d = inBrasilia(iso);
+	const d = toBrasiliaClock(iso);
 	return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} às ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 }
 

@@ -1,6 +1,6 @@
 import type { PurchaseState } from '../modules/billing/status';
 import { toBrasiliaClock } from '../shared/brasilia';
-import { cartCheckoutHref, isCartOffer } from '../shared/cart-limits';
+import { cartCheckoutHref, isCartOffer, type CartLine } from '../shared/cart-limits';
 import { launchBlocking } from '../shared/launch-blocking';
 import { checkoutHref } from './catalog-page';
 import { summary } from './checkout-form';
@@ -118,8 +118,12 @@ export const boletoOverdueRetryLabel = 'Gerar novo Boleto';
  * to rebuild or an Oferta the checkout does not sell.
  */
 export function newCheckoutHref(items: readonly { robotId: string; offer: string; quantity: number }[]): string {
-	if (items.length === 0 || !items.every((item) => isCartOffer(item.offer))) return pendingTimeoutRetry.href;
-	const lines = items.map((item) => ({ robot: item.robotId, offer: item.offer as 'one_time' | 'annual', quantity: item.quantity }));
+	const lines: CartLine[] = [];
+	for (const { robotId, offer, quantity } of items) {
+		if (!isCartOffer(offer)) return pendingTimeoutRetry.href;
+		lines.push({ robot: robotId, offer, quantity });
+	}
+	if (lines.length === 0) return pendingTimeoutRetry.href;
 	if (lines.length === 1 && lines[0].quantity === 1) return checkoutHref(lines[0].robot, lines[0].offer);
 	return cartCheckoutHref(lines);
 }

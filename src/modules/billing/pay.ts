@@ -88,6 +88,15 @@ type PayRequest = {
 	holderName: string | null;
 };
 
+/** What the payment call needs: a card carries Appmax JS's token (and the holder field), Pix and Boleto nothing. */
+type Payment = { method: 'card'; token: string; holderName: string | null } | { method: 'pix' | 'boleto' };
+
+/** `null` for a card without a token. A token sent with Pix or Boleto stops here, never forwarded. */
+function paymentOf(request: PayRequest): Payment | null {
+	if (request.method !== 'card') return { method: request.method };
+	return request.token === null ? null : { method: 'card', token: request.token, holderName: request.holderName };
+}
+
 function nonEmptyString(value: unknown): string | null {
 	return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
 }
@@ -172,7 +181,8 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 	}
 	const allowed = paymentMethodsForOrder(priced.rows.map((row) => row.offer));
 	if (!allowed.includes(request.method)) return { ok: false, status: 400, code: 'method_not_allowed' };
-	if (request.method === 'card' && request.token === null) return { ok: false, status: 400, code: 'token_required' };
+	const payment = paymentOf(request);
+	if (payment === null) return { ok: false, status: 400, code: 'token_required' };
 
 	const ip = usableIp(params.ip) ?? (env.APPMAX_ENV === 'production' ? null : SANDBOX_FALLBACK_IP);
 	if (ip === null) {
@@ -180,7 +190,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		return { ok: false, status: 502, code: 'provider_unavailable' };
 	}
 
-	const inserted = await insertAttempt(env, { reference: request.reference, rows: priced.rows, method: request.method, buyer });
+	const inserted = await insertAttempt(env, { reference: request.reference, rows: priced.rows, method: payment.method, buyer });
 	// A repeated POST of the same attempt: it already ran (or is running), so send the Cliente
 	// to its confirmation page instead of creating anything again.
 	if (!inserted) return { ok: true, redirectUrl: confirmationPath(request.reference) };
@@ -207,14 +217,14 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		return unavailable();
 	}
 
-	switch (request.method) {
+	switch (payment.method) {
 		case 'card': {
 			const paid = await payCreditCard(env, {
 				orderId: order.orderId,
 				customerId: customer.customerId,
-				token: request.token as string,
+				token: payment.token,
 				// Appmax JS reads the holder from the card form; assumed to be the buyer (08 verifies).
-				holderName: request.holderName ?? `${buyer.firstName} ${buyer.lastName}`,
+				holderName: payment.holderName ?? `${buyer.firstName} ${buyer.lastName}`,
 				holderDocument: buyer.document,
 				softDescriptor: SOFT_DESCRIPTOR,
 			});

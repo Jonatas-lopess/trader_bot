@@ -1,7 +1,8 @@
 /**
- * Cart copy — the "Adicionar ao carrinho" feedback (storefront-v2 08) and the `/carrinho` page
- * (09). Consumed by `src/shared/cart-client.ts`, `src/shared/cart-page.ts` and
- * `src/pages/carrinho.astro`. The add button's own label lives with the catalog copy in
+ * Cart copy — the "Adicionar ao carrinho" feedback (storefront-v2 08), the `/carrinho` page
+ * (09) and the header Popover (18). Consumed by `src/shared/cart-client.ts`,
+ * `src/shared/cart-view-model.ts`, `src/components/cart-view.astro`, `src/components/cart-popover.astro`
+ * and `src/pages/carrinho.astro`. The add button's own label lives with the catalog copy in
  * `src/content/catalog-page.ts`; the header icon's labels in `src/content/header.ts`.
  *
  * launch-blocking call sites in this file:
@@ -25,6 +26,8 @@ export const addedFeedbackMs = 1500;
 export const pageTitle = 'Carrinho';
 export const pageDescription = 'Revise os Robôs escolhidos antes de finalizar a compra.';
 export const pageHeading = 'Seu carrinho';
+/** The Popover's title, also its accessible name (storefront-v2 18). */
+export const popoverHeading = pageHeading;
 
 export const loadingMessage = 'Carregando o carrinho…';
 export const emptyMessage = 'Seu carrinho está vazio.';

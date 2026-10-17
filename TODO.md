@@ -226,6 +226,7 @@ Spec: [.scratch/storefront-v2/spec.md](.scratch/storefront-v2/spec.md). Catalog 
 | 15 | [End-to-end verification](.scratch/storefront-v2/issues/15-end-to-end-verification.md) | 01, 05, 07, 09, 13, 14, 16 | done |
 | 16 | [E-mail dead letter and admin resend](.scratch/storefront-v2/issues/16-email-dead-letter.md) | 04 | done |
 | 17 | [Generalize the Encomenda beyond new Robôs](.scratch/storefront-v2/issues/17-generalize-encomenda.md) | — | done |
+| 18 | [Cart as a Popover from the header icon](.scratch/storefront-v2/issues/18-cart-popover.md) | — | done |
 
 Mensal / Assinatura is on standby (ADR-0008); `appmax-checkout` 09 is deferred with it.
 

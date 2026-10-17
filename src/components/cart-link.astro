@@ -2,6 +2,8 @@
 // Cart icon link — src/components/cart-link.astro
 //
 // The header's shopping-cart icon with a count badge, linking to `/carrinho` (storefront-v2 08).
+// With scripts on, src/shared/cart-popover.ts turns a plain click into the cart Popover
+// (storefront-v2 18); the link is the no-JavaScript fallback.
 // The count lives in the browser's sessionStorage, so it is not rendered here: the badge starts
 // hidden and absolutely positioned (reserved by the icon box, so nothing shifts when it fills),
 // and src/shared/cart-client.ts fills it and sets the aria-label after load. Used twice in

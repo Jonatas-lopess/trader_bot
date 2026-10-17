@@ -1,0 +1,26 @@
+---
+// Cart Popover — src/components/cart-popover.astro
+//
+// The cart in a native Popover anchored to the header cart icon (storefront-v2 18). The body is
+// the shared cart view (cart-view.astro); src/shared/cart-popover.ts opens it from the icon and
+// activates the view, so no `POST /cart/summary` is made until the first open. It starts `hidden`
+// and the script reveals it only when the browser supports the Popover API, so a browser without
+// it never shows a stray panel and the icon keeps linking to `/carrinho`. Position comes from two
+// custom properties the script sets from the icon's rect; at phone width it is a full-width sheet.
+// Copy comes from src/content/cart.ts — see docs/agents/content-files.md.
+import { popoverHeading } from '../content/cart';
+import CartView from './cart-view.astro';
+---
+
+<div
+	id="cart-popover"
+	popover
+	hidden
+	role="dialog"
+	aria-labelledby="cart-popover-heading"
+	tabindex="-1"
+	class="fixed inset-auto top-(--cart-popover-top) right-(--cart-popover-right) m-0 max-h-[calc(100dvh-var(--cart-popover-top)-1rem)] w-[28rem] overflow-y-auto rounded-lg border border-border-subtle bg-surface-overlay p-5 text-text-primary shadow-card outline-none max-sm:inset-x-0 max-sm:w-auto max-sm:rounded-none max-sm:border-x-0"
+>
+	<h2 id="cart-popover-heading" class="font-heading text-heading-3 font-bold text-text-primary">{popoverHeading}</h2>
+	<CartView idPrefix="cart-popover-view" data-cart-popover-view class="mt-4" />
+</div>

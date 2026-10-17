@@ -3,14 +3,15 @@
 //
 // Brand lockup, primary nav (Como funciona / Catálogo / FAQ), the "Login"
 // link (src/content/header.ts, /login since ticket 02), the cart icon with its count
-// (cart-link.astro; also in the mobile bar, next to the menu button), a "Comprar agora"
-// CTA, and an
+// (cart-link.astro; also in the mobile bar, next to the menu button) that opens the cart
+// Popover (cart-popover.astro), a "Comprar agora" CTA, and an
 // accessible mobile disclosure (no mobile artboard in Figma — derived per
 // ticket .scratch/marketing-pages/issues/03-site-shell.md). Content comes
 // from src/content/header.ts — see docs/agents/content-files.md.
 import { Menu, X } from '@lucide/astro';
 import { brand, primaryNav, loginLink, ctaLink } from '../content/header';
 import CartLink from './cart-link.astro';
+import CartPopover from './cart-popover.astro';
 ---
 
 <header class="sticky top-0 z-50 border-b border-border-subtle bg-surface-overlay">
@@ -64,6 +65,9 @@ import CartLink from './cart-link.astro';
 	<!-- Announces "added to cart" to screen readers (src/shared/cart-client.ts). -->
 	<div data-cart-live aria-live="polite" class="sr-only"></div>
 
+	<!-- The cart opened from the icon (storefront-v2 18, src/shared/cart-popover.ts). -->
+	<CartPopover />
+
 	<nav
 		id="mobile-nav"
 		aria-label="Navegação móvel"
@@ -97,8 +101,10 @@ import CartLink from './cart-link.astro';
 <script>
 	// The cart count and every "Adicionar ao carrinho" button (storefront-v2 08).
 	import { initCart } from '../shared/cart-client';
+	import { initCartPopover } from '../shared/cart-popover';
 
 	initCart();
+	initCartPopover();
 
 	// Accessible disclosure: aria-expanded on the trigger, aria-controls
 	// pointing at the panel it owns, operable from click and keyboard

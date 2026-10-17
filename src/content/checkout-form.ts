@@ -9,18 +9,12 @@
 import type { BuyerField, FieldErrorCode } from '../modules/billing/buyer-input';
 import type { PayFailureCode } from '../modules/billing/pay';
 import type { PaymentMethod } from '../modules/billing/payment-provider';
-import type { OfferName } from '../modules/catalog/robots';
 import { launchBlocking } from '../shared/launch-blocking';
-import { buyWithdrawalNote, formatBrl, offerLabels } from './catalog-page';
 import { supportEmail } from './support';
 
 export const pageTitle = 'Finalizar compra';
 export const pageDescription = 'Informe seus dados e escolha como pagar o seu Robô.';
 export const heading = 'Finalizar compra';
-
-// Prices and Oferta names are the catalog's own (one source, catalog-page.ts).
-export { formatBrl };
-export const checkoutOfferLabels: Record<OfferName, string> = offerLabels;
 
 export const summary = {
 	heading: 'Resumo da compra',
@@ -89,9 +83,6 @@ export const securityNote = launchBlocking(
 	'Os dados do seu cartão vão direto para a Appmax e não passam pelos nossos servidores.',
 	'Security reassurance (ADR-0007 browser tokenization, PLANNING.md §6); wording needs the pre-launch review.'
 );
-
-// Same statement as the catalog card, so the wording is decided once (withdrawal-guarantee 03).
-export const withdrawalNote = buyWithdrawalNote;
 
 export const payLabel = 'Pagar';
 export const payingLabel = 'Processando…';

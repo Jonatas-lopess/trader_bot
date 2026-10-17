@@ -1,18 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { CART_OFFERS } from '../shared/cart-limits';
-import { buyWithdrawalNote } from './catalog-page';
 import {
 	boletoConfirmationNote,
 	buyerFields,
 	cardAnalysisNote,
-	checkoutOfferLabels,
 	fieldErrors,
 	methods,
 	payErrors,
 	securityNote,
 	summary,
 	unavailable,
-	withdrawalNote,
 } from './checkout-form';
 
 describe('checkout form copy', () => {
@@ -53,10 +49,6 @@ describe('checkout form copy', () => {
 		}
 	});
 
-	it('labels every Oferta the checkout sells', () => {
-		for (const offer of CART_OFFERS) expect(checkoutOfferLabels[offer]).toBeTruthy();
-	});
-
 	it('labels and explains every payment method; Boleto says up to one business day', () => {
 		for (const method of ['card', 'pix', 'boleto'] as const) {
 			expect(methods[method].label).not.toBe('');
@@ -65,7 +57,7 @@ describe('checkout form copy', () => {
 		expect(methods.boleto.note).toMatch(/1 dia útil/);
 	});
 
-	it('launch-blocks the unverified claims: security reassurance, card and Boleto approval times, withdrawal note', () => {
+	it('launch-blocks the unverified claims: security reassurance, card and Boleto approval times', () => {
 		expect(securityNote.blocked).toBe(true);
 		expect(securityNote.reason).toMatch(/ADR-0007/);
 		expect(cardAnalysisNote.blocked).toBe(true);
@@ -73,9 +65,6 @@ describe('checkout form copy', () => {
 		expect(boletoConfirmationNote.blocked).toBe(true);
 		expect(boletoConfirmationNote.reason).toMatch(/ADR-0007/);
 		expect(methods.boleto.note).toBe(boletoConfirmationNote.value);
-		expect(withdrawalNote).toBe(buyWithdrawalNote);
-		expect(withdrawalNote.text.blocked).toBe(true);
-		expect(withdrawalNote.text.value).not.toMatch(/garantia/i);
 	});
 
 	it('never calls what is bought a "pedido" (CONTEXT.md: Compra, Carrinho, Licença)', () => {

@@ -9,22 +9,16 @@
 import type { BuyerField, FieldErrorCode } from '../modules/billing/buyer-input';
 import type { PayFailureCode } from '../modules/billing/pay';
 import type { PaymentMethod } from '../modules/billing/payment-provider';
-import type { OfferName } from '../modules/catalog/robots';
 import { launchBlocking } from '../shared/launch-blocking';
-import { buyWithdrawalNote, formatBrl, offerLabels } from './catalog-page';
 import { supportEmail } from './support';
 
 export const pageTitle = 'Finalizar compra';
 export const pageDescription = 'Informe seus dados e escolha como pagar o seu Robô.';
 export const heading = 'Finalizar compra';
 
-// Prices and Oferta names are the catalog's own (one source, catalog-page.ts).
-export { formatBrl };
-export const checkoutOfferLabels: Record<OfferName, string> = offerLabels;
-
 export const summary = {
-	heading: 'Resumo do pedido',
-	linesLabel: 'Itens do pedido',
+	heading: 'Resumo da compra',
+	linesLabel: 'Robôs e Licenças',
 	totalLabel: 'Total',
 	/** Under each Robô's name: the Oferta and how many Licenças (one per Corretora account, ADR-0008). */
 	lineDetail: (offerLabel: string, quantity: number): string =>
@@ -59,15 +53,18 @@ export const cardAnalysisNote = launchBlocking(
 	'Approval-time claim for card antifraud review (`autorizado`, PLANNING.md §13); not sandbox-verified (appmax-checkout 08, ADR-0007).'
 );
 
+// Same kind of approval-time claim, for Boleto compensation.
+export const boletoConfirmationNote = launchBlocking(
+	'A confirmação do Boleto pode levar até 1 dia útil depois do pagamento. O acesso chega por e-mail.',
+	'Approval-time claim for Boleto compensation (PLANNING.md §7 "up to one business day"); not sandbox-verified (appmax-checkout 08, ADR-0007).'
+);
+
 export const methods: Record<PaymentMethod, { label: string; note: string }> = {
 	pix: {
 		label: 'Pix',
 		note: 'Na próxima tela você recebe o QR Code e o código copia e cola. O código tem prazo para ser pago.',
 	},
-	boleto: {
-		label: 'Boleto',
-		note: 'A confirmação do Boleto pode levar até 1 dia útil depois do pagamento. O acesso chega por e-mail.',
-	},
+	boleto: { label: 'Boleto', note: boletoConfirmationNote.value },
 	card: { label: 'Cartão de crédito', note: cardAnalysisNote.value },
 };
 
@@ -87,9 +84,6 @@ export const securityNote = launchBlocking(
 	'Security reassurance (ADR-0007 browser tokenization, PLANNING.md §6); wording needs the pre-launch review.'
 );
 
-// Same statement as the catalog card, so the wording is decided once (withdrawal-guarantee 03).
-export const withdrawalNote = buyWithdrawalNote;
-
 export const payLabel = 'Pagar';
 export const payingLabel = 'Processando…';
 
@@ -108,7 +102,7 @@ export const payErrors: Record<PayErrorCode, string> = {
 	provider_unavailable: 'Não conseguimos falar com o meio de pagamento agora. Tente de novo em alguns instantes.',
 	rate_limited: 'Muitas tentativas seguidas. Aguarde um minuto e tente de novo.',
 	network: 'Sem conexão com o servidor. Verifique sua internet e tente de novo.',
-	invalid_request: 'Não conseguimos processar o pedido. Recarregue a página e tente de novo.',
+	invalid_request: 'Não conseguimos processar o pagamento. Recarregue a página e tente de novo.',
 	unknown_offer: 'Esta oferta não está mais disponível. Volte ao catálogo e escolha de novo.',
 	offer_not_supported: 'Esta oferta ainda não pode ser comprada por aqui. Volte ao catálogo e escolha outra.',
 	method_not_allowed: 'Esta forma de pagamento não está disponível para esta oferta.',

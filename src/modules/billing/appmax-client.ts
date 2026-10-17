@@ -57,6 +57,7 @@
  * rejecting (webhook.ts).
  */
 
+import { isRecord } from '../../shared/is-record';
 import type { AppmaxProduct } from './checkout-lines';
 import {
 	normalizeBuyerDocument,
@@ -150,10 +151,6 @@ async function getAccessToken(env: AppmaxCredentials): Promise<{ ok: true; token
 	const ttlSeconds = isRecord(body) && typeof body.expires_in === 'number' ? body.expires_in : DEFAULT_TOKEN_TTL_SECONDS;
 	tokenCache.set(key, { token, expiresAtMs: Date.now() + ttlSeconds * 1000 });
 	return { ok: true, token };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 async function readJson(response: Response): Promise<unknown> {

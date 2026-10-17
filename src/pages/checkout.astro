@@ -17,6 +17,7 @@ import { appmaxScriptUrl } from '../modules/billing/appmax-client';
 import { readCheckoutQuery, resolveCheckout } from '../modules/billing/checkout';
 import type { BuyerField } from '../modules/billing/buyer-input';
 import type { PaymentMethod } from '../modules/billing/payment-provider';
+import { toCartLine } from '../shared/cart-limits';
 import {
 	buyerFields,
 	buyerHeading,
@@ -24,10 +25,8 @@ import {
 	cardFields,
 	cartUnavailable,
 	cardHeading,
-	checkoutOfferLabels,
 	fieldErrors,
 	formErrorSummary,
-	formatBrl,
 	heading,
 	methodHeading,
 	methods,
@@ -39,8 +38,9 @@ import {
 	securityNote,
 	summary,
 	unavailable,
-	withdrawalNote,
 } from '../content/checkout-form';
+// Prices, Oferta names and the withdrawal note are the catalog card's own (one source, withdrawal-guarantee 03).
+import { buyWithdrawalNote, formatBrl, offerLabels } from '../content/catalog-page';
 
 export const prerender = false;
 
@@ -85,7 +85,7 @@ const cardSpecs: { name: string; label: string; autocomplete: string; inputmode?
 const clientConfig =
 	result.kind === 'form'
 		? {
-				lines: result.lines.map(({ robotId, offer, quantity }) => ({ robot: robotId, offer, quantity })),
+				lines: result.lines.map(toCartLine),
 				fromCart: result.fromCart,
 				externalId: env.APPMAX_EXTERNAL_ID ?? '',
 				copy: { fieldErrors, formErrorSummary, payErrors, payLabel, payingLabel },
@@ -121,7 +121,7 @@ const clientConfig =
 									<span class="flex min-w-0 flex-col">
 										<span class="break-words font-medium text-text-primary">{line.robotName}</span>
 										<span class="text-body-sm text-text-secondary">
-											{summary.lineDetail(checkoutOfferLabels[line.offer], line.quantity)}
+											{summary.lineDetail(offerLabels[line.offer], line.quantity)}
 										</span>
 									</span>
 									<span class="whitespace-nowrap text-right font-mono text-text-primary">
@@ -137,9 +137,9 @@ const clientConfig =
 							</div>
 						</dl>
 						<p class="text-body-sm text-text-secondary">
-							{withdrawalNote.text.value}{' '}
-							<a href={withdrawalNote.href} class="font-medium text-brand-primary underline">
-								{withdrawalNote.linkLabel}
+							{buyWithdrawalNote.text.value}{' '}
+							<a href={buyWithdrawalNote.href} class="font-medium text-brand-primary underline">
+								{buyWithdrawalNote.linkLabel}
 							</a>
 						</p>
 					</aside>

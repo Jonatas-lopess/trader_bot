@@ -6,6 +6,7 @@
 
 import { LIFETIME_EXPIRY } from '../modules/licensing/license-expiry';
 import type { LicenseStatus } from '../modules/licensing/license-status';
+import { toBrasiliaClock } from '../shared/brasilia';
 import { launchBlocking } from '../shared/launch-blocking';
 import type { PurchaseStatus } from '../modules/identity/customers';
 import type { PurchaseOffer } from '../modules/catalog/robots';
@@ -40,9 +41,9 @@ export const corretoraDataEmpty = '—';
 // date: Corretora account plus date is how the Cliente tells two Licenças of the same Robô apart.
 export const purchaseDateLabel = 'Data da compra';
 
-// pt-BR DD/MM/AAAA in Brasília time (fixed UTC-3, no DST), the same clock the withdrawal window uses.
+// pt-BR DD/MM/AAAA in Brasília time, the same clock the withdrawal window uses.
 export function formatPurchaseDate(iso: string): string {
-	const date = new Date(new Date(iso).getTime() - 3 * 60 * 60 * 1000);
+	const date = toBrasiliaClock(iso);
 	const day = String(date.getUTCDate()).padStart(2, '0');
 	const month = String(date.getUTCMonth() + 1).padStart(2, '0');
 	return `${day}/${month}/${date.getUTCFullYear()}`;

@@ -14,6 +14,9 @@ type PriceEnv = Pick<Cloudflare.Env, 'DB'>;
 /** An untrusted cart line, as parsed from a request body. */
 export type RawCheckoutLine = { robotId: unknown; offer: unknown; quantity: unknown };
 
+/** Mensal needs the own-form recurrence (appmax-checkout 09); the catalog does not sell it (ADR-0008 standby). */
+export const includesMensal = (lines: readonly RawCheckoutLine[]): boolean => lines.some((line) => line.offer === 'monthly');
+
 export type PriceCheckoutResult =
 	| ({ ok: true } & ExpandedCheckout)
 	| {

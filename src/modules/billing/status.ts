@@ -8,9 +8,16 @@
  * so a reload shows the same Pix again. They are gateway data, so they are validated here
  * before any page renders them: only an `https:` PDF link and a `data:image/png;base64,` or
  * `https:` QR source survive; a missing or unparseable value degrades to the generic pending
- * message, never to an error page.
+ * message, never to an error page. For a card the same column holds only `{"declined": true}`,
+ * written by `pay.ts` when Appmax refused the payment: the row stays `pending` (nothing was paid),
+ * and this marker is what tells a refused card from one in antifraud review.
  */
 
+import { checkoutHref } from '../../content/catalog-page';
+import { BRASILIA_UTC_OFFSET } from '../../shared/brasilia';
+import { cartCheckoutHref, isCartOffer, toCartLine, type CartLine } from '../../shared/cart-limits';
+import { CATALOG_PATH } from '../../shared/checkout-urls';
+import { isRecord } from '../../shared/is-record';
 import type { PurchaseOffer } from '../catalog/robots';
 import type { PurchaseStatus } from './payment-provider';
 import { findByCheckout, STATUS_RIGIDITY } from './purchase-lookup';
@@ -27,7 +34,8 @@ export type PurchaseState =
 	| 'boleto_overdue'
 	| 'awaiting_pix'
 	| 'pix_expired'
-	| 'card_in_review';
+	| 'card_in_review'
+	| 'card_declined';
 
 export type PixView = {
 	kind: 'pix';
@@ -90,10 +98,6 @@ export function aggregateCheckoutStatus(rows: readonly CheckoutStatusRow[]): Pur
 	return rows.reduce((top, row) => (STATUS_RIGIDITY[row.status] > STATUS_RIGIDITY[top] ? row.status : top), rows[0].status);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 /** Printable text without markup characters, bounded: what a payment code or digitable line is. */
 function safeText(value: unknown, maxLength: number): string | null {
 	if (typeof value !== 'string') return null;
@@ -118,15 +122,12 @@ function qrSource(value: unknown): string | null {
 	return httpsUrl(value);
 }
 
-/** Brasília is fixed UTC-3 (no DST since 2019), the clock Appmax's local timestamps are assumed to use (unverified, 08). */
-const BRASILIA_OFFSET = '-03:00';
-
 /** An ISO instant with a zone, or Appmax's zone-less `YYYY-MM-DD HH:MM:SS` read as Brasília time. */
 function parseInstant(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const text = value.trim();
 	const local = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)$/.exec(text);
-	const iso = local ? `${local[1]}T${local[2]}${BRASILIA_OFFSET}` : text;
+	const iso = local ? `${local[1]}T${local[2]}${BRASILIA_UTC_OFFSET}` : text;
 	if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(iso)) return null;
 	const date = new Date(iso);
 	return Number.isNaN(date.getTime()) ? null : date.toISOString();
@@ -135,7 +136,7 @@ function parseInstant(value: unknown): string | null {
 function parseDay(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
 	const day = /^(\d{4}-\d{2}-\d{2})/.exec(value.trim())?.[1];
-	return day !== undefined && !Number.isNaN(new Date(`${day}T00:00:00${BRASILIA_OFFSET}`).getTime()) ? day : null;
+	return day !== undefined && !Number.isNaN(new Date(`${day}T00:00:00${BRASILIA_UTC_OFFSET}`).getTime()) ? day : null;
 }
 
 function parseJson(text: string | null): Record<string, unknown> | null {
@@ -157,6 +158,13 @@ export function parsePixInstructions(text: string | null): PixView | null {
 	return { kind: 'pix', qrSrc, emvCode, expiresAt: parseInstant(raw.expiresAt) };
 }
 
+/** `pay.ts`'s marker for a card Appmax refused (the row stays `pending`, nothing was charged). */
+export const CARD_DECLINED_MARKER = JSON.stringify({ declined: true });
+
+function isDeclinedCard(text: string | null): boolean {
+	return parseJson(text)?.declined === true;
+}
+
 export function parseBoletoInstructions(text: string | null): BoletoView | null {
 	const raw = parseJson(text);
 	if (raw === null) return null;
@@ -168,7 +176,7 @@ export function parseBoletoInstructions(text: string | null): BoletoView | null 
 
 /** Past the end of the due day in Brasília. */
 function isOverdue(dueDate: string, now: Date): boolean {
-	return now.getTime() > new Date(`${dueDate}T23:59:59.999${BRASILIA_OFFSET}`).getTime();
+	return now.getTime() > new Date(`${dueDate}T23:59:59.999${BRASILIA_UTC_OFFSET}`).getTime();
 }
 
 /** The rows (one per Licença) folded back into lines, keeping the order each Robô and Oferta first appears in. */
@@ -208,8 +216,26 @@ export function derivePurchaseView(rows: readonly CheckoutViewRow[], now: Date):
 		const overdue = boleto?.dueDate != null && isOverdue(boleto.dueDate, now);
 		return { state: overdue ? 'boleto_overdue' : 'awaiting_boleto', method, instructions: boleto, items };
 	}
-	if (method === 'card') return { state: 'card_in_review', method, instructions: null, items };
+	if (method === 'card') {
+		return { state: isDeclinedCard(pending.paymentInstructions) ? 'card_declined' : 'card_in_review', method, instructions: null, items };
+	}
 	return { state: aggregate, method, instructions: null, items };
+}
+
+/**
+ * A new checkout of what the order held: the single-item checkout for one Licença, the cart
+ * checkout (`/checkout?line=...`, storefront-v2 11) for more; the catalog when there is nothing
+ * to rebuild or an Oferta the checkout does not sell.
+ */
+export function newCheckoutHref(items: readonly PurchaseItem[]): string {
+	const lines: CartLine[] = [];
+	for (const { robotId, offer, quantity } of items) {
+		if (!isCartOffer(offer)) return CATALOG_PATH;
+		lines.push(toCartLine({ robotId, offer, quantity }));
+	}
+	if (lines.length === 0) return CATALOG_PATH;
+	if (lines.length === 1 && lines[0].quantity === 1) return checkoutHref(lines[0].robot, lines[0].offer);
+	return cartCheckoutHref(lines);
 }
 
 /** `reference` is the `checkout_id` (equal to the first row's `id`), so a single purchase answers for itself. */

@@ -22,11 +22,20 @@
  * the token or any buyer field; Sentry gets the purchase id and reason codes only.
  *
  * A failed attempt's row stays `pending` and inert (the confirmation page treats a stale
- * `pending` as retry-from-catalog). Every failure after the INSERT answers with a fresh
- * `reference`, so the form's retry is a new attempt rather than a replay of the dead one.
+ * `pending` as retry-from-catalog). Which failures answer with a fresh `reference` is the
+ * double-charge guard:
+ * - before the payment call (customer, order, order id) nothing can have been charged, so the
+ *   502 carries a fresh `reference` and the form's retry is a new attempt;
+ * - a refusal (402: declined card, order `cancelado`) is final at Appmax, so a fresh `reference`;
+ * - any other failure of the payment call itself (5xx, timeout, unreadable answer) may have
+ *   charged: the 502 carries no `reference`, the form keeps its own, and the retry is a repeated
+ *   POST that lands on this attempt's confirmation page and calls nothing at Appmax.
  */
 
 import * as Sentry from '@sentry/cloudflare';
+import { fromCartLine } from '../../shared/cart-limits';
+import { confirmationPath } from '../../shared/checkout-urls';
+import { isRecord } from '../../shared/is-record';
 import {
 	createCustomer,
 	createOrder,
@@ -37,10 +46,11 @@ import {
 	type BoletoInstructions,
 	type PixInstructions,
 } from './appmax-client';
-import { normalizeBuyerInput, type BuyerInput, type FieldErrors } from './buyer-input';
+import { normalizeBuyerInput, type FieldErrors } from './buyer-input';
 import type { CheckoutRow } from './checkout-lines';
-import { paymentMethodsFor, type PaymentMethod } from './payment-provider';
-import { priceCheckout, type RawCheckoutLine } from './price-checkout';
+import { PAYMENT_METHODS, paymentMethodsForOrder, type PaymentMethod } from './payment-provider';
+import { includesMensal, priceCheckout, type RawCheckoutLine } from './price-checkout';
+import { CARD_DECLINED_MARKER } from './status';
 
 type PayEnv = Pick<Cloudflare.Env, 'DB' | 'APPMAX_CLIENT_ID' | 'APPMAX_CLIENT_SECRET' | 'PAY_RATE_LIMITER'> & {
 	APPMAX_ENV?: string;
@@ -69,7 +79,6 @@ const SOFT_DESCRIPTOR = 'ROBOTRADER';
 const SANDBOX_FALLBACK_IP = '127.0.0.1';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const PAYMENT_METHODS: readonly PaymentMethod[] = ['card', 'boleto', 'pix'];
 
 type PayRequest = {
 	reference: string;
@@ -80,8 +89,13 @@ type PayRequest = {
 	holderName: string | null;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
+/** What the payment call needs: a card carries Appmax JS's token (and the holder field), Pix and Boleto nothing. */
+type Payment = { method: 'card'; token: string; holderName: string | null } | { method: 'pix' | 'boleto' };
+
+/** `null` for a card without a token. A token sent with Pix or Boleto stops here, never forwarded. */
+function paymentOf(request: PayRequest): Payment | null {
+	if (request.method !== 'card') return { method: request.method };
+	return request.token === null ? null : { method: 'card', token: request.token, holderName: request.holderName };
 }
 
 function nonEmptyString(value: unknown): string | null {
@@ -103,7 +117,7 @@ function readLines(body: Record<string, unknown>): RawCheckoutLine[] | null {
 	const lines: RawCheckoutLine[] = [];
 	for (const line of body.lines) {
 		if (!isRecord(line)) return null;
-		lines.push({ robotId: line.robot, offer: line.offer, quantity: line.quantity });
+		lines.push(fromCartLine(line));
 	}
 	return lines;
 }
@@ -138,10 +152,14 @@ function reasonOf(failure: AppmaxFailure | { ok: false; reason: 'not_authorized'
 	return failure.reason === 'rejected' ? `rejected_${failure.status}` : failure.reason;
 }
 
-const confirmationUrl = (reference: string) => `/checkout/confirmacao?ref=${reference}`;
-
+/** Before the payment call: nothing was charged, the retry may be a new attempt. */
 function unavailable(): PayResult {
 	return { ok: false, status: 502, code: 'provider_unavailable', reference: crypto.randomUUID() };
+}
+
+/** After the payment call was sent: Appmax may have charged, so the retry must replay this attempt. */
+function unavailableAfterPayment(): PayResult {
+	return { ok: false, status: 502, code: 'provider_unavailable' };
 }
 
 export async function pay(env: PayEnv, params: { body: unknown; ip: string | null }): Promise<PayResult> {
@@ -150,12 +168,13 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 
 	const request = readRequest(params.body);
 	if (request === null) return { ok: false, status: 400, code: 'invalid_request' };
-	// Mensal needs the subscription flow of ticket 09; the catalog does not sell it (ADR-0008).
-	if (request.lines.some((line) => line.offer === 'monthly')) return { ok: false, status: 400, code: 'offer_not_supported' };
+	if (includesMensal(request.lines)) return { ok: false, status: 400, code: 'offer_not_supported' };
 
 	const buyerResult = normalizeBuyerInput(request.buyer);
 	if (!buyerResult.ok) return { ok: false, status: 400, code: 'invalid_buyer', fieldErrors: buyerResult.fieldErrors };
 	const buyer = buyerResult.buyer;
+	// The NFS-e name on every row, and the card holder when the card form left it blank.
+	const buyerName = `${buyer.firstName} ${buyer.lastName}`;
 
 	// Every price is read from D1 here; one bad line rejects the whole cart (ADR-0006, ADR-0008).
 	const priced = await priceCheckout(env, request.lines);
@@ -163,10 +182,10 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		const code = priced.reason === 'unknown_robot' || priced.reason === 'unknown_offer' ? 'unknown_offer' : 'invalid_request';
 		return { ok: false, status: 400, code };
 	}
-	// One payment for the whole order: only a method every line accepts (Compra and Anual take all three).
-	const allowed = priced.rows.every((row) => paymentMethodsFor(row.offer).includes(request.method));
-	if (!allowed) return { ok: false, status: 400, code: 'method_not_allowed' };
-	if (request.method === 'card' && request.token === null) return { ok: false, status: 400, code: 'token_required' };
+	const allowed = paymentMethodsForOrder(priced.rows.map((row) => row.offer));
+	if (!allowed.includes(request.method)) return { ok: false, status: 400, code: 'method_not_allowed' };
+	const payment = paymentOf(request);
+	if (payment === null) return { ok: false, status: 400, code: 'token_required' };
 
 	const ip = usableIp(params.ip) ?? (env.APPMAX_ENV === 'production' ? null : SANDBOX_FALLBACK_IP);
 	if (ip === null) {
@@ -174,10 +193,10 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		return { ok: false, status: 502, code: 'provider_unavailable' };
 	}
 
-	const inserted = await insertAttempt(env, { reference: request.reference, rows: priced.rows, method: request.method, buyer });
+	const inserted = await insertAttempt(env, { reference: request.reference, rows: priced.rows, method: payment.method, buyerName, buyerDocument: buyer.document });
 	// A repeated POST of the same attempt: it already ran (or is running), so send the Cliente
 	// to its confirmation page instead of creating anything again.
-	if (!inserted) return { ok: true, redirectUrl: confirmationUrl(request.reference) };
+	if (!inserted) return { ok: true, redirectUrl: confirmationPath(request.reference) };
 
 	const purchaseId = request.reference;
 	const customer = await createCustomer(env, { ...buyer, ip });
@@ -201,24 +220,26 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 		return unavailable();
 	}
 
-	switch (request.method) {
+	switch (payment.method) {
 		case 'card': {
 			const paid = await payCreditCard(env, {
 				orderId: order.orderId,
 				customerId: customer.customerId,
-				token: request.token as string,
+				token: payment.token,
 				// Appmax JS reads the holder from the card form; assumed to be the buyer (08 verifies).
-				holderName: request.holderName ?? `${buyer.firstName} ${buyer.lastName}`,
+				holderName: payment.holderName ?? buyerName,
 				holderDocument: buyer.document,
 				softDescriptor: SOFT_DESCRIPTOR,
 			});
-			// A refused order cannot be paid again: the retry needs a fresh reference.
+			// A refused order cannot be paid again: the retry needs a fresh reference. The decline is
+			// recorded so a repeated POST of this attempt lands on a page that says so (status.ts).
 			if ((!paid.ok && paid.reason === 'not_authorized') || (paid.ok && paid.orderStatus.toLowerCase() === 'cancelado')) {
+				await recordDecline(env, purchaseId);
 				return { ok: false, status: 402, code: 'card_declined', reference: crypto.randomUUID() };
 			}
 			if (!paid.ok) {
 				report('Appmax card payment failed', { purchase_id: purchaseId, reason: reasonOf(paid) });
-				return unavailable();
+				return unavailableAfterPayment();
 			}
 			break;
 		}
@@ -226,7 +247,7 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 			const paid = await payPix(env, { orderId: order.orderId, document: buyer.document });
 			if (!paid.ok) {
 				report('Appmax Pix payment failed', { purchase_id: purchaseId, reason: reasonOf(paid) });
-				return unavailable();
+				return unavailableAfterPayment();
 			}
 			await storeInstructions(env, purchaseId, paid.pix);
 			break;
@@ -235,14 +256,14 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
 			const paid = await payBoleto(env, { orderId: order.orderId, document: buyer.document });
 			if (!paid.ok) {
 				report('Appmax Boleto payment failed', { purchase_id: purchaseId, reason: reasonOf(paid) });
-				return unavailable();
+				return unavailableAfterPayment();
 			}
 			await storeInstructions(env, purchaseId, paid.boleto);
 			break;
 		}
 	}
 
-	return { ok: true, redirectUrl: confirmationUrl(purchaseId) };
+	return { ok: true, redirectUrl: confirmationPath(purchaseId) };
 }
 
 /**
@@ -253,9 +274,8 @@ export async function pay(env: PayEnv, params: { body: unknown; ip: string | nul
  */
 async function insertAttempt(
 	env: PayEnv,
-	attempt: { reference: string; rows: readonly CheckoutRow[]; method: PaymentMethod; buyer: BuyerInput }
+	attempt: { reference: string; rows: readonly CheckoutRow[]; method: PaymentMethod; buyerName: string; buyerDocument: string }
 ): Promise<boolean> {
-	const buyerName = `${attempt.buyer.firstName} ${attempt.buyer.lastName}`;
 	const statements = attempt.rows.map((row, index) =>
 		env.DB.prepare(
 			`INSERT INTO purchases (id, robot_id, offer, amount_cents, status, provider, payment_method, buyer_name, buyer_document, checkout_id)
@@ -266,8 +286,8 @@ async function insertAttempt(
 			row.offer,
 			row.amountCents,
 			attempt.method,
-			buyerName,
-			attempt.buyer.document,
+			attempt.buyerName,
+			attempt.buyerDocument,
 			attempt.reference
 		)
 	);
@@ -286,4 +306,9 @@ async function storeInstructions(env: PayEnv, checkoutId: string, instructions: 
 	await env.DB.prepare('UPDATE purchases SET payment_instructions = ? WHERE checkout_id = ?')
 		.bind(JSON.stringify(instructions), checkoutId)
 		.run();
+}
+
+/** A refused card leaves its rows `pending`; the marker in the same column tells the page it was declined. */
+async function recordDecline(env: PayEnv, checkoutId: string): Promise<void> {
+	await env.DB.prepare('UPDATE purchases SET payment_instructions = ? WHERE checkout_id = ?').bind(CARD_DECLINED_MARKER, checkoutId).run();
 }

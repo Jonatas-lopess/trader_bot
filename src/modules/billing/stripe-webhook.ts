@@ -19,16 +19,14 @@
  * SELECT-then-write race window (PLANNING.md §6).
  */
 
-import { provisionCustomer } from '../identity/customers';
 import { issueMagicLink } from '../identity/magic-link';
 import { timingSafeEqual } from '../identity/session';
-import { licenseSyncStatement } from '../licensing/license-expiry';
+import { orderLicenseSyncStatements, provisionOrderCustomer } from './order-rows';
 import { fetchAuthoritativeStatus } from './stripe-client';
 import {
 	STATUS_RIGIDITY,
 	STATUS_RIGIDITY_CASE_SQL,
 	checkReportedAmount,
-	findPurchasesByProviderRef,
 	reportAmountCheck,
 	reportMissingBuyerDocument,
 	PAID_AT_SQL,
@@ -137,19 +135,15 @@ async function onSubscriptionBecameActive(
 	}
 
 	// Every row of the order (a cart is one row per Licença, ADR-0008): one Cliente, one login link.
-	const purchases = await findPurchasesByProviderRef(env, 'stripe', ref);
-	if (purchases.length === 0) return;
-	const purchaseId = purchases[0].id;
-
-	const customer = await provisionCustomer(env, { purchaseIds: purchases.map((purchase) => purchase.id), email });
-	if (customer === null) {
-		// Malformed address: never fall back to the raw value (normalize-email.ts).
-		console.error(`onSubscriptionBecameActive: malformed buyer email for purchase_id=${purchaseId} — customers row not created`);
+	const provisioned = await provisionOrderCustomer(env, 'stripe', ref, email);
+	if (provisioned.kind === 'no_rows') return;
+	if (provisioned.kind === 'malformed_email') {
+		console.error(`onSubscriptionBecameActive: malformed buyer email for purchase_id=${provisioned.purchaseId} — customers row not created`);
 		return;
 	}
-	if (!customer.created) return;
+	if (!provisioned.customer.created) return;
 
-	await issueMagicLink(env, { customerId: customer.id, email, origin: APP_ORIGIN });
+	await issueMagicLink(env, { customerId: provisioned.customer.id, email, origin: APP_ORIGIN });
 }
 
 export async function handleStripeWebhook(
@@ -224,17 +218,7 @@ export async function handleStripeWebhook(
 	);
 
 	// Licença expiry derived from the new status in the same batch (license-expiry.ts).
-	const now = new Date();
-	const syncStatements = (await findPurchasesByProviderRef(env, 'stripe', ref)).flatMap((purchase) => {
-		const statement = licenseSyncStatement(env, {
-			purchaseId: purchase.id,
-			robotId: purchase.robotId,
-			offer: purchase.offer,
-			status: checked.status,
-			now,
-		});
-		return statement === null ? [] : [statement];
-	});
+	const syncStatements = await orderLicenseSyncStatements(env, 'stripe', ref, checked.status, new Date());
 	const [result] = await env.DB.batch([casStatement, ...syncStatements]);
 
 	if (result.meta.changes > 0) reportAmountCheck('stripe', checked);

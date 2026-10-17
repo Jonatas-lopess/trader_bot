@@ -21,10 +21,11 @@
  * second Corretora account gets its own Licença (ADR-0008).
  */
 
+import { confirmationPath } from '../../shared/checkout-urls';
 import { getPublishedBySlug, type OfferName } from '../catalog/robots';
 import { selectProvider } from './factory';
-import { paymentMethodsFor, type PaymentMethod } from './payment-provider';
-import { priceCheckout, type RawCheckoutLine } from './price-checkout';
+import { paymentMethodsFor, paymentMethodsForOrder, type PaymentMethod } from './payment-provider';
+import { includesMensal, priceCheckout, type RawCheckoutLine } from './price-checkout';
 
 export type CheckoutError =
 	| { kind: 'error'; status: 400; message: string }
@@ -89,7 +90,7 @@ export async function resolveCheckout(env: CheckoutEnv, params: CheckoutQuery): 
 	if (lines === null) return UNKNOWN;
 	const provider = selectProvider(env);
 
-	if (provider.checkout === 'own-form' && lines.some((line) => line.offer === 'monthly')) {
+	if (provider.checkout === 'own-form' && includesMensal(lines)) {
 		if (fromCart) return { kind: 'unavailable', reason: 'offer_not_supported' };
 		return (await getPublishedBySlug(env, String(lines[0].robotId))) === null ? UNKNOWN : { kind: 'unavailable', reason: 'offer_not_supported' };
 	}
@@ -97,9 +98,7 @@ export async function resolveCheckout(env: CheckoutEnv, params: CheckoutQuery): 
 	const priced = await priceCheckout(env, lines);
 	if (!priced.ok) return UNKNOWN;
 	const reference = crypto.randomUUID();
-	const methods = (['card', 'boleto', 'pix'] as const).filter((method) =>
-		priced.lines.every((line) => paymentMethodsFor(line.offer).includes(method))
-	);
+	const methods = paymentMethodsForOrder(priced.lines.map((line) => line.offer));
 
 	if (provider.checkout === 'own-form') {
 		return {
@@ -116,7 +115,7 @@ export async function resolveCheckout(env: CheckoutEnv, params: CheckoutQuery): 
 	if (priced.rows.length !== 1) return { kind: 'unavailable', reason: 'cart_not_supported' };
 	const [{ robotId, offer, amountCents }] = priced.rows;
 
-	const returnUrl = new URL(`/checkout/confirmacao?ref=${reference}`, params.origin).toString();
+	const returnUrl = new URL(confirmationPath(reference), params.origin).toString();
 	// Back to where the Cliente started, not the success confirmation page
 	// (code review finding: reusing returnUrl as cancel_url made an abandoned
 	// Stripe checkout indistinguishable on-screen from a successful one).

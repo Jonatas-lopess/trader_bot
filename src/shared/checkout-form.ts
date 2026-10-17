@@ -13,12 +13,16 @@
  * - A checkout that came from the cart empties the cart store only after the pay endpoint
  *   accepted the payment, right before navigating to the confirmation page (storefront-v2 11);
  *   a failure keeps the cart.
- * - A declined card or an unavailable provider answers with a fresh `reference` (a refused
- *   Appmax order cannot be paid again); the hidden field takes it before the retry.
+ * - The hidden `reference` changes only when the pay endpoint sends a new one: a declined card
+ *   (a refused Appmax order cannot be paid again) or a 502 before any payment was sent. A 502
+ *   after the payment call carries none, so the page keeps the reference and the retry replays
+ *   that attempt (its confirmation page) instead of risking a second charge.
  */
 
 import { normalizeBuyerInput, type BuyerField } from '../modules/billing/buyer-input';
+import type { CartLine } from './cart-limits';
 import { getCartStore } from './cart-store';
+import { CONFIRMATION_PATH } from './checkout-urls';
 
 type Copy = {
 	fieldErrors: Record<string, string>;
@@ -28,7 +32,7 @@ type Copy = {
 	payingLabel: string;
 };
 type Config = {
-	lines: { robot: string; offer: string; quantity: number }[];
+	lines: CartLine[];
 	fromCart: boolean;
 	externalId: string;
 	copy: Copy;
@@ -202,11 +206,12 @@ export function initCheckoutForm(): void {
 				fieldErrors?: Record<string, string>;
 			};
 
-			if (response.ok && body.ok && typeof body.redirectUrl === 'string' && body.redirectUrl.startsWith('/checkout/confirmacao?')) {
+			if (response.ok && body.ok && typeof body.redirectUrl === 'string' && body.redirectUrl.startsWith(`${CONFIRMATION_PATH}?`)) {
 				if (config.fromCart) getCartStore().getState().clear();
 				window.location.assign(body.redirectUrl);
 				return;
 			}
+			// Never minted here: only the server knows whether the failed attempt may have charged.
 			if (typeof body.reference === 'string') reference.value = body.reference;
 			setBusy(false);
 			if (body.code === 'invalid_buyer' && body.fieldErrors) showFieldErrors(body.fieldErrors);

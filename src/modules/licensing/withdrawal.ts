@@ -7,22 +7,21 @@
  */
 
 import type { PurchaseStatus } from '../billing/payment-provider';
+import { toBrasiliaClock } from '../../shared/brasilia';
 import { withdrawalMailBody, withdrawalMailSubject } from '../../content/conta';
 import { supportMailto } from '../../content/support';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Brasília time is UTC-3 all year (no daylight saving since 2019); days are counted on that clock.
-const BRASILIA_OFFSET_MS = -3 * 60 * 60 * 1000;
 
 /**
  * Open through the last millisecond of day 7 in Brasília time, closed from midnight starting day 8.
  * Both instants are shifted onto the Brasília clock so the UTC fields read as Brasília wall time.
  */
 export function withdrawalWindowOpen(createdAt: string, now: Date): boolean {
-	const purchasedAt = new Date(createdAt).getTime() + BRASILIA_OFFSET_MS;
+	const purchasedAt = toBrasiliaClock(createdAt).getTime();
 	const purchaseDayStart = Math.floor(purchasedAt / DAY_MS) * DAY_MS;
 	const windowEnd = purchaseDayStart + 8 * DAY_MS;
-	return now.getTime() + BRASILIA_OFFSET_MS < windowEnd;
+	return toBrasiliaClock(now).getTime() < windowEnd;
 }
 
 // A paid purchase the Cliente can still withdraw from (a canceled Mensal included); pending and

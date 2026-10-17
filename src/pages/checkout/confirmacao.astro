@@ -12,19 +12,20 @@
 // lists every Robô bought and shows one state and one set of Pix/Boleto instructions for the order.
 import { env } from 'cloudflare:workers';
 import BaseLayout from '../../layouts/base-layout.astro';
-import { getPurchaseView } from '../../modules/billing/status';
-import { listRobotNames, type OfferName } from '../../modules/catalog/robots';
+import { getPurchaseView, newCheckoutHref, type PurchaseState } from '../../modules/billing/status';
+import { listRobotNames } from '../../modules/catalog/robots';
+import { isCartOffer } from '../../shared/cart-limits';
 import { offerLabels } from '../../content/catalog-page';
 import {
 	activeCtaLabel,
 	boletoInstructions,
 	boletoOverdueRetryLabel,
+	cardDeclinedRetryLabel,
 	confirmationHeading,
 	confirmationMessages,
 	formatDeadline,
 	formatDueDate,
 	missingReferenceMessage,
-	newCheckoutHref,
 	orderItems,
 	pageDescription,
 	pageTitle,
@@ -47,15 +48,17 @@ const retryHref = newCheckoutHref(view?.items ?? []);
 const names = view === null ? new Map<string, string>() : await listRobotNames(env);
 const items = (view?.items ?? []).map((item) => ({
 	name: names.get(item.robotId) ?? item.robotId,
-	detail: orderItems.detail(offerLabels[item.offer as OfferName] ?? item.offer, item.quantity),
+	detail: orderItems.detail(isCartOffer(item.offer) ? offerLabels[item.offer] : item.offer, item.quantity),
 }));
 
 // Which states show which block; the script toggles `hidden` from `data-show-on` as the poll moves.
-const PIX_STATES = 'awaiting_pix';
-const PIX_EXPIRED_STATES = 'pix_expired';
-const BOLETO_STATES = 'awaiting_boleto boleto_overdue';
-const BOLETO_OVERDUE_STATES = 'boleto_overdue';
-const isShownOn = (states: string) => view !== null && states.split(' ').includes(view.state);
+const PIX_STATES: PurchaseState[] = ['awaiting_pix'];
+const PIX_EXPIRED_STATES: PurchaseState[] = ['pix_expired'];
+const BOLETO_STATES: PurchaseState[] = ['awaiting_boleto', 'boleto_overdue'];
+const BOLETO_OVERDUE_STATES: PurchaseState[] = ['boleto_overdue'];
+const CARD_DECLINED_STATES: PurchaseState[] = ['card_declined'];
+const isShownOn = (states: PurchaseState[]) => view !== null && states.includes(view.state);
+const showOn = (states: PurchaseState[]) => states.join(' ');
 
 const copyButtonClass =
 	'button-h-sm inline-flex items-center justify-center self-start rounded-md border-w-1 border-border-high-contrast bg-surface-raised px-4 text-body-sm font-medium text-text-primary transition-colors hover:border-border-accent';
@@ -89,7 +92,7 @@ const codeClass =
 					</section>
 
 					{pix && (
-						<div data-show-on={PIX_STATES} hidden={!isShownOn(PIX_STATES)} class="flex w-full flex-col items-center gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6">
+						<div data-show-on={showOn(PIX_STATES)} hidden={!isShownOn(PIX_STATES)} class="flex w-full flex-col items-center gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6">
 							{pix.qrSrc && <img src={pix.qrSrc} alt={pixInstructions.qrAlt} width="220" height="220" class="size-[220px] rounded-sm bg-surface-base" />}
 							{pix.expiresAt && (
 								<p class="text-body text-text-primary">
@@ -118,7 +121,7 @@ const codeClass =
 
 					{pix && (
 						<a
-							data-show-on={PIX_EXPIRED_STATES}
+							data-show-on={showOn(PIX_EXPIRED_STATES)}
 							hidden={!isShownOn(PIX_EXPIRED_STATES)}
 							href={retryHref}
 							class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
@@ -127,8 +130,17 @@ const codeClass =
 						</a>
 					)}
 
+					<a
+						data-show-on={showOn(CARD_DECLINED_STATES)}
+						hidden={!isShownOn(CARD_DECLINED_STATES)}
+						href={retryHref}
+						class="button-h-lg inline-flex items-center justify-center rounded-md bg-brand-primary px-6 text-body font-medium text-text-on-brand transition-colors hover:bg-brand-primary-hover"
+					>
+						{cardDeclinedRetryLabel}
+					</a>
+
 					{boleto && (
-						<div data-show-on={BOLETO_STATES} hidden={!isShownOn(BOLETO_STATES)} class="flex w-full flex-col items-center gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6">
+						<div data-show-on={showOn(BOLETO_STATES)} hidden={!isShownOn(BOLETO_STATES)} class="flex w-full flex-col items-center gap-4 rounded-md border-w-1 border-border-subtle bg-surface-raised p-6">
 							{boleto.dueDate && (
 								<p class="text-body text-text-primary">
 									{boletoInstructions.dueLabel}: <strong>{formatDueDate(boleto.dueDate)}</strong>
@@ -162,7 +174,7 @@ const codeClass =
 								</div>
 							)}
 							<a
-								data-show-on={BOLETO_OVERDUE_STATES}
+								data-show-on={showOn(BOLETO_OVERDUE_STATES)}
 								hidden={!isShownOn(BOLETO_OVERDUE_STATES)}
 								href={retryHref}
 								class="text-body font-medium text-brand-primary underline"
@@ -209,6 +221,8 @@ const codeClass =
 </BaseLayout>
 
 <script>
+	import type { PurchaseState } from '../../modules/billing/status';
+
 	const root = document.getElementById('confirmation-root');
 	if (root) {
 		const reference = root.dataset.ref;
@@ -227,7 +241,7 @@ const codeClass =
 		// still resolves the page automatically. Pix and Boleto carry their own
 		// deadline instead.
 		const PENDING_TIMEOUT_MS = 5 * 60 * 1000;
-		const TIMEOUT_STATES = ['pending', 'card_in_review'];
+		const TIMEOUT_STATES: ReadonlySet<string> = new Set<PurchaseState>(['pending', 'card_in_review']);
 		const pollStartedAt = Date.now();
 
 		const messages: Record<string, string> = JSON.parse(
@@ -240,7 +254,7 @@ const codeClass =
 		const applyState = (state: string) => {
 			root.setAttribute('data-state', state);
 			if (messageEl && messages[state]) {
-				const timedOut = TIMEOUT_STATES.includes(state) && Date.now() - pollStartedAt >= PENDING_TIMEOUT_MS;
+				const timedOut = TIMEOUT_STATES.has(state) && Date.now() - pollStartedAt >= PENDING_TIMEOUT_MS;
 				const text = timedOut && timeoutMessage ? timeoutMessage : messages[state];
 				if (messageEl.textContent !== text) messageEl.textContent = text;
 				if (retryEl) {
